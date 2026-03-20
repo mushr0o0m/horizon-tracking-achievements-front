@@ -14,7 +14,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { InfoIcon } from "lucide-react";
+import { ChevronDown, InfoIcon } from "lucide-react";
 import { useState } from "react";
 
 interface DashboardsPageProps {
@@ -89,7 +89,9 @@ export function DashboardsPage({ achievements }: DashboardsPageProps) {
           <div className="text-sm text-muted-foreground mb-2">
             Уровень достижений
           </div>
-          <div className="text-3xl font-bold text-primary">{highestLevel}</div>
+          <div className="text-2xl md:text-3xl font-bold text-primary leading-tight break-words [overflow-wrap:anywhere]">
+            {highestLevel}
+          </div>
           <div className="text-xs text-muted-foreground mt-2">
             самый высокий уровень
           </div>
@@ -199,14 +201,19 @@ export function DashboardsPage({ achievements }: DashboardsPageProps) {
       <div className="bg-accent/10 border border-accent rounded-lg p-6">
         <div className="flex items-start gap-3">
           <InfoIcon className="w-5 h-5 text-accent-foreground mt-1 flex-shrink-0" />
-          <div className="relative">
+          <div className="w-full">
             <button
               onClick={() => setShowTooltip(!showTooltip)}
-              className="text-accent-foreground font-semibold hover:underline text-left">
-              Как рассчитывается индекс активности?
+              className="w-full flex items-center justify-between gap-3 text-accent-foreground font-semibold hover:underline text-left">
+              <span>Как рассчитывается индекс активности?</span>
+              <ChevronDown
+                className={`w-4 h-4 flex-shrink-0 transition-transform ${showTooltip ? "rotate-180" : "rotate-0"}`}
+              />
             </button>
-            {showTooltip && (
-              <div className="absolute top-full left-0 mt-2 bg-card border border-border rounded-lg p-4 space-y-2 z-10 w-80">
+            <div
+              className={`grid transition-all duration-300 ease-out ${showTooltip ? "grid-rows-[1fr] opacity-100 mt-3" : "grid-rows-[0fr] opacity-0 mt-0"}`}>
+              <div className="overflow-hidden">
+                <div className="bg-card border border-border rounded-lg p-4 space-y-2">
                 <div className="text-sm">
                   <div className="font-semibold text-foreground mb-2">
                     Система начисления баллов:
@@ -220,7 +227,8 @@ export function DashboardsPage({ achievements }: DashboardsPageProps) {
                   </div>
                 </div>
               </div>
-            )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
