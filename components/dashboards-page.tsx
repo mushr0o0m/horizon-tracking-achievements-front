@@ -214,19 +214,19 @@ export function DashboardsPage({ achievements }: DashboardsPageProps) {
               className={`grid transition-all duration-300 ease-out ${showTooltip ? "grid-rows-[1fr] opacity-100 mt-3" : "grid-rows-[0fr] opacity-0 mt-0"}`}>
               <div className="overflow-hidden">
                 <div className="bg-card border border-border rounded-lg p-4 space-y-2">
-                <div className="text-sm">
-                  <div className="font-semibold text-foreground mb-2">
-                    Система начисления баллов:
-                  </div>
-                  <div className="space-y-1 text-muted-foreground">
-                    <div>• Международный = 5 баллов</div>
-                    <div>• Всероссийский = 3 балла</div>
-                    <div>• Региональный = 1 балл</div>
-                    <div>• Вузовский = 0 баллов</div>
-                    <div>• Факультетский = 0 баллов</div>
+                  <div className="text-sm">
+                    <div className="font-semibold text-foreground mb-2">
+                      Система начисления баллов:
+                    </div>
+                    <div className="space-y-1 text-muted-foreground">
+                      <div>• Международный = 5 баллов</div>
+                      <div>• Всероссийский = 3 балла</div>
+                      <div>• Региональный = 1 балл</div>
+                      <div>• Вузовский = 0 баллов</div>
+                      <div>• Факультетский = 0 баллов</div>
+                    </div>
                   </div>
                 </div>
-              </div>
               </div>
             </div>
           </div>
