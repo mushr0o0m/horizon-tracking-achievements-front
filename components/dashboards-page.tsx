@@ -1,7 +1,8 @@
 "use client";
 
 import { Achievement, AchievementLevel } from "@/lib/types";
-import { LEVEL_SCORES, CHART_DATA } from "@/lib/data";
+import { CHART_DATA } from "@/lib/data";
+import { calculateStudentMetrics } from "@/lib/metrics";
 import {
   BarChart,
   Bar,
@@ -30,35 +31,13 @@ const LEVEL_COLORS: Record<AchievementLevel, string> = {
 };
 
 export function DashboardsPage({ achievements }: DashboardsPageProps) {
-  const verifiedAchievements = achievements.filter(
-    (a) => a.status === "Подтверждено",
-  );
-
-  // Calculate metrics
-  const activityIndex = verifiedAchievements.length;
-  const highestLevel =
-    verifiedAchievements.length > 0
-      ? verifiedAchievements.reduce((max, a) => {
-          const maxScore = LEVEL_SCORES[max.level] || 0;
-          const aScore = LEVEL_SCORES[a.level] || 0;
-          return aScore > maxScore ? a : max;
-        }).level
-      : "Нет";
-
-  const totalScore = verifiedAchievements.reduce(
-    (sum, a) => sum + (LEVEL_SCORES[a.level] || 0),
-    0,
-  );
-  const percentile = Math.min(Math.round((totalScore / 50) * 100), 100);
-  const verifiedCount = verifiedAchievements.length;
-
-  // Chart data for distribution by level
-  const levelDistribution = Object.entries(LEVEL_SCORES)
-    .map(([level, score]) => ({
-      name: level,
-      value: verifiedAchievements.filter((a) => a.level === level).length,
-    }))
-    .filter((d) => d.value > 0);
+  const {
+    activityIndex,
+    highestLevel,
+    percentile,
+    verifiedCount,
+    levelDistribution,
+  } = calculateStudentMetrics(achievements);
 
   const [showTooltip, setShowTooltip] = useState(false);
 
@@ -81,7 +60,7 @@ export function DashboardsPage({ achievements }: DashboardsPageProps) {
             {activityIndex}
           </div>
           <div className="text-xs text-muted-foreground mt-2">
-            подтверждённых достижений
+            взвешенная сумма баллов
           </div>
         </div>
 

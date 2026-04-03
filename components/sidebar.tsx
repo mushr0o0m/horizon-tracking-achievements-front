@@ -1,6 +1,6 @@
 'use client';
 
-import { Home, BarChart3, Award, CalendarDays } from 'lucide-react';
+import { Home, BarChart3, Award, CalendarDays, UserRoundCog } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { UserRole, StudentView, OrganizerView } from '@/lib/types';
 
@@ -16,6 +16,7 @@ const STUDENT_ITEMS = [
   { id: 'home' as StudentView, label: 'Главная', icon: Home },
   { id: 'dashboards' as StudentView, label: 'Дашборды', icon: BarChart3 },
   { id: 'achievements' as StudentView, label: 'Достижения', icon: Award },
+  { id: 'profile' as StudentView, label: 'Личный кабинет', icon: UserRoundCog },
 ];
 
 const ORGANIZER_ITEMS = [

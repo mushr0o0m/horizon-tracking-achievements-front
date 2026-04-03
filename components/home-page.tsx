@@ -1,7 +1,6 @@
 "use client";
 
-import { CURRENT_STUDENT } from "@/lib/data";
-import { Achievement, Event } from "@/lib/types";
+import { Achievement, AuthUser, Event } from "@/lib/types";
 import {
   Sparkles,
   CalendarDays,
@@ -14,9 +13,10 @@ import {
 interface HomePageProps {
   achievements: Achievement[];
   events: Event[];
+  user: AuthUser;
 }
 
-export function HomePage({ achievements, events }: HomePageProps) {
+export function HomePage({ achievements, events, user }: HomePageProps) {
   // Last 3 confirmed achievements sorted newest first
   const newAchievements = achievements
     .filter((a) => a.status === "Подтверждено")
@@ -35,6 +35,7 @@ export function HomePage({ achievements, events }: HomePageProps) {
     (a) => a.status === "Подтверждено",
   ).length;
   const nextRecommendedEvent = recommendedEvents[0];
+  const firstName = user.name.split(" ")[1] || user.name;
 
   return (
     <div className="flex flex-col gap-8">
@@ -51,7 +52,7 @@ export function HomePage({ achievements, events }: HomePageProps) {
             </div>
 
             <h2 className="text-3xl md:text-4xl font-bold text-foreground text-balance leading-tight">
-              Добро пожаловать, {CURRENT_STUDENT.name.split(" ")[1]}
+              Добро пожаловать, {firstName}
             </h2>
 
             <p className="text-muted-foreground max-w-2xl">
