@@ -1,13 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { INITIAL_ACHIEVEMENTS, INITIAL_EVENTS } from "@/lib/data";
+import { useEffect, useMemo, useState } from "react";
 import {
   Achievement,
+  AppNotification,
   AuthUser,
   CourseOption,
   Event,
+  EventApplication,
+  EventType,
   NotificationSettings,
+  OrganizerEventLevel,
+  OrganizerEventType,
+  OrganizerNotificationChannel,
+  OrganizerNotificationSettings,
+  OrganizerOrganizationProfile,
+  OrganizerSocialLinks,
+  OrganizationType,
   Participant,
   PublicProfile,
   SocialLinks,
@@ -26,8 +35,35 @@ import { OrganizerEvents } from "@/components/organizer-events";
 import { EventForm } from "@/components/event-form";
 import { UploadResults } from "@/components/upload-results";
 import { ProfilePage } from "@/components/profile-page";
-import { RegisterForm, RegistrationPayload } from "@/components/register-form";
-import { Sparkles } from "lucide-react";
+import { OrganizerProfilePage } from "@/components/organizer-profile-page";
+import { EventDetailsPage } from "@/components/event-details-page";
+import { AchievementRequestForm } from "@/components/achievement-request-form";
+import { VerificationRequestsPage } from "@/components/verification-requests-page";
+import { AchievementDetailsModal } from "@/components/achievement-details-modal";
+import {
+  LoginPayload,
+  RegisterForm,
+  RegistrationPayload,
+} from "@/components/register-form";
+import {
+  EVENT_LEVEL_TO_ACHIEVEMENT_LEVEL,
+  EVENT_TYPE_TO_ACHIEVEMENT_TYPE,
+} from "@/lib/event-meta";
+import {
+  EventFormPayload,
+  EventsStoreProvider,
+  useEventsStore,
+} from "@/stores/events-store";
+import {
+  AchievementsStoreProvider,
+  useAchievementsStore,
+} from "@/stores/achievements-store";
+import {
+  NotificationsStoreProvider,
+  useNotificationsStore,
+} from "@/stores/notifications-store";
+import { useOrganizerEvents } from "@/hooks/use-organizer-events";
+import { buildBadgeViewModels } from "@/lib/badges";
 
 const AUTH_USERS_KEY = "hta.auth.users";
 const AUTH_SESSION_KEY = "hta.auth.session";
@@ -47,6 +83,29 @@ interface LegacyStoredAccount {
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+const ACHIEVEMENT_EVENT_TO_ORGANIZER_TYPE: Record<
+  EventType,
+  OrganizerEventType
+> = {
+  Олимпиада: "olympiad",
+  Конкурс: "course",
+  Хакатон: "hackathon",
+  Конференция: "conference",
+  Чемпионат: "other",
+  Другое: "other",
+};
+
+const ACHIEVEMENT_LEVEL_TO_ORGANIZER_LEVEL: Record<
+  AchievementLevel,
+  OrganizerEventLevel
+> = {
+  Международный: "international",
+  Всероссийский: "national",
+  Региональный: "regional",
+  Вузовский: "university",
+  Факультетский: "school",
+};
+
 const DEFAULT_NOTIFICATIONS: NotificationSettings = {
   invitations: true,
   verification: true,
@@ -61,7 +120,28 @@ const DEFAULT_SOCIAL_LINKS: SocialLinks = {
   customLinks: [],
 };
 
-function parseName(name: string): { firstName: string; lastName: string; middleName?: string } {
+const DEFAULT_ORGANIZER_NOTIFICATION_CHANNELS: OrganizerNotificationChannel[] =
+  ["interface", "email"];
+
+const DEFAULT_ORGANIZER_NOTIFICATIONS: OrganizerNotificationSettings = {
+  verificationRequests: true,
+  newRegistrations: true,
+  reports: true,
+  deliveryChannels: [...DEFAULT_ORGANIZER_NOTIFICATION_CHANNELS],
+};
+
+const DEFAULT_ORGANIZER_SOCIAL_LINKS: OrganizerSocialLinks = {
+  telegram: "",
+  vk: "",
+  youtube: "",
+  other: [],
+};
+
+function parseName(name: string): {
+  firstName: string;
+  lastName: string;
+  middleName?: string;
+} {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   return {
     lastName: parts[0] ?? "",
@@ -99,7 +179,9 @@ function normalizeSocialLinks(raw: unknown): SocialLinks {
     linkedin: typeof maybe.linkedin === "string" ? maybe.linkedin : "",
     website: typeof maybe.website === "string" ? maybe.website : "",
     customLinks: Array.isArray(maybe.customLinks)
-      ? maybe.customLinks.filter((item): item is string => typeof item === "string").slice(0, 5)
+      ? maybe.customLinks
+          .filter((item): item is string => typeof item === "string")
+          .slice(0, 5)
       : [],
   };
 }
@@ -118,10 +200,171 @@ function buildDefaultPublicProfile(name: string): PublicProfile {
     bio: "",
     socialLinks: { ...DEFAULT_SOCIAL_LINKS },
     profileViews30d: 0,
+    visibleAchievementIds: [],
+    visibleBadgeIds: [],
   };
 }
 
-function normalizePublicProfile(raw: unknown, fallbackName: string): PublicProfile {
+function normalizeOrganizationType(raw: unknown): OrganizationType {
+  const allowed: OrganizationType[] = [
+    "university",
+    "scientific",
+    "olympiad",
+    "conference",
+    "foundation",
+    "educational",
+    "other",
+  ];
+
+  return typeof raw === "string" && (allowed as string[]).includes(raw)
+    ? (raw as OrganizationType)
+    : "other";
+}
+
+function normalizeOrganizerSocialLinks(raw: unknown): OrganizerSocialLinks {
+  if (!raw || typeof raw !== "object") {
+    return { ...DEFAULT_ORGANIZER_SOCIAL_LINKS };
+  }
+
+  const maybe = raw as Partial<OrganizerSocialLinks>;
+  return {
+    telegram: typeof maybe.telegram === "string" ? maybe.telegram : "",
+    vk: typeof maybe.vk === "string" ? maybe.vk : "",
+    youtube: typeof maybe.youtube === "string" ? maybe.youtube : "",
+    other: Array.isArray(maybe.other)
+      ? maybe.other
+          .filter((item): item is string => typeof item === "string")
+          .slice(0, 5)
+      : [],
+  };
+}
+
+function buildDefaultOrganizerProfile(
+  _name: string,
+  email: string,
+): OrganizerOrganizationProfile {
+  return {
+    logoUrl: undefined,
+    organizationName: "",
+    shortName: "",
+    organizationType: "other",
+    website: "",
+    description: "",
+    contactEmail: email,
+    contactPhone: "",
+    socialLinks: { ...DEFAULT_ORGANIZER_SOCIAL_LINKS },
+    foundedYear: undefined,
+    eventsCount: 0,
+    totalParticipants: 0,
+  };
+}
+
+function normalizeOrganizerProfile(
+  raw: unknown,
+  fallbackName: string,
+  fallbackEmail: string,
+): OrganizerOrganizationProfile {
+  const fallback = buildDefaultOrganizerProfile(fallbackName, fallbackEmail);
+  if (!raw || typeof raw !== "object") {
+    return fallback;
+  }
+
+  const maybe = raw as Partial<OrganizerOrganizationProfile>;
+  return {
+    logoUrl:
+      typeof maybe.logoUrl === "string" ? maybe.logoUrl : fallback.logoUrl,
+    organizationName:
+      typeof maybe.organizationName === "string"
+        ? maybe.organizationName
+        : fallback.organizationName,
+    shortName:
+      typeof maybe.shortName === "string"
+        ? maybe.shortName
+        : fallback.shortName,
+    organizationType: normalizeOrganizationType(maybe.organizationType),
+    website: typeof maybe.website === "string" ? maybe.website : "",
+    description:
+      typeof maybe.description === "string"
+        ? maybe.description.slice(0, 2000)
+        : "",
+    contactEmail:
+      typeof maybe.contactEmail === "string" && maybe.contactEmail.trim()
+        ? maybe.contactEmail
+        : fallback.contactEmail,
+    contactPhone:
+      typeof maybe.contactPhone === "string" ? maybe.contactPhone : "",
+    socialLinks: normalizeOrganizerSocialLinks(maybe.socialLinks),
+    foundedYear:
+      typeof maybe.foundedYear === "number" &&
+      Number.isFinite(maybe.foundedYear)
+        ? Math.max(1800, Math.min(2100, Math.floor(maybe.foundedYear)))
+        : undefined,
+    eventsCount:
+      typeof maybe.eventsCount === "number" &&
+      Number.isFinite(maybe.eventsCount)
+        ? Math.max(0, Math.floor(maybe.eventsCount))
+        : 0,
+    totalParticipants:
+      typeof maybe.totalParticipants === "number" &&
+      Number.isFinite(maybe.totalParticipants)
+        ? Math.max(0, Math.floor(maybe.totalParticipants))
+        : 0,
+  };
+}
+
+function normalizeOrganizerNotifications(
+  raw: unknown,
+): OrganizerNotificationSettings {
+  if (!raw || typeof raw !== "object") {
+    return {
+      ...DEFAULT_ORGANIZER_NOTIFICATIONS,
+      deliveryChannels: [...DEFAULT_ORGANIZER_NOTIFICATIONS.deliveryChannels],
+    };
+  }
+
+  const maybe = raw as Partial<OrganizerNotificationSettings>;
+  const allowedChannels: OrganizerNotificationChannel[] = [
+    "interface",
+    "email",
+    "push",
+    "telegram",
+  ];
+  const normalizedChannels = Array.isArray(maybe.deliveryChannels)
+    ? Array.from(
+        new Set(
+          maybe.deliveryChannels.filter(
+            (channel): channel is OrganizerNotificationChannel =>
+              typeof channel === "string" &&
+              (allowedChannels as string[]).includes(channel),
+          ),
+        ),
+      )
+    : [];
+
+  return {
+    verificationRequests:
+      typeof maybe.verificationRequests === "boolean"
+        ? maybe.verificationRequests
+        : DEFAULT_ORGANIZER_NOTIFICATIONS.verificationRequests,
+    newRegistrations:
+      typeof maybe.newRegistrations === "boolean"
+        ? maybe.newRegistrations
+        : DEFAULT_ORGANIZER_NOTIFICATIONS.newRegistrations,
+    reports:
+      typeof maybe.reports === "boolean"
+        ? maybe.reports
+        : DEFAULT_ORGANIZER_NOTIFICATIONS.reports,
+    deliveryChannels:
+      normalizedChannels.length > 0
+        ? normalizedChannels
+        : [...DEFAULT_ORGANIZER_NOTIFICATIONS.deliveryChannels],
+  };
+}
+
+function normalizePublicProfile(
+  raw: unknown,
+  fallbackName: string,
+): PublicProfile {
   const fallback = buildDefaultPublicProfile(fallbackName);
   if (!raw || typeof raw !== "object") {
     return fallback;
@@ -129,10 +372,18 @@ function normalizePublicProfile(raw: unknown, fallbackName: string): PublicProfi
 
   const maybe = raw as Partial<PublicProfile>;
   return {
-    avatarUrl: typeof maybe.avatarUrl === "string" ? maybe.avatarUrl : undefined,
-    firstName: typeof maybe.firstName === "string" ? maybe.firstName : fallback.firstName,
-    lastName: typeof maybe.lastName === "string" ? maybe.lastName : fallback.lastName,
-    middleName: typeof maybe.middleName === "string" ? maybe.middleName : fallback.middleName,
+    avatarUrl:
+      typeof maybe.avatarUrl === "string" ? maybe.avatarUrl : undefined,
+    firstName:
+      typeof maybe.firstName === "string"
+        ? maybe.firstName
+        : fallback.firstName,
+    lastName:
+      typeof maybe.lastName === "string" ? maybe.lastName : fallback.lastName,
+    middleName:
+      typeof maybe.middleName === "string"
+        ? maybe.middleName
+        : fallback.middleName,
     university: typeof maybe.university === "string" ? maybe.university : "",
     faculty: typeof maybe.faculty === "string" ? maybe.faculty : "",
     course: normalizeCourse(maybe.course),
@@ -140,9 +391,20 @@ function normalizePublicProfile(raw: unknown, fallbackName: string): PublicProfi
     bio: typeof maybe.bio === "string" ? maybe.bio.slice(0, 1000) : "",
     socialLinks: normalizeSocialLinks(maybe.socialLinks),
     profileViews30d:
-      typeof maybe.profileViews30d === "number" && Number.isFinite(maybe.profileViews30d)
+      typeof maybe.profileViews30d === "number" &&
+      Number.isFinite(maybe.profileViews30d)
         ? Math.max(0, Math.floor(maybe.profileViews30d))
         : 0,
+    visibleAchievementIds: Array.isArray(maybe.visibleAchievementIds)
+      ? maybe.visibleAchievementIds.filter(
+          (item): item is string => typeof item === "string",
+        )
+      : [],
+    visibleBadgeIds: Array.isArray(maybe.visibleBadgeIds)
+      ? maybe.visibleBadgeIds.filter(
+          (item): item is string => typeof item === "string",
+        )
+      : [],
   };
 }
 
@@ -195,8 +457,28 @@ function normalizeUser(raw: unknown): AuthUser | null {
     email,
     role,
     phone,
-    notifications: normalizeNotifications((maybe as { notifications?: unknown }).notifications),
-    publicProfile: normalizePublicProfile((maybe as { publicProfile?: unknown }).publicProfile, name),
+    notifications: normalizeNotifications(
+      (maybe as { notifications?: unknown }).notifications,
+    ),
+    publicProfile: normalizePublicProfile(
+      (maybe as { publicProfile?: unknown }).publicProfile,
+      name,
+    ),
+    organizerProfile:
+      role === "organizer"
+        ? normalizeOrganizerProfile(
+            (maybe as { organizerProfile?: unknown }).organizerProfile,
+            name,
+            email,
+          )
+        : undefined,
+    organizerNotifications:
+      role === "organizer"
+        ? normalizeOrganizerNotifications(
+            (maybe as { organizerNotifications?: unknown })
+              .organizerNotifications,
+          )
+        : undefined,
   };
 }
 
@@ -246,11 +528,29 @@ function parseStoredSession(): AuthUser | null {
   }
 }
 
-export default function App() {
+function AppContent() {
   // Shared state — both roles read/write these
-  const [events, setEvents] = useState<Event[]>(INITIAL_EVENTS);
-  const [achievements, setAchievements] =
-    useState<Achievement[]>(INITIAL_ACHIEVEMENTS);
+  const {
+    events,
+    applications,
+    createEvent,
+    updateEvent,
+    deleteEvent,
+    assignEventOrganizer,
+    applyResults,
+    toggleApplication,
+    ensureApplication,
+  } = useEventsStore();
+  const {
+    achievements,
+    addAchievements,
+    removeStudentAchievements,
+    createAchievementRequest,
+    reviewAchievementRequest,
+    addSimulatedAchievement,
+  } = useAchievementsStore();
+  const { notifications, addNotification, markRead, markAllRead } =
+    useNotificationsStore();
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [isAuthResolved, setIsAuthResolved] = useState(false);
 
@@ -258,6 +558,18 @@ export default function App() {
   const [studentView, setStudentView] = useState<StudentView>("home");
   const [organizerView, setOrganizerView] = useState<OrganizerView>("events");
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [selectedAchievementId, setSelectedAchievementId] = useState<
+    string | null
+  >(null);
+  const [visibilitySeededForUserId, setVisibilitySeededForUserId] = useState<
+    string | null
+  >(null);
+  const [studentEventReturnView, setStudentEventReturnView] = useState<
+    "home" | "achievements"
+  >("home");
+  const [organizerAccountOptions, setOrganizerAccountOptions] = useState<
+    Array<{ id: string; label: string; email: string }>
+  >([]);
 
   const role: UserRole = currentUser?.role ?? "student";
 
@@ -266,7 +578,25 @@ export default function App() {
     setIsAuthResolved(true);
   }, []);
 
-  const persistUserInStorage = (updatedUser: AuthUser, updatedPassword?: string) => {
+  useEffect(() => {
+    if (!isAuthResolved) return;
+
+    const options = parseStoredAccounts()
+      .filter((account) => account.user.role === "organizer")
+      .map((account) => ({
+        id: account.user.id,
+        label:
+          account.user.organizerProfile?.organizationName || account.user.name,
+        email: account.user.email,
+      }));
+
+    setOrganizerAccountOptions(options);
+  }, [isAuthResolved, currentUser]);
+
+  const persistUserInStorage = (
+    updatedUser: AuthUser,
+    updatedPassword?: string,
+  ) => {
     const accounts = parseStoredAccounts();
     const updatedAccounts = accounts.map((acc) => {
       if (acc.user.id !== updatedUser.id) return acc;
@@ -301,6 +631,19 @@ export default function App() {
       role: payload.role,
       notifications: { ...DEFAULT_NOTIFICATIONS },
       publicProfile: buildDefaultPublicProfile(payload.name),
+      organizerProfile:
+        payload.role === "organizer"
+          ? buildDefaultOrganizerProfile(payload.name, payload.email)
+          : undefined,
+      organizerNotifications:
+        payload.role === "organizer"
+          ? {
+              ...DEFAULT_ORGANIZER_NOTIFICATIONS,
+              deliveryChannels: [
+                ...DEFAULT_ORGANIZER_NOTIFICATIONS.deliveryChannels,
+              ],
+            }
+          : undefined,
     };
 
     const updatedAccounts: StoredAccount[] = [
@@ -318,7 +661,32 @@ export default function App() {
     return null;
   };
 
-  const handleUpdateEmail = (newEmail: string, currentPassword: string): string | null => {
+  const handleLogin = (payload: LoginPayload): string | null => {
+    const accounts = parseStoredAccounts();
+    const normalizedEmail = payload.email.trim().toLowerCase();
+
+    const account = accounts.find((item) => item.email === normalizedEmail);
+    if (!account) {
+      return "Аккаунт с таким email не найден.";
+    }
+    if (account.password !== payload.password) {
+      return "Неверный пароль.";
+    }
+
+    localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(account.user));
+    setCurrentUser(account.user);
+    if (account.user.role === "student") {
+      setStudentView("home");
+    } else {
+      setOrganizerView("events");
+    }
+    return null;
+  };
+
+  const handleUpdateEmail = (
+    newEmail: string,
+    currentPassword: string,
+  ): string | null => {
     if (!currentUser) return "Пользователь не найден.";
     const normalizedEmail = newEmail.trim().toLowerCase();
 
@@ -327,7 +695,9 @@ export default function App() {
     }
 
     const accounts = parseStoredAccounts();
-    const currentAccount = accounts.find((acc) => acc.user.id === currentUser.id);
+    const currentAccount = accounts.find(
+      (acc) => acc.user.id === currentUser.id,
+    );
     if (!currentAccount) {
       return "Аккаунт не найден в хранилище.";
     }
@@ -353,11 +723,16 @@ export default function App() {
     return null;
   };
 
-  const handleChangePassword = (currentPassword: string, newPassword: string): string | null => {
+  const handleChangePassword = (
+    currentPassword: string,
+    newPassword: string,
+  ): string | null => {
     if (!currentUser) return "Пользователь не найден.";
 
     const accounts = parseStoredAccounts();
-    const currentAccount = accounts.find((acc) => acc.user.id === currentUser.id);
+    const currentAccount = accounts.find(
+      (acc) => acc.user.id === currentUser.id,
+    );
     if (!currentAccount) {
       return "Аккаунт не найден в хранилище.";
     }
@@ -386,9 +761,40 @@ export default function App() {
     });
   };
 
+  const handleUpdateOrganizerNotifications = (
+    notifications: OrganizerNotificationSettings,
+  ) => {
+    if (!currentUser) return;
+    persistUserInStorage({
+      ...currentUser,
+      organizerNotifications: normalizeOrganizerNotifications(notifications),
+    });
+  };
+
   const handleUpdatePublicProfile = (publicProfile: PublicProfile) => {
     if (!currentUser) return;
-    persistUserInStorage({ ...currentUser, publicProfile: normalizePublicProfile(publicProfile, currentUser.name) });
+    persistUserInStorage({
+      ...currentUser,
+      publicProfile: normalizePublicProfile(publicProfile, currentUser.name),
+    });
+  };
+
+  const handleUpdateOrganizerProfile = (
+    organizerProfile: OrganizerOrganizationProfile,
+  ) => {
+    if (!currentUser) return;
+    persistUserInStorage({
+      ...currentUser,
+      organizerProfile: normalizeOrganizerProfile(
+        {
+          ...organizerProfile,
+          eventsCount: organizerComputedStats.eventsCount,
+          totalParticipants: organizerComputedStats.totalParticipants,
+        },
+        currentUser.name,
+        currentUser.email,
+      ),
+    });
   };
 
   const handleDeleteAccount = (confirmationText: string): string | null => {
@@ -398,12 +804,14 @@ export default function App() {
     }
 
     const accounts = parseStoredAccounts();
-    const updatedAccounts = accounts.filter((acc) => acc.user.id !== currentUser.id);
+    const updatedAccounts = accounts.filter(
+      (acc) => acc.user.id !== currentUser.id,
+    );
     localStorage.setItem(AUTH_USERS_KEY, JSON.stringify(updatedAccounts));
     localStorage.removeItem(AUTH_SESSION_KEY);
 
     if (currentUser.role === "student") {
-      setAchievements((prev) => prev.filter((item) => item.studentId !== currentUser.id));
+      removeStudentAchievements(currentUser.id);
     }
 
     setCurrentUser(null);
@@ -426,6 +834,89 @@ export default function App() {
       : [];
 
   const publicStats = calculateStudentMetrics(studentAchievements);
+  const studentBadges = buildBadgeViewModels(studentAchievements);
+  const unlockedBadgeIds = useMemo(
+    () =>
+      new Set(
+        studentBadges
+          .filter((badge) => badge.unlocked)
+          .map((badge) => badge.id),
+      ),
+    [studentBadges],
+  );
+  const { organizerVisibleEvents, organizerComputedStats } = useOrganizerEvents(
+    events,
+    achievements,
+    role,
+    currentUser,
+  );
+
+  const currentUserNotifications: AppNotification[] = currentUser
+    ? notifications.filter((item) => item.userId === currentUser.id)
+    : [];
+  const studentAchievementNotifications =
+    currentUser?.role === "student"
+      ? currentUserNotifications.filter((item) => item.type === "achievement")
+      : [];
+
+  useEffect(() => {
+    if (!currentUser || currentUser.role !== "student") {
+      setVisibilitySeededForUserId(null);
+      return;
+    }
+
+    if (visibilitySeededForUserId === currentUser.id) return;
+
+    const profile = currentUser.publicProfile;
+    if (profile.visibleAchievementIds.length > 0) {
+      setVisibilitySeededForUserId(currentUser.id);
+      return;
+    }
+
+    if (studentAchievements.length === 0) {
+      setVisibilitySeededForUserId(currentUser.id);
+      return;
+    }
+
+    persistUserInStorage({
+      ...currentUser,
+      publicProfile: {
+        ...profile,
+        visibleAchievementIds: studentAchievements
+          .slice(0, 10)
+          .map((item) => item.id),
+      },
+    });
+    setVisibilitySeededForUserId(currentUser.id);
+  }, [
+    currentUser,
+    persistUserInStorage,
+    studentAchievements,
+    visibilitySeededForUserId,
+  ]);
+
+  useEffect(() => {
+    if (!currentUser || currentUser.role !== "student") return;
+
+    const currentIds = currentUser.publicProfile.visibleBadgeIds;
+    const normalizedIds = Array.from(new Set(currentIds)).filter((id) =>
+      unlockedBadgeIds.has(id),
+    );
+
+    const isSameLength = normalizedIds.length === currentIds.length;
+    const isSameContent =
+      isSameLength &&
+      normalizedIds.every((id, index) => id === currentIds[index]);
+    if (isSameContent) return;
+
+    persistUserInStorage({
+      ...currentUser,
+      publicProfile: {
+        ...currentUser.publicProfile,
+        visibleBadgeIds: normalizedIds,
+      },
+    });
+  }, [currentUser, unlockedBadgeIds, persistUserInStorage]);
 
   // ── Demo: simulate publishing results for current student ─────────────────
   const handleSimulateResults = () => {
@@ -444,26 +935,69 @@ export default function App() {
     const results = ["1 место", "2 место", "3 место", "Призёр", "Медаль"];
     const level = levels[Math.floor(Math.random() * levels.length)];
     const type = eventTypes[Math.floor(Math.random() * eventTypes.length)];
-    const newAch: Achievement = {
-      id: `sim-${Date.now()}`,
+
+    const eventTypeMap = {
+      Олимпиада: "olympiad",
+      Хакатон: "hackathon",
+      Конференция: "conference",
+      Чемпионат: "other",
+    } as const;
+    const eventLevelMap = {
+      Международный: "international",
+      Всероссийский: "national",
+      Региональный: "regional",
+    } as const;
+
+    const simulatedEvent = createEvent(
+      {
+        title: `Симулированное мероприятие (${type})`,
+        type: eventTypeMap[type],
+        level: eventLevelMap[level],
+        dates: {
+          start: new Date().toISOString().split("T")[0],
+          end: new Date().toISOString().split("T")[0],
+          registrationDeadline: new Date().toISOString().split("T")[0],
+        },
+        format: "online",
+        location: "",
+        description: "Симуляция публикации результатов",
+        website: "",
+        contactEmail: "events@horizon.local",
+        logoUrl: "",
+        bannerUrl: "",
+        status: "published",
+        customFields: [],
+      },
+      "organizer-demo",
+    );
+
+    const created = addSimulatedAchievement({
+      eventId: simulatedEvent.id,
       title: `Симулированное мероприятие (${type})`,
       level,
       date: new Date().toISOString().split("T")[0],
       result: results[Math.floor(Math.random() * results.length)],
-      status: "Подтверждено",
       studentId: currentUser.id,
       eventType: type,
-      source: "simulated",
-    };
-    setAchievements((prev) => [newAch, ...prev]);
+    });
+
+    const profile = currentUser.publicProfile;
+    if (!profile.visibleAchievementIds.includes(created.id)) {
+      const nextVisible = [created.id, ...profile.visibleAchievementIds];
+      persistUserInStorage({
+        ...currentUser,
+        publicProfile: {
+          ...profile,
+          visibleAchievementIds: nextVisible.slice(0, 10),
+        },
+      });
+    }
   };
 
   // ── Organizer: CRUD ────────────────────────────────────────────────────────
-  const handleCreateEvent = (data: Omit<Event, "id" | "participantCount">) => {
-    setEvents((prev) => [
-      { ...data, id: `evt-${Date.now()}`, participantCount: 0 },
-      ...prev,
-    ]);
+  const handleCreateEvent = (data: EventFormPayload) => {
+    if (!currentUser || currentUser.role !== "organizer") return;
+    createEvent(data, currentUser.id);
     setOrganizerView("events");
   };
 
@@ -472,22 +1006,106 @@ export default function App() {
     setOrganizerView("edit-event");
   };
 
-  const handleSaveEdit = (data: Omit<Event, "id" | "participantCount">) => {
+  const handleSaveEdit = (data: EventFormPayload) => {
     if (!selectedEventId) return;
-    setEvents((prev) =>
-      prev.map((e) => (e.id === selectedEventId ? { ...e, ...data } : e)),
-    );
+    updateEvent(selectedEventId, data);
     setSelectedEventId(null);
     setOrganizerView("events");
   };
 
   const handleDeleteEvent = (id: string) => {
-    setEvents((prev) => prev.filter((e) => e.id !== id));
+    deleteEvent(id);
   };
 
   const handleUploadResults = (id: string) => {
     setSelectedEventId(id);
     setOrganizerView("upload-results");
+  };
+
+  const handleOpenOrganizerEvent = (id: string) => {
+    setSelectedEventId(id);
+    setOrganizerView("event-details");
+  };
+
+  const handleOpenStudentEvent = (
+    id: string,
+    returnView: "home" | "achievements",
+  ) => {
+    setSelectedEventId(id);
+    setStudentEventReturnView(returnView);
+    setStudentView("event-details");
+  };
+
+  const handleOpenAchievement = (achievementId: string) => {
+    setSelectedAchievementId(achievementId);
+  };
+
+  const handleToggleAchievementVisibility = (
+    achievementId: string,
+    nextVisible: boolean,
+  ) => {
+    if (!currentUser || currentUser.role !== "student") return;
+
+    const profile = currentUser.publicProfile;
+    const currentSet = new Set(profile.visibleAchievementIds);
+
+    if (nextVisible) {
+      currentSet.add(achievementId);
+    } else {
+      currentSet.delete(achievementId);
+    }
+
+    const nextIds = Array.from(currentSet);
+    if (nextIds.length > 10) {
+      addNotification(
+        currentUser.id,
+        "Лимит витрины достижений",
+        "Можно показать не более 10 достижений в публичной визитке.",
+        "system",
+      );
+      return;
+    }
+
+    persistUserInStorage({
+      ...currentUser,
+      publicProfile: {
+        ...profile,
+        visibleAchievementIds: nextIds,
+      },
+    });
+  };
+
+  const handleToggleBadgeVisibility = (badgeId: string) => {
+    if (!currentUser || currentUser.role !== "student") return;
+
+    const profile = currentUser.publicProfile;
+    const currentSet = new Set(
+      profile.visibleBadgeIds.filter((id) => unlockedBadgeIds.has(id)),
+    );
+    if (currentSet.has(badgeId)) {
+      currentSet.delete(badgeId);
+    } else {
+      currentSet.add(badgeId);
+    }
+
+    const nextIds = Array.from(currentSet);
+    if (nextIds.length > 3) {
+      addNotification(
+        currentUser.id,
+        "Лимит витрины значков",
+        "Можно показать не более 3 значков в публичной визитке.",
+        "system",
+      );
+      return;
+    }
+
+    persistUserInStorage({
+      ...currentUser,
+      publicProfile: {
+        ...profile,
+        visibleBadgeIds: nextIds,
+      },
+    });
   };
 
   const handlePublishResults = (
@@ -499,40 +1117,168 @@ export default function App() {
     const newAchievements: Achievement[] = participants.map((p) => ({
       id: `ach-${Date.now()}-${p.id}`,
       title: event.title,
-      level: event.level,
-      date: event.date,
+      level: EVENT_LEVEL_TO_ACHIEVEMENT_LEVEL[event.level],
+      date: event.dates.end || event.dates.start,
       result: p.result,
       status: "Подтверждено" as const,
       studentId: p.studentId,
+      studentName: p.studentName,
       eventId: event.id,
-      eventType: event.type,
+      eventType: EVENT_TYPE_TO_ACHIEVEMENT_TYPE[event.type],
       source: "organizer" as const,
     }));
-    setAchievements((prev) => [...newAchievements, ...prev]);
-    setEvents((prev) =>
-      prev.map((e) =>
-        e.id === eventId
-          ? {
-              ...e,
-              participantCount: e.participantCount + participants.length,
-              status: "Опубликовано" as const,
-            }
-          : e,
-      ),
-    );
+    addAchievements(newAchievements);
+    participants.forEach((participant) => {
+      addNotification(
+        participant.studentId,
+        "Достижение подтверждено организатором",
+        `По мероприятию ${event.title} добавлен результат: ${participant.result}`,
+        "achievement",
+      );
+    });
+    applyResults(eventId);
     setSelectedEventId(null);
     setOrganizerView("events");
   };
 
+  const handleToggleApplication = (eventId: string) => {
+    if (!currentUser || currentUser.role !== "student") return;
+    toggleApplication(eventId, currentUser.id, currentUser.name);
+  };
+
   const selectedEvent = events.find((e) => e.id === selectedEventId);
+  const selectedAchievement = selectedAchievementId
+    ? (achievements.find((item) => item.id === selectedAchievementId) ?? null)
+    : null;
+  const selectedAchievementEvent = selectedAchievement?.eventId
+    ? events.find((item) => item.id === selectedAchievement.eventId)
+    : undefined;
+  const selectedEventApplications: EventApplication[] = selectedEventId
+    ? applications.filter((item) => item.eventId === selectedEventId)
+    : [];
+  const isCurrentStudentApplied =
+    currentUser?.role === "student" && selectedEventId
+      ? applications.some(
+          (item) =>
+            item.eventId === selectedEventId &&
+            item.studentId === currentUser.id,
+        )
+      : false;
+
+  const organizerOptions = useMemo(() => {
+    const map = new Map<string, { label: string; email: string }>();
+
+    organizerAccountOptions.forEach((option) => {
+      map.set(option.id, { label: option.label, email: option.email });
+    });
+
+    events.forEach((event) => {
+      if (!map.has(event.organizerId)) {
+        map.set(event.organizerId, {
+          label: event.contactEmail || event.organizerId,
+          email: event.contactEmail || "",
+        });
+      }
+    });
+    return Array.from(map.entries()).map(([id, value]) => ({
+      id,
+      label: value.label,
+      email: value.email,
+    }));
+  }, [events, organizerAccountOptions]);
+
+  const organizerVerificationRequests =
+    currentUser?.role === "organizer"
+      ? achievements.filter(
+          (achievement) =>
+            achievement.status === "На проверке" &&
+            achievement.requestedOrganizerId === currentUser.id,
+        )
+      : [];
+
+  const handleReviewRequest = (
+    achievementId: string,
+    decision: "Подтверждено" | "Отклонено",
+    comment?: string,
+  ) => {
+    const targetAchievement = achievements.find(
+      (item) => item.id === achievementId,
+    );
+    reviewAchievementRequest(achievementId, decision, comment);
+
+    if (
+      decision === "Подтверждено" &&
+      targetAchievement?.eventId &&
+      targetAchievement.studentId
+    ) {
+      if (currentUser?.role === "organizer") {
+        assignEventOrganizer(
+          targetAchievement.eventId,
+          currentUser.id,
+          currentUser.email,
+        );
+      }
+
+      ensureApplication(
+        targetAchievement.eventId,
+        targetAchievement.studentId,
+        targetAchievement.studentName || targetAchievement.studentId,
+      );
+    }
+
+    if (targetAchievement) {
+      addNotification(
+        targetAchievement.studentId,
+        decision === "Подтверждено"
+          ? "Запрос на достижение подтвержден"
+          : "Запрос на достижение отклонен",
+        comment?.trim()
+          ? comment
+          : decision === "Подтверждено"
+            ? `Достижение ${targetAchievement.title} подтверждено.`
+            : `Достижение ${targetAchievement.title} отклонено.`,
+        "achievement",
+      );
+    }
+  };
 
   if (!isAuthResolved) {
     return <div className="min-h-screen bg-background" />;
   }
 
   if (!currentUser) {
-    return <RegisterForm onRegister={handleRegister} />;
+    return <RegisterForm onRegister={handleRegister} onLogin={handleLogin} />;
   }
+
+  const eventOrganizerAccount = selectedEvent
+    ? parseStoredAccounts().find(
+        (item) => item.user.id === selectedEvent.organizerId,
+      )
+    : null;
+  const eventOrganizerInfo = selectedEvent
+    ? {
+        organizationName:
+          eventOrganizerAccount?.user.organizerProfile?.organizationName ||
+          eventOrganizerAccount?.user.name ||
+          "Организатор",
+        shortName:
+          eventOrganizerAccount?.user.organizerProfile?.shortName || undefined,
+        organizationType:
+          eventOrganizerAccount?.user.organizerProfile?.organizationType ||
+          undefined,
+        description:
+          eventOrganizerAccount?.user.organizerProfile?.description ||
+          undefined,
+        website:
+          eventOrganizerAccount?.user.organizerProfile?.website || undefined,
+        contactEmail:
+          eventOrganizerAccount?.user.organizerProfile?.contactEmail ||
+          selectedEvent.contactEmail,
+        contactPhone:
+          eventOrganizerAccount?.user.organizerProfile?.contactPhone ||
+          undefined,
+      }
+    : undefined;
 
   return (
     <div className="flex h-screen bg-background">
@@ -543,38 +1289,191 @@ export default function App() {
         onStudentViewChange={setStudentView}
         onOrganizerViewChange={setOrganizerView}
       />
-      <TopBar role={role} user={currentUser} onLogout={handleLogout} />
+      <TopBar
+        role={role}
+        user={currentUser}
+        notifications={currentUserNotifications}
+        onMarkNotificationRead={markRead}
+        onMarkAllNotificationsRead={() => markAllRead(currentUser.id)}
+        onLogout={handleLogout}
+      />
 
       <main className="ml-64 mt-16 flex-1 overflow-auto">
         <div className="p-8">
           {role === "student" && (
             <>
-              {/* Simulate button — always visible in student role */}
-              <div className="flex justify-end mb-6">
-                <button
-                  onClick={handleSimulateResults}
-                  className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium text-sm">
-                  <Sparkles className="w-4 h-4" />
-                  Симулировать публикацию результатов
-                </button>
-              </div>
-
               {studentView === "home" && (
                 <HomePage
                   achievements={studentAchievements}
                   events={events}
                   user={currentUser}
+                  onOpenEvent={(eventId) =>
+                    handleOpenStudentEvent(eventId, "home")
+                  }
+                  onOpenAchievement={handleOpenAchievement}
                 />
               )}
               {studentView === "dashboards" && (
                 <DashboardsPage achievements={studentAchievements} />
               )}
               {studentView === "achievements" && (
-                <AchievementsPage achievements={studentAchievements} />
+                <AchievementsPage
+                  achievements={studentAchievements}
+                  events={events}
+                  onOpenEvent={(eventId) =>
+                    handleOpenStudentEvent(eventId, "achievements")
+                  }
+                  onOpenAchievement={handleOpenAchievement}
+                  onCreateAchievement={() =>
+                    setStudentView("create-achievement")
+                  }
+                  onSimulateResult={handleSimulateResults}
+                  achievementNotifications={studentAchievementNotifications}
+                  visibleBadgeIds={currentUser.publicProfile.visibleBadgeIds.filter(
+                    (id) => unlockedBadgeIds.has(id),
+                  )}
+                  onToggleBadgeVisibility={handleToggleBadgeVisibility}
+                />
+              )}
+              {studentView === "create-achievement" && (
+                <AchievementRequestForm
+                  organizerOptions={organizerOptions}
+                  events={events}
+                  onBack={() => setStudentView("achievements")}
+                  onSubmit={(payload) => {
+                    if (!currentUser || currentUser.role !== "student") return;
+
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const achievementDate = new Date(
+                      `${payload.date}T00:00:00`,
+                    );
+                    if (
+                      Number.isNaN(achievementDate.getTime()) ||
+                      achievementDate >= today
+                    ) {
+                      addNotification(
+                        currentUser.id,
+                        "Ошибка запроса",
+                        "Достижение можно добавить только за прошедшую дату.",
+                        "system",
+                      );
+                      return;
+                    }
+
+                    const selectedOrganizer = organizerOptions.find(
+                      (item) => item.id === payload.requestedOrganizerId,
+                    );
+
+                    const targetEvent = payload.eventNotInList
+                      ? payload.newEvent
+                        ? createEvent(
+                            {
+                              title: payload.newEvent.title,
+                              type: ACHIEVEMENT_EVENT_TO_ORGANIZER_TYPE[
+                                payload.eventType
+                              ],
+                              level:
+                                ACHIEVEMENT_LEVEL_TO_ORGANIZER_LEVEL[
+                                  payload.level
+                                ],
+                              dates: {
+                                start: payload.date,
+                                end: payload.date,
+                                registrationDeadline:
+                                  payload.newEvent.registrationDeadline ||
+                                  payload.date,
+                              },
+                              format: payload.newEvent.format,
+                              location: payload.newEvent.location ?? "",
+                              description: payload.newEvent.description,
+                              website: payload.newEvent.website ?? "",
+                              contactEmail:
+                                payload.newEvent.contactEmail ||
+                                selectedOrganizer?.email ||
+                                "events@horizon.local",
+                              logoUrl: "",
+                              bannerUrl: "",
+                              status: "draft",
+                              customFields: [],
+                            },
+                            payload.requestedOrganizerId,
+                          )
+                        : null
+                      : (events.find((event) => event.id === payload.eventId) ??
+                        null);
+
+                    if (!targetEvent) {
+                      addNotification(
+                        currentUser.id,
+                        "Ошибка запроса",
+                        "Не удалось определить мероприятие для достижения.",
+                        "system",
+                      );
+                      return;
+                    }
+
+                    const created = createAchievementRequest(
+                      currentUser.id,
+                      currentUser.name,
+                      {
+                        ...payload,
+                        eventId: targetEvent.id,
+                        title: payload.title || targetEvent.title,
+                        eventType:
+                          payload.eventType ||
+                          EVENT_TYPE_TO_ACHIEVEMENT_TYPE[targetEvent.type],
+                        eventNotInList: payload.eventNotInList,
+                        requestComment: payload.requestComment,
+                      },
+                    );
+
+                    const profile = currentUser.publicProfile;
+                    const nextVisible = [
+                      created.id,
+                      ...profile.visibleAchievementIds,
+                    ].slice(0, 10);
+                    persistUserInStorage({
+                      ...currentUser,
+                      publicProfile: {
+                        ...profile,
+                        visibleAchievementIds: nextVisible,
+                      },
+                    });
+
+                    addNotification(
+                      payload.requestedOrganizerId,
+                      "Новый запрос на подтверждение",
+                      payload.eventNotInList
+                        ? `${currentUser.name} отправил запрос на достижение ${payload.title}. Мероприятие добавлено вне списка.`
+                        : `${currentUser.name} отправил запрос на достижение ${payload.title}`,
+                      "achievement",
+                    );
+                    setStudentView("achievements");
+                  }}
+                />
+              )}
+              {studentView === "event-details" && selectedEvent && (
+                <EventDetailsPage
+                  event={selectedEvent}
+                  organizerInfo={eventOrganizerInfo}
+                  role="student"
+                  applications={selectedEventApplications}
+                  isApplied={isCurrentStudentApplied}
+                  onToggleApplication={() =>
+                    handleToggleApplication(selectedEvent.id)
+                  }
+                  onBack={() => {
+                    setSelectedEventId(null);
+                    setStudentView(studentEventReturnView);
+                  }}
+                />
               )}
               {studentView === "profile" && (
                 <ProfilePage
                   user={currentUser}
+                  achievements={studentAchievements}
+                  badges={studentBadges}
                   publicStats={publicStats}
                   onUpdateEmail={handleUpdateEmail}
                   onUpdatePhone={handleUpdatePhone}
@@ -591,15 +1490,53 @@ export default function App() {
             <>
               {organizerView === "events" && (
                 <OrganizerEvents
-                  events={events}
+                  events={organizerVisibleEvents}
                   onCreateEvent={() => setOrganizerView("create-event")}
+                  onOpenEvent={handleOpenOrganizerEvent}
                   onEditEvent={handleEditEvent}
                   onDeleteEvent={handleDeleteEvent}
                   onUploadResults={handleUploadResults}
                 />
               )}
+              {organizerView === "event-details" && selectedEvent && (
+                <EventDetailsPage
+                  event={selectedEvent}
+                  organizerInfo={eventOrganizerInfo}
+                  role="organizer"
+                  applications={selectedEventApplications}
+                  onOpenUploadResults={handleUploadResults}
+                  onBack={() => {
+                    setSelectedEventId(null);
+                    setOrganizerView("events");
+                  }}
+                />
+              )}
+              {organizerView === "verification-requests" && (
+                <VerificationRequestsPage
+                  requests={organizerVerificationRequests}
+                  onApprove={(achievementId, comment) =>
+                    handleReviewRequest(achievementId, "Подтверждено", comment)
+                  }
+                  onReject={(achievementId, comment) =>
+                    handleReviewRequest(achievementId, "Отклонено", comment)
+                  }
+                />
+              )}
+              {organizerView === "profile" && (
+                <OrganizerProfilePage
+                  user={currentUser}
+                  organizationStats={organizerComputedStats}
+                  onUpdateEmail={handleUpdateEmail}
+                  onUpdatePhone={handleUpdatePhone}
+                  onChangePassword={handleChangePassword}
+                  onUpdateNotifications={handleUpdateOrganizerNotifications}
+                  onUpdateOrganizationProfile={handleUpdateOrganizerProfile}
+                  onDeleteAccount={handleDeleteAccount}
+                />
+              )}
               {organizerView === "create-event" && (
                 <EventForm
+                  defaultContactEmail={currentUser.email}
                   onBack={() => setOrganizerView("events")}
                   onSave={handleCreateEvent}
                 />
@@ -617,6 +1554,7 @@ export default function App() {
               {organizerView === "upload-results" && selectedEvent && (
                 <UploadResults
                   event={selectedEvent}
+                  applications={selectedEventApplications}
                   onBack={() => {
                     setOrganizerView("events");
                     setSelectedEventId(null);
@@ -628,6 +1566,39 @@ export default function App() {
           )}
         </div>
       </main>
+
+      <AchievementDetailsModal
+        achievement={selectedAchievement}
+        event={selectedAchievementEvent}
+        isVisibleInPublic={
+          selectedAchievement
+            ? currentUser.publicProfile.visibleAchievementIds.includes(
+                selectedAchievement.id,
+              )
+            : false
+        }
+        onToggleVisible={(nextValue) => {
+          if (!selectedAchievement) return;
+          handleToggleAchievementVisibility(selectedAchievement.id, nextValue);
+        }}
+        onClose={() => setSelectedAchievementId(null)}
+        onOpenEvent={(eventId) => {
+          handleOpenStudentEvent(eventId, "achievements");
+          setSelectedAchievementId(null);
+        }}
+      />
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <EventsStoreProvider>
+      <AchievementsStoreProvider>
+        <NotificationsStoreProvider>
+          <AppContent />
+        </NotificationsStoreProvider>
+      </AchievementsStoreProvider>
+    </EventsStoreProvider>
   );
 }

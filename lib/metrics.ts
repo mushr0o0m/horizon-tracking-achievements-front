@@ -11,14 +11,16 @@ export interface StudentMetrics {
   levelDistribution: Array<{ name: AchievementLevel; value: number }>;
 }
 
-export function calculateStudentMetrics(achievements: Achievement[]): StudentMetrics {
+export function calculateStudentMetrics(
+  achievements: Achievement[],
+): StudentMetrics {
   const verifiedAchievements = achievements.filter(
     (achievement) => achievement.status === "Подтверждено",
   );
 
   const achievementsCount = achievements.length;
   const verifiedCount = verifiedAchievements.length;
-  
+
   // Индекс активности - взвешенная сумма баллов за мероприятия
   // Веса: международный = 5, всероссийский = 3, региональный = 1
   const activityIndex = verifiedAchievements.reduce(
@@ -45,8 +47,9 @@ export function calculateStudentMetrics(achievements: Achievement[]): StudentMet
   const levelDistribution = (Object.keys(LEVEL_SCORES) as AchievementLevel[])
     .map((level) => ({
       name: level,
-      value: verifiedAchievements.filter((achievement) => achievement.level === level)
-        .length,
+      value: verifiedAchievements.filter(
+        (achievement) => achievement.level === level,
+      ).length,
     }))
     .filter((item) => item.value > 0);
 

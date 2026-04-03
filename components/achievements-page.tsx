@@ -1,12 +1,29 @@
 "use client";
 
-import { Achievement, EventType } from "@/lib/types";
+import { Achievement, AppNotification, Event, EventType } from "@/lib/types";
 import { useMemo, useState } from "react";
-import { Search, ChevronUp, ChevronDown, Lock } from "lucide-react";
+import {
+  Search,
+  ChevronUp,
+  ChevronDown,
+  Lock,
+  Sparkles,
+  Eye,
+  EyeOff,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
+import { buildBadgeViewModels } from "@/lib/badges";
 
 interface AchievementsPageProps {
   achievements: Achievement[];
+  events: Event[];
+  onOpenEvent: (eventId: string) => void;
+  onOpenAchievement: (achievementId: string) => void;
+  onCreateAchievement: () => void;
+  onSimulateResult: () => void;
+  achievementNotifications: AppNotification[];
+  visibleBadgeIds: string[];
+  onToggleBadgeVisibility: (badgeId: string) => void;
 }
 
 type SortField = "title" | "date" | "level";
@@ -22,75 +39,17 @@ const EVENT_TYPES: EventType[] = [
   "Другое",
 ];
 
-// Badge definitions — each badge has an unlock condition based on achievements
-const BADGE_DEFINITIONS = [
-  {
-    id: "first-hackathon",
-    title: "Первый хакатон",
-    description: "Участвовать в хакатоне",
-    condition: (a: Achievement[]) => a.some((x) => x.eventType === "Хакатон"),
-  },
-  {
-    id: "first-olympiad",
-    title: "Первая олимпиада",
-    description: "Участвовать в олимпиаде",
-    condition: (a: Achievement[]) => a.some((x) => x.eventType === "Олимпиада"),
-  },
-  {
-    id: "first-conference",
-    title: "Первое выступление",
-    description: "Участвовать в конференции",
-    condition: (a: Achievement[]) =>
-      a.some((x) => x.eventType === "Конференция"),
-  },
-  {
-    id: "international",
-    title: "Международный уровень",
-    description: "Получить международное достижение",
-    condition: (a: Achievement[]) =>
-      a.some((x) => x.level === "Международный" && x.status === "Подтверждено"),
-  },
-  {
-    id: "all-russia",
-    title: "Всероссийский масштаб",
-    description: "Получить всероссийское достижение",
-    condition: (a: Achievement[]) =>
-      a.some((x) => x.level === "Всероссийский" && x.status === "Подтверждено"),
-  },
-  {
-    id: "top-result",
-    title: "Призовое место",
-    description: "Занять 1, 2 или 3 место",
-    condition: (a: Achievement[]) =>
-      a.some((x) => /[123] место/.test(x.result)),
-  },
-  {
-    id: "five-achievements",
-    title: "Коллекционер",
-    description: "Накопить 5 подтверждённых достижений",
-    condition: (a: Achievement[]) =>
-      a.filter((x) => x.status === "Подтверждено").length >= 5,
-  },
-  {
-    id: "champion",
-    title: "Чемпион",
-    description: "Участвовать в чемпионате",
-    condition: (a: Achievement[]) => a.some((x) => x.eventType === "Чемпионат"),
-  },
-];
-
-const BADGE_ICONS: Record<string, string> = {
-  "first-hackathon": "⌨",
-  "first-olympiad": "★",
-  "first-conference": "◉",
-  international: "◆",
-  "all-russia": "▲",
-  "top-result": "✦",
-  "five-achievements": "●",
-  champion: "◈",
-};
-
-export function AchievementsPage({ achievements }: AchievementsPageProps) {
+export function AchievementsPage({
+  achievements,
+  events,
+  onOpenEvent,
+  onOpenAchievement,
+  onCreateAchievement,
+  onSimulateResult,
+  achievementNotifications,
+  visibleBadgeIds,
+  onToggleBadgeVisibility,
+}: AchievementsPageProps) {
   const [tab, setTab] = useState<Tab>("table");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedYear, setSelectedYear] = useState<string>("");
@@ -162,19 +121,65 @@ export function AchievementsPage({ achievements }: AchievementsPageProps) {
     );
   };
 
-  const badges = BADGE_DEFINITIONS.map((b) => ({
-    ...b,
-    unlocked: b.condition(achievements),
-  }));
+  const badges = buildBadgeViewModels(achievements);
+
+  const availableEventIds = useMemo(
+    () => new Set(events.map((event) => event.id)),
+    [events],
+  );
 
   return (
     <div className="flex flex-col gap-6">
       <section>
-        <h2 className="text-3xl font-bold text-foreground mb-1">Достижения</h2>
-        <p className="text-muted-foreground">
-          Все ваши достижения и заработанные значки
-        </p>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div>
+            <h2 className="text-3xl font-bold text-foreground mb-1">
+              Достижения
+            </h2>
+            <p className="text-muted-foreground">
+              Все ваши достижения и заработанные значки
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onSimulateResult}
+              title="Симулировать публикацию результатов"
+              aria-label="Симулировать публикацию результатов"
+              className="p-2.5 rounded-lg border border-border hover:bg-secondary transition-colors text-primary">
+              <Sparkles className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={onCreateAchievement}
+              className="px-4 py-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium">
+              Добавить достижение
+            </button>
+          </div>
+        </div>
       </section>
+
+      {achievementNotifications.length > 0 && (
+        <section className="bg-card border border-border rounded-lg p-4 space-y-2">
+          <h3 className="text-sm font-semibold text-foreground">
+            Уведомления по достижениям
+          </h3>
+          <div className="space-y-2">
+            {achievementNotifications.slice(0, 3).map((item) => (
+              <div
+                key={item.id}
+                className="border border-border rounded-lg p-3 bg-secondary/30">
+                <div className="text-sm font-medium text-foreground">
+                  {item.title}
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {item.description}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-1 bg-secondary rounded-lg p-1 w-fit">
@@ -270,7 +275,8 @@ export function AchievementsPage({ achievements }: AchievementsPageProps) {
                     filteredData.map((a) => (
                       <tr
                         key={a.id}
-                        className="border-b border-border hover:bg-secondary/50 transition-colors">
+                        onClick={() => onOpenAchievement(a.id)}
+                        className="border-b border-border hover:bg-secondary/50 transition-colors cursor-pointer">
                         <td className="px-5 py-4 text-sm font-medium text-foreground">
                           {a.title}
                         </td>
@@ -290,6 +296,10 @@ export function AchievementsPage({ achievements }: AchievementsPageProps) {
                           {a.status === "Подтверждено" ? (
                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[var(--verified-bg)] text-[var(--verified)]">
                               Подтверждено
+                            </span>
+                          ) : a.status === "Отклонено" ? (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-destructive/15 text-destructive">
+                              Отклонено
                             </span>
                           ) : (
                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[var(--pending-bg)] text-[var(--pending)]">
@@ -333,12 +343,32 @@ export function AchievementsPage({ achievements }: AchievementsPageProps) {
                     ? "bg-accent text-accent-foreground"
                     : "bg-secondary text-muted-foreground",
                 )}>
-                {badge.unlocked ? (
-                  BADGE_ICONS[badge.id]
-                ) : (
-                  <Lock className="w-5 h-5" />
-                )}
+                {badge.unlocked ? badge.icon : <Lock className="w-5 h-5" />}
               </div>
+              <button
+                type="button"
+                onClick={() =>
+                  badge.unlocked && onToggleBadgeVisibility(badge.id)
+                }
+                className={cn(
+                  "p-1.5 rounded-md border border-border",
+                  badge.unlocked
+                    ? "hover:bg-secondary text-foreground"
+                    : "opacity-50 cursor-not-allowed text-muted-foreground",
+                )}
+                title={
+                  badge.unlocked
+                    ? visibleBadgeIds.includes(badge.id)
+                      ? "Скрыть значок из визитки"
+                      : "Показать значок в визитке"
+                    : "Значок не разблокирован"
+                }>
+                {visibleBadgeIds.includes(badge.id) ? (
+                  <Eye className="w-4 h-4" />
+                ) : (
+                  <EyeOff className="w-4 h-4" />
+                )}
+              </button>
               <div>
                 <p className="font-semibold text-foreground text-sm">
                   {badge.title}

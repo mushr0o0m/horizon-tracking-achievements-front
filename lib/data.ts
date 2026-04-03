@@ -1,4 +1,4 @@
-import type { Achievement, Student, Event, AchievementLevel } from "./types";
+import type { Achievement, Student, AchievementLevel } from "./types";
 
 export const CURRENT_STUDENT: Student = {
   id: "student-1",
@@ -52,58 +52,28 @@ export const INITIAL_ACHIEVEMENTS: Achievement[] = [
     result: "Лучшая инновация",
     status: "На проверке",
     studentId: "student-1",
+    studentName: "Иванов Алексей Сергеевич",
+    requestedOrganizerId: "organizer-demo",
     eventType: "Хакатон",
-    source: "organizer",
-  },
-];
-
-export const INITIAL_EVENTS: Event[] = [
-  {
-    id: "evt-1",
-    title: "Международная олимпиада по информатике",
-    level: "Международный",
-    date: "2023-07-18",
-    type: "Олимпиада",
-    description: "Ежегодная международная олимпиада для студентов и школьников по информатике",
-    status: "Опубликовано",
-    participantCount: 312,
-  },
-  {
-    id: "evt-2",
-    title: "Всероссийский чемпионат по программированию",
-    level: "Всероссийский",
-    date: "2023-03-05",
-    type: "Чемпионат",
-    description: "Командное соревнование по решению алгоритмических задач",
-    status: "Опубликовано",
-    participantCount: 156,
-  },
-  {
-    id: "evt-3",
-    title: "Региональная олимпиада по математике",
-    level: "Региональный",
-    date: "2024-02-14",
-    type: "Олимпиада",
-    status: "Опубликовано",
-    participantCount: 89,
+    source: "manual",
   },
 ];
 
 // Scoring weights for metrics
 export const LEVEL_SCORES: Record<AchievementLevel, number> = {
-  "Международный": 5,
-  "Всероссийский": 3,
-  "Региональный": 1,
-  "Вузовский": 0,
-  "Факультетский": 0,
+  Международный: 5,
+  Всероссийский: 3,
+  Региональный: 1,
+  Вузовский: 0,
+  Факультетский: 0,
 };
 
 export const LEVEL_ORDER: Record<AchievementLevel, number> = {
-  "Международный": 5,
-  "Всероссийский": 4,
-  "Региональный": 3,
-  "Вузовский": 2,
-  "Факультетский": 1,
+  Международный: 5,
+  Всероссийский: 4,
+  Региональный: 3,
+  Вузовский: 2,
+  Факультетский: 1,
 };
 
 export const CHART_DATA = [

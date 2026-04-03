@@ -1,11 +1,33 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { AuthUser, CourseOption, NotificationSettings, PublicProfile } from "@/lib/types";
-import { Bell, Mail, Phone, KeyRound, ShieldAlert, Trash2, UserCircle2, Link2, Eye, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  Achievement,
+  AuthUser,
+  CourseOption,
+  NotificationSettings,
+  PublicProfile,
+} from "@/lib/types";
+import { BadgeViewModel } from "@/lib/badges";
+import {
+  Bell,
+  EyeOff,
+  Mail,
+  Phone,
+  KeyRound,
+  ShieldAlert,
+  Trash2,
+  UserCircle2,
+  Link2,
+  Eye,
+  Search,
+  X,
+} from "lucide-react";
 
 interface ProfilePageProps {
   user: AuthUser;
+  achievements: Achievement[];
+  badges: BadgeViewModel[];
   publicStats: {
     achievementsCount: number;
     activityIndex: number;
@@ -13,7 +35,10 @@ interface ProfilePageProps {
   };
   onUpdateEmail: (newEmail: string, currentPassword: string) => string | null;
   onUpdatePhone: (phone: string) => string | null;
-  onChangePassword: (currentPassword: string, newPassword: string) => string | null;
+  onChangePassword: (
+    currentPassword: string,
+    newPassword: string,
+  ) => string | null;
   onUpdateNotifications: (settings: NotificationSettings) => void;
   onUpdatePublicProfile: (profile: PublicProfile) => void;
   onDeleteAccount: (confirmationText: string) => string | null;
@@ -61,11 +86,15 @@ function buildFallbackPublicProfile(fullName: string): PublicProfile {
       customLinks: [],
     },
     profileViews30d: 0,
+    visibleAchievementIds: [],
+    visibleBadgeIds: [],
   };
 }
 
 export function ProfilePage({
   user,
+  achievements,
+  badges,
   publicStats,
   onUpdateEmail,
   onUpdatePhone,
@@ -77,8 +106,10 @@ export function ProfilePage({
   const [activeTab, setActiveTab] = useState<ProfileTab>("personal");
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const safeNotifications = user.notifications ?? DEFAULT_NOTIFICATIONS;
-  const safePublicProfile = user.publicProfile ?? buildFallbackPublicProfile(user.name);
-  const [publicProfile, setPublicProfile] = useState<PublicProfile>(safePublicProfile);
+  const safePublicProfile =
+    user.publicProfile ?? buildFallbackPublicProfile(user.name);
+  const [publicProfile, setPublicProfile] =
+    useState<PublicProfile>(safePublicProfile);
   const [nextEmail, setNextEmail] = useState(user.email);
   const [currentPasswordForEmail, setCurrentPasswordForEmail] = useState("");
   const [phone, setPhone] = useState(user.phone ?? "");
@@ -97,15 +128,53 @@ export function ProfilePage({
     null,
   );
   const [publicMessage, setPublicMessage] = useState<string | null>(null);
+  const [visibleAchievementsQuery, setVisibleAchievementsQuery] = useState("");
+  const [visibleBadgesQuery, setVisibleBadgesQuery] = useState("");
 
   useEffect(() => {
     setNextEmail(user.email);
     setPhone(user.phone ?? "");
     setNotifications(user.notifications ?? DEFAULT_NOTIFICATIONS);
-    setPublicProfile(user.publicProfile ?? buildFallbackPublicProfile(user.name));
+    setPublicProfile(
+      user.publicProfile ?? buildFallbackPublicProfile(user.name),
+    );
   }, [user]);
 
-  const initials = `${publicProfile.lastName[0] ?? ""}${publicProfile.firstName[0] ?? ""}`.toUpperCase() || user.name.slice(0, 2).toUpperCase();
+  const initials =
+    `${publicProfile.lastName[0] ?? ""}${publicProfile.firstName[0] ?? ""}`.toUpperCase() ||
+    user.name.slice(0, 2).toUpperCase();
+
+  const filteredAchievements = achievements.filter((achievement) => {
+    const query = visibleAchievementsQuery.trim().toLowerCase();
+    if (!query) return true;
+
+    return [achievement.title, achievement.result, achievement.level]
+      .join(" ")
+      .toLowerCase()
+      .includes(query);
+  });
+
+  const unlockedBadges = badges.filter((badge) => badge.unlocked);
+  const unlockedBadgeIdSet = useMemo(
+    () => new Set(unlockedBadges.map((badge) => badge.id)),
+    [unlockedBadges],
+  );
+  const visibleBadgeIdsNormalized = useMemo(
+    () =>
+      Array.from(new Set(publicProfile.visibleBadgeIds)).filter((id) =>
+        unlockedBadgeIdSet.has(id),
+      ),
+    [publicProfile.visibleBadgeIds, unlockedBadgeIdSet],
+  );
+  const filteredBadges = unlockedBadges.filter((badge) => {
+    const query = visibleBadgesQuery.trim().toLowerCase();
+    if (!query) return true;
+
+    return [badge.title, badge.description]
+      .join(" ")
+      .toLowerCase()
+      .includes(query);
+  });
 
   const handleEmailSave = () => {
     const normalized = nextEmail.trim().toLowerCase();
@@ -205,8 +274,19 @@ export function ProfilePage({
       setPublicMessage("Можно добавить не более 5 дополнительных ссылок.");
       return;
     }
+    if (publicProfile.visibleAchievementIds.length > 10) {
+      setPublicMessage("Можно показать не более 10 достижений.");
+      return;
+    }
+    if (visibleBadgeIdsNormalized.length > 3) {
+      setPublicMessage("Можно показать не более 3 значков.");
+      return;
+    }
 
-    onUpdatePublicProfile(publicProfile);
+    onUpdatePublicProfile({
+      ...publicProfile,
+      visibleBadgeIds: visibleBadgeIdsNormalized,
+    });
     setPublicMessage("Публичная визитка сохранена.");
   };
 
@@ -215,15 +295,16 @@ export function ProfilePage({
       <section>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <h2 className="text-3xl font-bold text-foreground">Личный кабинет</h2>
+            <h2 className="text-3xl font-bold text-foreground">
+              Личный кабинет
+            </h2>
             <p className="text-muted-foreground mt-1">
               Управляйте личными данными и публичной визиткой.
             </p>
           </div>
           <button
             onClick={() => setIsPreviewOpen(true)}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-border bg-card hover:bg-secondary transition-colors text-sm font-medium"
-          >
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-border bg-card hover:bg-secondary transition-colors text-sm font-medium">
             <Eye className="w-4 h-4" />
             Просмотреть профиль
           </button>
@@ -237,8 +318,7 @@ export function ProfilePage({
             activeTab === "personal"
               ? "bg-card text-foreground shadow-sm"
               : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
+          }`}>
           Личная информация
         </button>
         <button
@@ -247,8 +327,7 @@ export function ProfilePage({
             activeTab === "public"
               ? "bg-card text-foreground shadow-sm"
               : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
+          }`}>
           Публичная визитка
         </button>
       </div>
@@ -260,9 +339,12 @@ export function ProfilePage({
               <Mail className="w-4 h-4" />
               Email
             </div>
-            <p className="text-sm text-muted-foreground">Текущий email: {user.email}</p>
+            <p className="text-sm text-muted-foreground">
+              Текущий email: {user.email}
+            </p>
             <p className="text-xs text-muted-foreground">
-              В демо-версии подтверждение смены email выполняется через текущий пароль.
+              В демо-версии подтверждение смены email выполняется через текущий
+              пароль.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <input
@@ -282,11 +364,12 @@ export function ProfilePage({
             </div>
             <button
               onClick={handleEmailSave}
-              className="px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors text-sm font-medium"
-            >
+              className="px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors text-sm font-medium">
               Обновить email
             </button>
-            {emailMessage && <p className="text-sm text-muted-foreground">{emailMessage}</p>}
+            {emailMessage && (
+              <p className="text-sm text-muted-foreground">{emailMessage}</p>
+            )}
           </section>
 
           <section className="bg-card border border-border rounded-xl p-5 space-y-4">
@@ -306,11 +389,12 @@ export function ProfilePage({
             />
             <button
               onClick={handlePhoneSave}
-              className="px-4 py-2 rounded-lg border border-border hover:bg-secondary transition-colors text-sm font-medium"
-            >
+              className="px-4 py-2 rounded-lg border border-border hover:bg-secondary transition-colors text-sm font-medium">
               Сохранить телефон
             </button>
-            {phoneMessage && <p className="text-sm text-muted-foreground">{phoneMessage}</p>}
+            {phoneMessage && (
+              <p className="text-sm text-muted-foreground">{phoneMessage}</p>
+            )}
           </section>
 
           <section className="bg-card border border-border rounded-xl p-5 space-y-4">
@@ -343,8 +427,7 @@ export function ProfilePage({
             </div>
             <button
               onClick={handlePasswordSave}
-              className="px-4 py-2 rounded-lg border border-border hover:bg-secondary transition-colors text-sm font-medium"
-            >
+              className="px-4 py-2 rounded-lg border border-border hover:bg-secondary transition-colors text-sm font-medium">
               Сменить пароль
             </button>
             {passwordMessage && (
@@ -400,12 +483,13 @@ export function ProfilePage({
             </div>
             <button
               onClick={handleNotificationsSave}
-              className="px-4 py-2 rounded-lg border border-border hover:bg-secondary transition-colors text-sm font-medium"
-            >
+              className="px-4 py-2 rounded-lg border border-border hover:bg-secondary transition-colors text-sm font-medium">
               Сохранить настройки уведомлений
             </button>
             {notificationMessage && (
-              <p className="text-sm text-muted-foreground">{notificationMessage}</p>
+              <p className="text-sm text-muted-foreground">
+                {notificationMessage}
+              </p>
             )}
           </section>
 
@@ -426,13 +510,14 @@ export function ProfilePage({
               />
               <button
                 onClick={handleDelete}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors text-sm font-medium"
-              >
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors text-sm font-medium">
                 <Trash2 className="w-4 h-4" />
                 Удалить аккаунт
               </button>
             </div>
-            {deleteMessage && <p className="text-sm text-red-700">{deleteMessage}</p>}
+            {deleteMessage && (
+              <p className="text-sm text-red-700">{deleteMessage}</p>
+            )}
           </section>
         </>
       )}
@@ -467,9 +552,13 @@ export function ProfilePage({
                 />
               </label>
               <button
-                onClick={() => setPublicProfile((prev) => ({ ...prev, avatarUrl: undefined }))}
-                className="px-3 py-2 border border-border rounded-lg text-sm hover:bg-secondary"
-              >
+                onClick={() =>
+                  setPublicProfile((prev) => ({
+                    ...prev,
+                    avatarUrl: undefined,
+                  }))
+                }
+                className="px-3 py-2 border border-border rounded-lg text-sm hover:bg-secondary">
                 Удалить аватар
               </button>
             </div>
@@ -478,19 +567,34 @@ export function ProfilePage({
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <input
               value={publicProfile.lastName}
-              onChange={(e) => setPublicProfile((prev) => ({ ...prev, lastName: e.target.value }))}
+              onChange={(e) =>
+                setPublicProfile((prev) => ({
+                  ...prev,
+                  lastName: e.target.value,
+                }))
+              }
               placeholder="Фамилия"
               className="px-3 py-2.5 border border-border rounded-lg bg-background"
             />
             <input
               value={publicProfile.firstName}
-              onChange={(e) => setPublicProfile((prev) => ({ ...prev, firstName: e.target.value }))}
+              onChange={(e) =>
+                setPublicProfile((prev) => ({
+                  ...prev,
+                  firstName: e.target.value,
+                }))
+              }
               placeholder="Имя"
               className="px-3 py-2.5 border border-border rounded-lg bg-background"
             />
             <input
               value={publicProfile.middleName ?? ""}
-              onChange={(e) => setPublicProfile((prev) => ({ ...prev, middleName: e.target.value }))}
+              onChange={(e) =>
+                setPublicProfile((prev) => ({
+                  ...prev,
+                  middleName: e.target.value,
+                }))
+              }
               placeholder="Отчество (опционально)"
               className="px-3 py-2.5 border border-border rounded-lg bg-background"
             />
@@ -499,21 +603,35 @@ export function ProfilePage({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <input
               value={publicProfile.university}
-              onChange={(e) => setPublicProfile((prev) => ({ ...prev, university: e.target.value }))}
+              onChange={(e) =>
+                setPublicProfile((prev) => ({
+                  ...prev,
+                  university: e.target.value,
+                }))
+              }
               placeholder="Вуз"
               className="px-3 py-2.5 border border-border rounded-lg bg-background"
             />
             <input
               value={publicProfile.faculty}
-              onChange={(e) => setPublicProfile((prev) => ({ ...prev, faculty: e.target.value }))}
+              onChange={(e) =>
+                setPublicProfile((prev) => ({
+                  ...prev,
+                  faculty: e.target.value,
+                }))
+              }
               placeholder="Факультет / направление"
               className="px-3 py-2.5 border border-border rounded-lg bg-background"
             />
             <select
               value={publicProfile.course}
-              onChange={(e) => setPublicProfile((prev) => ({ ...prev, course: e.target.value as CourseOption }))}
-              className="px-3 py-2.5 border border-border rounded-lg bg-background"
-            >
+              onChange={(e) =>
+                setPublicProfile((prev) => ({
+                  ...prev,
+                  course: e.target.value as CourseOption,
+                }))
+              }
+              className="px-3 py-2.5 border border-border rounded-lg bg-background">
               {COURSE_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
@@ -522,22 +640,33 @@ export function ProfilePage({
             </select>
             <input
               value={publicProfile.city}
-              onChange={(e) => setPublicProfile((prev) => ({ ...prev, city: e.target.value }))}
+              onChange={(e) =>
+                setPublicProfile((prev) => ({ ...prev, city: e.target.value }))
+              }
               placeholder="Город"
               className="px-3 py-2.5 border border-border rounded-lg bg-background"
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">О себе (до 1000 символов, markdown поддерживается)</label>
+            <label className="text-sm font-medium text-foreground">
+              О себе (до 1000 символов, markdown поддерживается)
+            </label>
             <textarea
               value={publicProfile.bio}
-              onChange={(e) => setPublicProfile((prev) => ({ ...prev, bio: e.target.value.slice(0, 1000) }))}
+              onChange={(e) =>
+                setPublicProfile((prev) => ({
+                  ...prev,
+                  bio: e.target.value.slice(0, 1000),
+                }))
+              }
               rows={5}
               className="w-full px-3 py-2.5 border border-border rounded-lg bg-background"
               placeholder="Кратко расскажите о себе"
             />
-            <p className="text-xs text-muted-foreground">{publicProfile.bio.length}/1000</p>
+            <p className="text-xs text-muted-foreground">
+              {publicProfile.bio.length}/1000
+            </p>
           </div>
 
           <div className="space-y-3">
@@ -551,7 +680,10 @@ export function ProfilePage({
                 onChange={(e) =>
                   setPublicProfile((prev) => ({
                     ...prev,
-                    socialLinks: { ...prev.socialLinks, telegram: e.target.value },
+                    socialLinks: {
+                      ...prev.socialLinks,
+                      telegram: e.target.value,
+                    },
                   }))
                 }
                 placeholder="Telegram"
@@ -562,7 +694,10 @@ export function ProfilePage({
                 onChange={(e) =>
                   setPublicProfile((prev) => ({
                     ...prev,
-                    socialLinks: { ...prev.socialLinks, github: e.target.value },
+                    socialLinks: {
+                      ...prev.socialLinks,
+                      github: e.target.value,
+                    },
                   }))
                 }
                 placeholder="GitHub"
@@ -573,7 +708,10 @@ export function ProfilePage({
                 onChange={(e) =>
                   setPublicProfile((prev) => ({
                     ...prev,
-                    socialLinks: { ...prev.socialLinks, linkedin: e.target.value },
+                    socialLinks: {
+                      ...prev.socialLinks,
+                      linkedin: e.target.value,
+                    },
                   }))
                 }
                 placeholder="LinkedIn"
@@ -584,7 +722,10 @@ export function ProfilePage({
                 onChange={(e) =>
                   setPublicProfile((prev) => ({
                     ...prev,
-                    socialLinks: { ...prev.socialLinks, website: e.target.value },
+                    socialLinks: {
+                      ...prev.socialLinks,
+                      website: e.target.value,
+                    },
                   }))
                 }
                 placeholder="Личный сайт"
@@ -593,7 +734,9 @@ export function ProfilePage({
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm text-muted-foreground">Дополнительные ссылки (до 5)</label>
+              <label className="text-sm text-muted-foreground">
+                Дополнительные ссылки (до 5)
+              </label>
               {publicProfile.socialLinks.customLinks.map((link, index) => (
                 <div key={`custom-${index}`} className="flex gap-2">
                   <input
@@ -603,8 +746,8 @@ export function ProfilePage({
                         ...prev,
                         socialLinks: {
                           ...prev.socialLinks,
-                          customLinks: prev.socialLinks.customLinks.map((item, i) =>
-                            i === index ? e.target.value : item,
+                          customLinks: prev.socialLinks.customLinks.map(
+                            (item, i) => (i === index ? e.target.value : item),
                           ),
                         },
                       }))
@@ -618,12 +761,13 @@ export function ProfilePage({
                         ...prev,
                         socialLinks: {
                           ...prev.socialLinks,
-                          customLinks: prev.socialLinks.customLinks.filter((_, i) => i !== index),
+                          customLinks: prev.socialLinks.customLinks.filter(
+                            (_, i) => i !== index,
+                          ),
                         },
                       }))
                     }
-                    className="px-3 py-2 border border-border rounded-lg hover:bg-secondary"
-                  >
+                    className="px-3 py-2 border border-border rounded-lg hover:bg-secondary">
                     Удалить
                   </button>
                 </div>
@@ -641,24 +785,185 @@ export function ProfilePage({
                     };
                   })
                 }
-                className="px-3 py-2 border border-border rounded-lg hover:bg-secondary text-sm"
-              >
+                className="px-3 py-2 border border-border rounded-lg hover:bg-secondary text-sm">
                 Добавить ссылку
               </button>
             </div>
           </div>
 
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <h4 className="text-sm font-semibold text-foreground">
+                Видимые достижения в визитке
+              </h4>
+              <span className="text-xs text-muted-foreground">
+                {publicProfile.visibleAchievementIds.length}/10
+              </span>
+            </div>
+            <label className="relative block">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <input
+                value={visibleAchievementsQuery}
+                onChange={(e) => setVisibleAchievementsQuery(e.target.value)}
+                placeholder="Поиск по достижениям"
+                className="w-full pl-9 pr-3 py-2 border border-border rounded-lg bg-background text-sm"
+              />
+            </label>
+            <div className="max-h-48 overflow-auto border border-border rounded-lg p-3 space-y-2 bg-background">
+              {achievements.length === 0 && (
+                <p className="text-sm text-muted-foreground">Нет достижений</p>
+              )}
+              {filteredAchievements.map((achievement) => {
+                const checked = publicProfile.visibleAchievementIds.includes(
+                  achievement.id,
+                );
+
+                return (
+                  <label
+                    key={`visibility-ach-${achievement.id}`}
+                    className="flex items-start gap-2 text-sm text-foreground">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={(e) => {
+                        const next = e.target.checked
+                          ? [
+                              ...publicProfile.visibleAchievementIds,
+                              achievement.id,
+                            ]
+                          : publicProfile.visibleAchievementIds.filter(
+                              (id) => id !== achievement.id,
+                            );
+
+                        if (next.length > 10) {
+                          setPublicMessage(
+                            "Можно выбрать максимум 10 достижений.",
+                          );
+                          return;
+                        }
+
+                        setPublicProfile((prev) => ({
+                          ...prev,
+                          visibleAchievementIds: next,
+                        }));
+                      }}
+                    />
+                    <span>
+                      <span className="font-medium">{achievement.title}</span>
+                      <span className="text-xs text-muted-foreground block mt-0.5">
+                        {achievement.level} · {achievement.result}
+                      </span>
+                    </span>
+                  </label>
+                );
+              })}
+              {achievements.length > 0 && filteredAchievements.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  По запросу ничего не найдено.
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <h4 className="text-sm font-semibold text-foreground">
+                Видимые значки в визитке
+              </h4>
+              <span className="text-xs text-muted-foreground">
+                {visibleBadgeIdsNormalized.length}/3
+              </span>
+            </div>
+            <label className="relative block">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <input
+                value={visibleBadgesQuery}
+                onChange={(e) => setVisibleBadgesQuery(e.target.value)}
+                placeholder="Поиск по значкам"
+                className="w-full pl-9 pr-3 py-2 border border-border rounded-lg bg-background text-sm"
+              />
+            </label>
+            <div className="max-h-48 overflow-auto border border-border rounded-lg p-3 grid grid-cols-1 sm:grid-cols-2 gap-3 bg-background">
+              {unlockedBadges.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  Нет доступных значков
+                </p>
+              )}
+              {filteredBadges.map((badge) => {
+                const checked = visibleBadgeIdsNormalized.includes(badge.id);
+
+                return (
+                  <div
+                    key={`visibility-badge-${badge.id}`}
+                    className="rounded-lg border border-border p-3 bg-card text-sm">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="text-xl leading-none">{badge.icon}</div>
+                        <p className="font-medium text-foreground mt-2">
+                          {badge.title}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {badge.description}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const next = checked
+                            ? visibleBadgeIdsNormalized.filter(
+                                (id) => id !== badge.id,
+                              )
+                            : [...visibleBadgeIdsNormalized, badge.id];
+
+                          if (next.length > 3) {
+                            setPublicMessage(
+                              "Можно выбрать максимум 3 значка.",
+                            );
+                            return;
+                          }
+
+                          setPublicProfile((prev) => ({
+                            ...prev,
+                            visibleBadgeIds: next,
+                          }));
+                        }}
+                        className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs hover:bg-secondary"
+                        aria-label={
+                          checked
+                            ? `Скрыть значок ${badge.title}`
+                            : `Показать значок ${badge.title}`
+                        }>
+                        {checked ? (
+                          <Eye className="w-3.5 h-3.5" />
+                        ) : (
+                          <EyeOff className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+              {unlockedBadges.length > 0 && filteredBadges.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  По запросу ничего не найдено.
+                </p>
+              )}
+            </div>
+          </div>
+
           <div className="bg-secondary/50 border border-border rounded-lg p-3 text-sm text-muted-foreground">
-            Ваш профиль посмотрели {publicProfile.profileViews30d} HR за последние 30 дней
+            Ваш профиль посмотрели {publicProfile.profileViews30d} HR за
+            последние 30 дней
           </div>
 
           <button
             onClick={handleSavePublicProfile}
-            className="px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors text-sm font-medium"
-          >
+            className="px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors text-sm font-medium">
             Сохранить визитку
           </button>
-          {publicMessage && <p className="text-sm text-muted-foreground">{publicMessage}</p>}
+          {publicMessage && (
+            <p className="text-sm text-muted-foreground">{publicMessage}</p>
+          )}
         </section>
       )}
 
@@ -666,12 +971,13 @@ export function ProfilePage({
         <div className="fixed inset-0 z-50 bg-black/50 p-4 flex items-center justify-center">
           <div className="w-full max-w-3xl max-h-[90vh] overflow-auto bg-background border border-border rounded-2xl shadow-xl">
             <div className="sticky top-0 z-10 bg-background border-b border-border px-5 py-3 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-foreground">Публичный профиль</h3>
+              <h3 className="text-lg font-semibold text-foreground">
+                Публичный профиль
+              </h3>
               <button
                 onClick={() => setIsPreviewOpen(false)}
                 className="p-2 rounded-lg hover:bg-secondary transition-colors"
-                aria-label="Закрыть"
-              >
+                aria-label="Закрыть">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -691,52 +997,82 @@ export function ProfilePage({
                 )}
                 <div>
                   <h4 className="text-2xl font-bold text-foreground">
-                    {[publicProfile.lastName, publicProfile.firstName, publicProfile.middleName]
+                    {[
+                      publicProfile.lastName,
+                      publicProfile.firstName,
+                      publicProfile.middleName,
+                    ]
                       .filter(Boolean)
                       .join(" ") || "Пользователь"}
                   </h4>
-                  <p className="text-sm text-muted-foreground">{publicProfile.city || "Город не указан"}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {publicProfile.city || "Город не указан"}
+                  </p>
                 </div>
               </section>
 
               <section className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                 <div className="bg-card border border-border rounded-lg p-3">
                   <div className="text-muted-foreground">Вуз</div>
-                  <div className="font-medium text-foreground">{publicProfile.university || "Не указан"}</div>
+                  <div className="font-medium text-foreground">
+                    {publicProfile.university || "Не указан"}
+                  </div>
                 </div>
                 <div className="bg-card border border-border rounded-lg p-3">
-                  <div className="text-muted-foreground">Факультет / направление</div>
-                  <div className="font-medium text-foreground">{publicProfile.faculty || "Не указан"}</div>
+                  <div className="text-muted-foreground">
+                    Факультет / направление
+                  </div>
+                  <div className="font-medium text-foreground">
+                    {publicProfile.faculty || "Не указан"}
+                  </div>
                 </div>
                 <div className="bg-card border border-border rounded-lg p-3">
                   <div className="text-muted-foreground">Курс</div>
-                  <div className="font-medium text-foreground">{COURSE_OPTIONS.find((c) => c.value === publicProfile.course)?.label ?? publicProfile.course}</div>
+                  <div className="font-medium text-foreground">
+                    {COURSE_OPTIONS.find(
+                      (c) => c.value === publicProfile.course,
+                    )?.label ?? publicProfile.course}
+                  </div>
                 </div>
                 <div className="bg-card border border-border rounded-lg p-3">
                   <div className="text-muted-foreground">О себе</div>
-                  <div className="font-medium text-foreground whitespace-pre-wrap">{publicProfile.bio || "Описание отсутствует"}</div>
+                  <div className="font-medium text-foreground whitespace-pre-wrap">
+                    {publicProfile.bio || "Описание отсутствует"}
+                  </div>
                 </div>
               </section>
 
               <section className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
                 <div className="bg-card border border-border rounded-lg p-3">
                   <div className="text-muted-foreground">Индекс активности</div>
-                  <div className="text-xl font-semibold text-foreground">{publicStats.activityIndex}</div>
+                  <div className="text-xl font-semibold text-foreground">
+                    {publicStats.activityIndex}
+                  </div>
                 </div>
                 <div className="bg-card border border-border rounded-lg p-3">
                   <div className="text-muted-foreground">Процентиль</div>
-                  <div className="text-xl font-semibold text-foreground">{publicStats.percentile}%</div>
+                  <div className="text-xl font-semibold text-foreground">
+                    {publicStats.percentile}%
+                  </div>
                 </div>
                 <div className="bg-card border border-border rounded-lg p-3">
                   <div className="text-muted-foreground">Достижений</div>
-                  <div className="text-xl font-semibold text-foreground">{publicStats.achievementsCount}</div>
+                  <div className="text-xl font-semibold text-foreground">
+                    {publicStats.achievementsCount}
+                  </div>
                 </div>
               </section>
 
               <section className="space-y-2 text-sm">
                 <h5 className="font-semibold text-foreground">Ссылки</h5>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {[publicProfile.socialLinks.telegram, publicProfile.socialLinks.github, publicProfile.socialLinks.linkedin, publicProfile.socialLinks.website, ...publicProfile.socialLinks.customLinks]
+                  {[
+                    publicProfile.socialLinks.telegram,
+                    publicProfile.socialLinks.github,
+                    publicProfile.socialLinks.linkedin,
+                    publicProfile.socialLinks.website,
+                    ...publicProfile.socialLinks.customLinks,
+                  ]
                     .filter((link) => Boolean(link?.trim()))
                     .map((link, idx) => (
                       <a
@@ -744,15 +1080,83 @@ export function ProfilePage({
                         href={link}
                         target="_blank"
                         rel="noreferrer"
-                        className="px-3 py-2 rounded-lg border border-border text-primary hover:bg-secondary transition-colors break-all"
-                      >
+                        className="px-3 py-2 rounded-lg border border-border text-primary hover:bg-secondary transition-colors break-all">
                         {link}
                       </a>
                     ))}
                 </div>
-                {[publicProfile.socialLinks.telegram, publicProfile.socialLinks.github, publicProfile.socialLinks.linkedin, publicProfile.socialLinks.website, ...publicProfile.socialLinks.customLinks]
-                  .filter((link) => Boolean(link?.trim())).length === 0 && (
+                {[
+                  publicProfile.socialLinks.telegram,
+                  publicProfile.socialLinks.github,
+                  publicProfile.socialLinks.linkedin,
+                  publicProfile.socialLinks.website,
+                  ...publicProfile.socialLinks.customLinks,
+                ].filter((link) => Boolean(link?.trim())).length === 0 && (
                   <p className="text-muted-foreground">Ссылки не добавлены.</p>
+                )}
+              </section>
+
+              <section className="space-y-2 text-sm">
+                <h5 className="font-semibold text-foreground">
+                  Показанные достижения
+                </h5>
+                <div className="space-y-2">
+                  {achievements
+                    .filter((achievement) =>
+                      publicProfile.visibleAchievementIds.includes(
+                        achievement.id,
+                      ),
+                    )
+                    .map((achievement) => (
+                      <div
+                        key={`preview-ach-${achievement.id}`}
+                        className="px-3 py-2 rounded-lg border border-border">
+                        <p className="font-medium text-foreground">
+                          {achievement.title}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {achievement.level} · {achievement.result}
+                        </p>
+                      </div>
+                    ))}
+                </div>
+                {achievements.filter((achievement) =>
+                  publicProfile.visibleAchievementIds.includes(achievement.id),
+                ).length === 0 && (
+                  <p className="text-muted-foreground">
+                    Достижения для отображения не выбраны.
+                  </p>
+                )}
+              </section>
+
+              <section className="space-y-2 text-sm">
+                <h5 className="font-semibold text-foreground">
+                  Показанные значки
+                </h5>
+                <div className="flex flex-wrap gap-2">
+                  {badges
+                    .filter(
+                      (badge) =>
+                        badge.unlocked &&
+                        visibleBadgeIdsNormalized.includes(badge.id),
+                    )
+                    .map((badge) => (
+                      <span
+                        key={`preview-badge-${badge.id}`}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-border bg-secondary/50">
+                        <span>{badge.icon}</span>
+                        <span>{badge.title}</span>
+                      </span>
+                    ))}
+                </div>
+                {badges.filter(
+                  (badge) =>
+                    badge.unlocked &&
+                    visibleBadgeIdsNormalized.includes(badge.id),
+                ).length === 0 && (
+                  <p className="text-muted-foreground">
+                    Значки для отображения не выбраны.
+                  </p>
                 )}
               </section>
             </div>

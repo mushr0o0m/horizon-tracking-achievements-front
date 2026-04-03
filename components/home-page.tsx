@@ -9,14 +9,23 @@ import {
   Target,
   ArrowUpRight,
 } from "lucide-react";
+import { EVENT_LEVEL_LABELS, EVENT_TYPE_LABELS } from "@/lib/event-meta";
 
 interface HomePageProps {
   achievements: Achievement[];
   events: Event[];
   user: AuthUser;
+  onOpenEvent: (eventId: string) => void;
+  onOpenAchievement: (achievementId: string) => void;
 }
 
-export function HomePage({ achievements, events, user }: HomePageProps) {
+export function HomePage({
+  achievements,
+  events,
+  user,
+  onOpenEvent,
+  onOpenAchievement,
+}: HomePageProps) {
   // Last 3 confirmed achievements sorted newest first
   const newAchievements = achievements
     .filter((a) => a.status === "Подтверждено")
@@ -28,8 +37,11 @@ export function HomePage({ achievements, events, user }: HomePageProps) {
     achievements.map((a) => a.eventId).filter(Boolean),
   );
   const recommendedEvents = events
-    .filter((e) => e.status === "Опубликовано" && !studentEventIds.has(e.id))
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .filter((e) => e.status === "published" && !studentEventIds.has(e.id))
+    .sort(
+      (a, b) =>
+        new Date(a.dates.start).getTime() - new Date(b.dates.start).getTime(),
+    )
     .slice(0, 3);
   const confirmedCount = achievements.filter(
     (a) => a.status === "Подтверждено",
@@ -48,7 +60,7 @@ export function HomePage({ achievements, events, user }: HomePageProps) {
           <div className="space-y-4">
             <div className="inline-flex items-center gap-2 rounded-full bg-card/70 border border-border px-3 py-1.5 text-xs font-semibold text-foreground backdrop-blur">
               <Sparkles className="w-3.5 h-3.5 text-primary" />
-              Личный кабинет студента
+              Личный кабинет ученика
             </div>
 
             <h2 className="text-3xl md:text-4xl font-bold text-foreground text-balance leading-tight">
@@ -83,27 +95,30 @@ export function HomePage({ achievements, events, user }: HomePageProps) {
               Ближайшая возможность
             </p>
             {nextRecommendedEvent ? (
-              <>
+              <button
+                type="button"
+                onClick={() => onOpenEvent(nextRecommendedEvent.id)}
+                className="w-full text-left space-y-3 group">
                 <p className="font-semibold text-foreground leading-snug">
                   {nextRecommendedEvent.title}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {nextRecommendedEvent.type} · {nextRecommendedEvent.level}
+                  {EVENT_TYPE_LABELS[nextRecommendedEvent.type]} ·{" "}
+                  {EVENT_LEVEL_LABELS[nextRecommendedEvent.level]}
                 </p>
                 <div className="flex items-center justify-between pt-1">
                   <span className="text-sm text-foreground">
-                    {new Date(nextRecommendedEvent.date).toLocaleDateString(
-                      "ru-RU",
-                      {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      },
-                    )}
+                    {new Date(
+                      nextRecommendedEvent.dates.start,
+                    ).toLocaleDateString("ru-RU", {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })}
                   </span>
-                  <ArrowUpRight className="w-4 h-4 text-primary" />
+                  <ArrowUpRight className="w-4 h-4 text-primary group-hover:translate-x-0.5 transition-transform" />
                 </div>
-              </>
+              </button>
             ) : (
               <p className="text-sm text-muted-foreground">
                 Сейчас нет новых рекомендаций. Проверьте позже.
@@ -121,9 +136,11 @@ export function HomePage({ achievements, events, user }: HomePageProps) {
         {newAchievements.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {newAchievements.map((achievement) => (
-              <div
+              <button
                 key={achievement.id}
-                className="relative bg-card border border-border rounded-lg p-5 hover:shadow-md transition-shadow">
+                type="button"
+                onClick={() => onOpenAchievement(achievement.id)}
+                className="text-left relative bg-card border border-border rounded-lg p-5 hover:shadow-md transition-shadow">
                 <span className="absolute -top-2.5 right-4 bg-primary text-primary-foreground px-2.5 py-0.5 rounded-full text-xs font-semibold flex items-center gap-1">
                   <Sparkles className="w-3 h-3" />
                   Новое
@@ -150,7 +167,7 @@ export function HomePage({ achievements, events, user }: HomePageProps) {
                     Добавлено организатором
                   </div>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         ) : (
@@ -168,9 +185,11 @@ export function HomePage({ achievements, events, user }: HomePageProps) {
         {recommendedEvents.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {recommendedEvents.map((event) => (
-              <div
+              <button
                 key={event.id}
-                className="bg-card border border-border rounded-lg p-5 hover:shadow-md transition-shadow space-y-3">
+                type="button"
+                onClick={() => onOpenEvent(event.id)}
+                className="text-left bg-card border border-border rounded-lg p-5 hover:shadow-md transition-shadow space-y-3">
                 <p className="font-semibold text-foreground leading-snug">
                   {event.title}
                 </p>
@@ -178,13 +197,14 @@ export function HomePage({ achievements, events, user }: HomePageProps) {
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Tag className="w-4 h-4 flex-shrink-0" />
                     <span>
-                      {event.type} · {event.level}
+                      {EVENT_TYPE_LABELS[event.type]} ·{" "}
+                      {EVENT_LEVEL_LABELS[event.level]}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <CalendarDays className="w-4 h-4 flex-shrink-0" />
                     <span>
-                      {new Date(event.date).toLocaleDateString("ru-RU", {
+                      {new Date(event.dates.start).toLocaleDateString("ru-RU", {
                         year: "numeric",
                         month: "long",
                         day: "numeric",
@@ -192,7 +212,7 @@ export function HomePage({ achievements, events, user }: HomePageProps) {
                     </span>
                   </div>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         ) : (
