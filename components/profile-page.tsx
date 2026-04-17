@@ -23,11 +23,17 @@ import {
   Search,
   X,
 } from "lucide-react";
+import {
+  SubscriberPreviewItem,
+  SubscribersPreviewCard,
+} from "@/components/subscribers-preview-card";
 
 interface ProfilePageProps {
   user: AuthUser;
   achievements: Achievement[];
   badges: BadgeViewModel[];
+  subscribers: SubscriberPreviewItem[];
+  onOpenSubscribers: () => void;
   publicStats: {
     achievementsCount: number;
     activityIndex: number;
@@ -64,7 +70,7 @@ const COURSE_OPTIONS: Array<{ value: CourseOption; label: string }> = [
   { value: "postgraduate", label: "Аспирант" },
 ];
 
-type ProfileTab = "personal" | "public";
+type ProfileTab = "personal" | "public" | "settings";
 
 function buildFallbackPublicProfile(fullName: string): PublicProfile {
   const parts = fullName.trim().split(/\s+/).filter(Boolean);
@@ -95,6 +101,8 @@ export function ProfilePage({
   user,
   achievements,
   badges,
+  subscribers,
+  onOpenSubscribers,
   publicStats,
   onUpdateEmail,
   onUpdatePhone,
@@ -311,10 +319,19 @@ export function ProfilePage({
         </div>
       </section>
 
-      <div className="inline-flex rounded-lg bg-secondary p-1 gap-1 w-fit">
+      <section>
+        <SubscribersPreviewCard
+          title="Мои подписчики"
+          description="Короткий список HR, следящих за профилем"
+          subscribers={subscribers}
+          onOpen={onOpenSubscribers}
+        />
+      </section>
+
+      <div className="inline-flex w-full sm:w-fit rounded-xl bg-secondary p-1.5 gap-1">
         <button
           onClick={() => setActiveTab("personal")}
-          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+          className={`min-h-10 flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
             activeTab === "personal"
               ? "bg-card text-foreground shadow-sm"
               : "text-muted-foreground hover:text-foreground"
@@ -323,12 +340,21 @@ export function ProfilePage({
         </button>
         <button
           onClick={() => setActiveTab("public")}
-          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+          className={`min-h-10 flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
             activeTab === "public"
               ? "bg-card text-foreground shadow-sm"
               : "text-muted-foreground hover:text-foreground"
           }`}>
           Публичная визитка
+        </button>
+        <button
+          onClick={() => setActiveTab("settings")}
+          className={`min-h-10 flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
+            activeTab === "settings"
+              ? "bg-card text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          }`}>
+          Настройки
         </button>
       </div>
 
@@ -432,64 +458,6 @@ export function ProfilePage({
             </button>
             {passwordMessage && (
               <p className="text-sm text-muted-foreground">{passwordMessage}</p>
-            )}
-          </section>
-
-          <section className="bg-card border border-border rounded-xl p-5 space-y-4">
-            <div className="flex items-center gap-2 text-foreground font-semibold">
-              <Bell className="w-4 h-4" />
-              Уведомления
-            </div>
-            <div className="space-y-2 text-sm">
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={notifications.invitations}
-                  onChange={(e) =>
-                    setNotifications((prev) => ({
-                      ...prev,
-                      invitations: e.target.checked,
-                    }))
-                  }
-                />
-                Новые приглашения от HR
-              </label>
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={notifications.verification}
-                  onChange={(e) =>
-                    setNotifications((prev) => ({
-                      ...prev,
-                      verification: e.target.checked,
-                    }))
-                  }
-                />
-                Изменение статуса верификации достижений
-              </label>
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={notifications.recommendations}
-                  onChange={(e) =>
-                    setNotifications((prev) => ({
-                      ...prev,
-                      recommendations: e.target.checked,
-                    }))
-                  }
-                />
-                Рекомендации по мероприятиям
-              </label>
-            </div>
-            <button
-              onClick={handleNotificationsSave}
-              className="px-4 py-2 rounded-lg border border-border hover:bg-secondary transition-colors text-sm font-medium">
-              Сохранить настройки уведомлений
-            </button>
-            {notificationMessage && (
-              <p className="text-sm text-muted-foreground">
-                {notificationMessage}
-              </p>
             )}
           </section>
 
@@ -963,6 +931,66 @@ export function ProfilePage({
           </button>
           {publicMessage && (
             <p className="text-sm text-muted-foreground">{publicMessage}</p>
+          )}
+        </section>
+      )}
+
+      {activeTab === "settings" && (
+        <section className="bg-card border border-border rounded-xl p-5 space-y-4">
+          <div className="flex items-center gap-2 text-foreground font-semibold">
+            <Bell className="w-4 h-4" />
+            Уведомления
+          </div>
+          <div className="space-y-2 text-sm">
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={notifications.invitations}
+                onChange={(e) =>
+                  setNotifications((prev) => ({
+                    ...prev,
+                    invitations: e.target.checked,
+                  }))
+                }
+              />
+              Новые приглашения от HR
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={notifications.verification}
+                onChange={(e) =>
+                  setNotifications((prev) => ({
+                    ...prev,
+                    verification: e.target.checked,
+                  }))
+                }
+              />
+              Изменение статуса верификации достижений
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={notifications.recommendations}
+                onChange={(e) =>
+                  setNotifications((prev) => ({
+                    ...prev,
+                    recommendations: e.target.checked,
+                  }))
+                }
+              />
+              Рекомендации по мероприятиям
+            </label>
+          </div>
+          <button
+            onClick={handleNotificationsSave}
+            className="px-4 py-2 rounded-lg border border-border hover:bg-secondary transition-colors text-sm font-medium">
+            Сохранить настройки уведомлений
+          </button>
+          {notificationMessage && (
+            <p className="text-sm text-muted-foreground">
+              {notificationMessage}
+            </p>
           )}
         </section>
       )}

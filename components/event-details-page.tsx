@@ -296,7 +296,7 @@ export function EventDetailsPage({
           </div>
         )}
 
-        {event.qrCodeUrl && (
+        {role !== "hr" && event.qrCodeUrl && (
           <div className="space-y-2">
             <h3 className="text-sm font-semibold text-foreground">
               QR для регистрации

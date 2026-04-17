@@ -1,7 +1,14 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
-import { Mail, Lock, UserRound, User, Building2 } from "lucide-react";
+import {
+  Mail,
+  LockKeyhole,
+  UserRound,
+  User,
+  Building2,
+  UserCog,
+} from "lucide-react";
 import { UserRole } from "@/lib/types";
 
 export interface RegistrationPayload {
@@ -96,7 +103,7 @@ export function RegisterForm({ onRegister, onLogin }: RegisterFormProps) {
 
   return (
     <div className="min-h-screen w-full bg-gradient-to-br from-background via-secondary/20 to-accent/20 flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-card border border-border rounded-2xl shadow-lg p-6 md:p-8 space-y-6">
+      <div className="w-full max-w-xl bg-card border border-border rounded-2xl shadow-lg p-6 md:p-8 space-y-6">
         <div className="space-y-2 text-center">
           <h1 className="text-2xl font-bold text-foreground">
             {mode === "login" ? "Вход в аккаунт" : "Регистрация аккаунта"}
@@ -142,13 +149,13 @@ export function RegisterForm({ onRegister, onLogin }: RegisterFormProps) {
             <label className="block space-y-1.5">
               <span className="text-sm text-foreground font-medium">ФИО</span>
               <div className="relative">
-                <UserRound className="w-4 h-4 absolute left-3 top-2.5 text-muted-foreground" />
+                <UserRound className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                 <input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   type="text"
                   placeholder="Иванов Иван Иванович"
-                  className="w-full pl-9 pr-3 py-2.5 border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full pl-10 pr-3 py-2.5 border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
             </label>
@@ -157,13 +164,13 @@ export function RegisterForm({ onRegister, onLogin }: RegisterFormProps) {
           <label className="block space-y-1.5">
             <span className="text-sm text-foreground font-medium">Email</span>
             <div className="relative">
-              <Mail className="w-4 h-4 absolute left-3 top-2.5 text-muted-foreground" />
+              <Mail className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
               <input
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 type="email"
                 placeholder="example@mail.ru"
-                className="w-full pl-9 pr-3 py-2.5 border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full pl-10 pr-3 py-2.5 border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
           </label>
@@ -173,31 +180,44 @@ export function RegisterForm({ onRegister, onLogin }: RegisterFormProps) {
               <span className="text-sm text-foreground font-medium">
                 Тип пользователя
               </span>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <button
                   type="button"
                   onClick={() => setRole("student")}
-                  className={`rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors ${
+                  className={`rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors min-w-0 ${
                     role === "student"
                       ? "border-primary bg-primary/10 text-primary"
                       : "border-border text-foreground hover:bg-secondary"
                   }`}>
-                  <span className="inline-flex items-center gap-2">
-                    <User className="w-4 h-4" />
-                    Ученик
+                  <span className="inline-flex items-center justify-center gap-2 max-w-full">
+                    <User className="w-4 h-4 flex-shrink-0" />
+                    <span className="truncate">Ученик</span>
                   </span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setRole("organizer")}
-                  className={`rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors ${
+                  className={`rounded-lg border px-2 py-2.5 text-sm font-medium transition-colors min-w-0 ${
                     role === "organizer"
                       ? "border-primary bg-primary/10 text-primary"
                       : "border-border text-foreground hover:bg-secondary"
                   }`}>
-                  <span className="inline-flex items-center gap-2">
-                    <Building2 className="w-4 h-4" />
-                    Организатор
+                  <span className="inline-flex items-center justify-center gap-2 max-w-full">
+                    <Building2 className="w-4 h-4 flex-shrink-0" />
+                    <span className="truncate">Организатор</span>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRole("hr")}
+                  className={`rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors min-w-0 ${
+                    role === "hr"
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border text-foreground hover:bg-secondary"
+                  }`}>
+                  <span className="inline-flex items-center justify-center gap-2 max-w-full">
+                    <UserCog className="w-4 h-4 flex-shrink-0" />
+                    <span className="truncate">HR</span>
                   </span>
                 </button>
               </div>
@@ -207,13 +227,13 @@ export function RegisterForm({ onRegister, onLogin }: RegisterFormProps) {
           <label className="block space-y-1.5">
             <span className="text-sm text-foreground font-medium">Пароль</span>
             <div className="relative">
-              <Lock className="w-4 h-4 absolute left-3 top-2.5 text-muted-foreground" />
+              <LockKeyhole className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
               <input
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 type={showPassword ? "text" : "password"}
                 placeholder="Минимум 8 символов"
-                className="w-full pl-9 pr-3 py-2.5 border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full pl-10 pr-3 py-2.5 border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
             {mode === "register" && (
@@ -236,13 +256,13 @@ export function RegisterForm({ onRegister, onLogin }: RegisterFormProps) {
                 Повторите пароль
               </span>
               <div className="relative">
-                <Lock className="w-4 h-4 absolute left-3 top-2.5 text-muted-foreground" />
+                <LockKeyhole className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                 <input
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   type={showPassword ? "text" : "password"}
                   placeholder="Повторите пароль"
-                  className="w-full pl-9 pr-3 py-2.5 border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full pl-10 pr-3 py-2.5 border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
             </label>

@@ -2,6 +2,7 @@
 
 import { Achievement, AppNotification, Event, EventType } from "@/lib/types";
 import { useMemo, useState } from "react";
+import Image from "next/image";
 import {
   Search,
   ChevronUp,
@@ -50,7 +51,7 @@ export function AchievementsPage({
   visibleBadgeIds,
   onToggleBadgeVisibility,
 }: AchievementsPageProps) {
-  const [tab, setTab] = useState<Tab>("table");
+  const [tab, setTab] = useState<Tab>("badges");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedYear, setSelectedYear] = useState<string>("");
   const [selectedEventType, setSelectedEventType] = useState<EventType | "">(
@@ -122,6 +123,7 @@ export function AchievementsPage({
   };
 
   const badges = buildBadgeViewModels(achievements);
+  const unlockedBadgesCount = badges.filter((badge) => badge.unlocked).length;
 
   const availableEventIds = useMemo(
     () => new Set(events.map((event) => event.id)),
@@ -130,13 +132,13 @@ export function AchievementsPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <section>
+      <section className="rounded-2xl border border-white/55 bg-white/60 p-5 shadow-[0_22px_44px_-34px_rgba(53,89,152,0.95)] backdrop-blur-xl md:p-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div>
-            <h2 className="text-3xl font-bold text-foreground mb-1">
+            <h2 className="mb-1 text-3xl font-bold text-slate-900">
               Достижения
             </h2>
-            <p className="text-muted-foreground">
+            <p className="text-slate-700">
               Все ваши достижения и заработанные значки
             </p>
           </div>
@@ -146,13 +148,13 @@ export function AchievementsPage({
               onClick={onSimulateResult}
               title="Симулировать публикацию результатов"
               aria-label="Симулировать публикацию результатов"
-              className="p-2.5 rounded-lg border border-border hover:bg-secondary transition-colors text-primary">
+              className="rounded-lg border border-white/65 bg-white/70 p-2.5 text-sky-700 transition-colors hover:bg-white">
               <Sparkles className="w-4 h-4" />
             </button>
             <button
               type="button"
               onClick={onCreateAchievement}
-              className="px-4 py-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium">
+              className="rounded-xl bg-[linear-gradient(135deg,#5548f3_0%,#6853ff_50%,#4d3ee7_100%)] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_18px_34px_-20px_rgba(78,63,226,0.95)] transition-all hover:-translate-y-0.5 hover:shadow-[0_22px_38px_-18px_rgba(78,63,226,0.95)]">
               Добавить достижение
             </button>
           </div>
@@ -160,19 +162,19 @@ export function AchievementsPage({
       </section>
 
       {achievementNotifications.length > 0 && (
-        <section className="bg-card border border-border rounded-lg p-4 space-y-2">
-          <h3 className="text-sm font-semibold text-foreground">
+        <section className="space-y-2 rounded-2xl border border-white/55 bg-white/56 p-4 shadow-[0_20px_44px_-34px_rgba(49,82,141,0.95)] backdrop-blur-xl">
+          <h3 className="text-sm font-semibold text-slate-800">
             Уведомления по достижениям
           </h3>
           <div className="space-y-2">
             {achievementNotifications.slice(0, 3).map((item) => (
               <div
                 key={item.id}
-                className="border border-border rounded-lg p-3 bg-secondary/30">
-                <div className="text-sm font-medium text-foreground">
+                className="rounded-xl border border-white/65 bg-white/74 p-3 shadow-[0_14px_24px_-20px_rgba(53,89,152,0.95)]">
+                <div className="text-sm font-semibold text-slate-900">
                   {item.title}
                 </div>
-                <div className="text-xs text-muted-foreground mt-1">
+                <div className="mt-1 text-xs text-slate-700">
                   {item.description}
                 </div>
               </div>
@@ -182,16 +184,16 @@ export function AchievementsPage({
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-secondary rounded-lg p-1 w-fit">
+      <div className="inline-flex w-full gap-1 rounded-xl border border-white/55 bg-white/56 p-1.5 backdrop-blur sm:w-fit">
         {(["table", "badges"] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
             className={cn(
-              "px-5 py-2 rounded-md text-sm font-medium transition-colors",
+              "min-h-10 flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors",
               tab === t
-                ? "bg-card text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground",
+                ? "bg-white text-slate-900 shadow-[0_14px_24px_-18px_rgba(44,74,136,0.95)]"
+                : "text-slate-600 hover:text-slate-900",
             )}>
             {t === "table" ? "Таблица" : "Значки"}
           </button>
@@ -326,65 +328,112 @@ export function AchievementsPage({
       )}
 
       {tab === "badges" && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {badges.map((badge) => (
-            <div
-              key={badge.id}
-              className={cn(
-                "bg-card border rounded-xl p-5 flex flex-col items-center text-center gap-3 transition-all",
-                badge.unlocked
-                  ? "border-primary/30 shadow-sm"
-                  : "border-border opacity-50 grayscale",
-              )}>
-              <div
-                className={cn(
-                  "w-14 h-14 rounded-full flex items-center justify-center text-2xl font-bold",
-                  badge.unlocked
-                    ? "bg-accent text-accent-foreground"
-                    : "bg-secondary text-muted-foreground",
-                )}>
-                {badge.unlocked ? badge.icon : <Lock className="w-5 h-5" />}
-              </div>
-              <button
-                type="button"
-                onClick={() =>
-                  badge.unlocked && onToggleBadgeVisibility(badge.id)
-                }
-                className={cn(
-                  "p-1.5 rounded-md border border-border",
-                  badge.unlocked
-                    ? "hover:bg-secondary text-foreground"
-                    : "opacity-50 cursor-not-allowed text-muted-foreground",
-                )}
-                title={
-                  badge.unlocked
-                    ? visibleBadgeIds.includes(badge.id)
-                      ? "Скрыть значок из визитки"
-                      : "Показать значок в визитке"
-                    : "Значок не разблокирован"
-                }>
-                {visibleBadgeIds.includes(badge.id) ? (
-                  <Eye className="w-4 h-4" />
-                ) : (
-                  <EyeOff className="w-4 h-4" />
-                )}
-              </button>
-              <div>
-                <p className="font-semibold text-foreground text-sm">
-                  {badge.title}
-                </p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {badge.description}
-                </p>
-              </div>
-              {badge.unlocked && (
-                <span className="text-xs font-medium text-[var(--verified)] bg-[var(--verified-bg)] px-2.5 py-0.5 rounded-full">
-                  Получено
-                </span>
-              )}
+        <section className="space-y-4">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h3 className="text-3xl font-bold text-slate-900">Значки</h3>
+              <p className="text-sm text-slate-700">
+                Разблокировано {unlockedBadgesCount} из {badges.length}
+              </p>
             </div>
-          ))}
-        </div>
+            <span className="rounded-full border border-white/70 bg-white/70 px-3 py-1 text-xs font-semibold text-slate-700">
+              {visibleBadgeIds.length}/3 в визитке
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
+            {badges.map((badge) => {
+              const isVisible = visibleBadgeIds.includes(badge.id);
+
+              return (
+                <div
+                  key={badge.id}
+                  className={cn(
+                    "group relative overflow-hidden rounded-2xl border p-4 text-center shadow-[0_20px_44px_-34px_rgba(49,82,141,0.95)] backdrop-blur-xl transition-all duration-300 md:p-5",
+                    badge.unlocked
+                      ? "border-white/65 bg-white/70 hover:-translate-y-1 hover:shadow-[0_28px_46px_-28px_rgba(49,82,141,0.95)]"
+                      : "border-white/45 bg-white/50",
+                  )}>
+                  <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-white/60 to-transparent" />
+
+                  {badge.unlocked ? (
+                    <button
+                      type="button"
+                      onClick={() => onToggleBadgeVisibility(badge.id)}
+                      className="absolute right-3 top-3 z-20 rounded-lg border border-white/70 bg-white/80 p-1.5 text-slate-700 transition-colors hover:bg-white"
+                      title={
+                        isVisible
+                          ? "Скрыть значок из визитки"
+                          : "Показать значок в визитке"
+                      }>
+                      {isVisible ? (
+                        <Eye className="h-4 w-4" />
+                      ) : (
+                        <EyeOff className="h-4 w-4" />
+                      )}
+                    </button>
+                  ) : (
+                    <div className="absolute right-3 top-3 z-20 rounded-full border border-white/65 bg-white/82 p-1.5 text-slate-500">
+                      <Lock className="h-3.5 w-3.5" />
+                    </div>
+                  )}
+
+                  <div className="relative z-10 flex flex-col items-center gap-3">
+                    <div className="flex h-[104px] w-[104px] items-center justify-center md:h-[116px] md:w-[116px]">
+                      {badge.imagePath ? (
+                        <Image
+                          src={badge.imagePath}
+                          alt={badge.title}
+                          width={116}
+                          height={116}
+                          className={cn(
+                            "h-full w-full object-contain drop-shadow-[0_10px_18px_rgba(72,104,171,0.36)] transition-transform duration-300",
+                            badge.unlocked
+                              ? "group-hover:scale-[1.06]"
+                              : "grayscale opacity-45",
+                          )}
+                        />
+                      ) : (
+                        <div
+                          className={cn(
+                            "flex h-14 w-14 items-center justify-center rounded-full text-2xl font-bold",
+                            badge.unlocked
+                              ? "bg-accent text-accent-foreground"
+                              : "bg-secondary text-muted-foreground",
+                          )}>
+                          {badge.unlocked ? (
+                            badge.icon
+                          ) : (
+                            <Lock className="h-5 w-5" />
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <p className="text-lg font-semibold leading-tight text-slate-900">
+                        {badge.title}
+                      </p>
+                      <p className="mt-1 text-sm leading-snug text-slate-700">
+                        {badge.description}
+                      </p>
+                    </div>
+
+                    <span
+                      className={cn(
+                        "rounded-full px-2.5 py-0.5 text-xs font-semibold",
+                        badge.unlocked
+                          ? "bg-emerald-100 text-emerald-800"
+                          : "bg-slate-200 text-slate-600",
+                      )}>
+                      {badge.unlocked ? "Получено" : "Не получено"}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
       )}
     </div>
   );

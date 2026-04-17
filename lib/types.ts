@@ -145,6 +145,7 @@ export interface AppNotification {
   type: AppNotificationType;
   createdAt: string;
   isRead: boolean;
+  candidateId?: string;
 }
 
 export type OrganizerEventType =
@@ -228,11 +229,14 @@ export interface Participant {
   result: string;
 }
 
-export type UserRole = "student" | "organizer";
+export type UserRole = "student" | "organizer" | "hr";
 export type StudentView =
   | "home"
   | "dashboards"
   | "achievements"
+  | "invitations"
+  | "subscribers"
+  | "hr-profile"
   | "create-achievement"
   | "profile"
   | "event-details";
@@ -243,4 +247,13 @@ export type OrganizerView =
   | "create-event"
   | "edit-event"
   | "upload-results"
+  | "event-details";
+export type HrView =
+  | "home"
+  | "dashboards"
+  | "candidates-search"
+  | "candidate-profile"
+  | "candidate-subscribers"
+  | "subscriber-profile"
+  | "profile"
   | "event-details";

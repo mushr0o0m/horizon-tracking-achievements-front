@@ -25,6 +25,7 @@ type NotificationsAction =
         title: string;
         description: string;
         type: AppNotificationType;
+        candidateId?: string;
       };
     }
   | {
@@ -56,6 +57,7 @@ function notificationsReducer(
             type: action.payload.type,
             createdAt: new Date().toISOString(),
             isRead: false,
+            candidateId: action.payload.candidateId,
           },
           ...state.notifications,
         ],
@@ -88,6 +90,7 @@ interface NotificationsStoreContextValue {
     title: string,
     description: string,
     type: AppNotificationType,
+    candidateId?: string,
   ) => void;
   markRead: (notificationId: string) => void;
   markAllRead: (userId: string) => void;
@@ -133,6 +136,7 @@ export function NotificationsStoreProvider({
       title: string,
       description: string,
       type: AppNotificationType,
+      candidateId?: string,
     ) => {
       dispatch({
         type: "ADD",
@@ -141,6 +145,7 @@ export function NotificationsStoreProvider({
           title,
           description,
           type,
+          candidateId,
         },
       });
     },

@@ -20,6 +20,7 @@ import {
   Trash2,
   Users,
 } from "lucide-react";
+import { HrActionConfirmSettings } from "@/lib/hr-network";
 
 interface OrganizerProfilePageProps {
   user: AuthUser;
@@ -36,13 +37,17 @@ interface OrganizerProfilePageProps {
   onUpdateNotifications: (settings: OrganizerNotificationSettings) => void;
   onUpdateOrganizationProfile: (profile: OrganizerOrganizationProfile) => void;
   onDeleteAccount: (confirmationText: string) => string | null;
+  hrDefaultInviteComment?: string;
+  onUpdateHrDefaultInviteComment?: (comment: string) => void;
+  hrActionConfirmSettings?: HrActionConfirmSettings;
+  onUpdateHrActionConfirmSettings?: (settings: HrActionConfirmSettings) => void;
 }
-
-type ProfileTab = "personal" | "organization";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_REGEX = /^\+?[0-9]{10,15}$/;
 const URL_REGEX = /^https?:\/\//i;
+
+type ProfileTab = "personal" | "organization" | "settings";
 
 const ORG_TYPE_OPTIONS: Array<{ value: OrganizationType; label: string }> = [
   { value: "university", label: "Вуз" },
@@ -105,7 +110,14 @@ export function OrganizerProfilePage({
   onUpdateNotifications,
   onUpdateOrganizationProfile,
   onDeleteAccount,
+  hrDefaultInviteComment,
+  onUpdateHrDefaultInviteComment,
+  hrActionConfirmSettings,
+  onUpdateHrActionConfirmSettings,
 }: OrganizerProfilePageProps) {
+  const showHrSettingsTab =
+    typeof onUpdateHrDefaultInviteComment === "function";
+
   const [activeTab, setActiveTab] = useState<ProfileTab>("personal");
 
   const safeNotifications =
@@ -140,6 +152,17 @@ export function OrganizerProfilePage({
   const [organizationMessage, setOrganizationMessage] = useState<string | null>(
     null,
   );
+  const [hrDefaultInviteCommentDraft, setHrDefaultInviteCommentDraft] =
+    useState(hrDefaultInviteComment ?? "");
+  const [hrInviteCommentMessage, setHrInviteCommentMessage] = useState<
+    string | null
+  >(null);
+  const [confirmRejectWarning, setConfirmRejectWarning] = useState(
+    hrActionConfirmSettings?.confirmReject ?? true,
+  );
+  const [confirmArchiveWarning, setConfirmArchiveWarning] = useState(
+    hrActionConfirmSettings?.confirmArchive ?? true,
+  );
 
   useEffect(() => {
     setNextEmail(user.email);
@@ -153,10 +176,16 @@ export function OrganizerProfilePage({
       eventsCount: organizationStats.eventsCount,
       totalParticipants: organizationStats.totalParticipants,
     });
+    setHrDefaultInviteCommentDraft(hrDefaultInviteComment ?? "");
+    setConfirmRejectWarning(hrActionConfirmSettings?.confirmReject ?? true);
+    setConfirmArchiveWarning(hrActionConfirmSettings?.confirmArchive ?? true);
   }, [
     user,
     organizationStats.eventsCount,
     organizationStats.totalParticipants,
+    hrDefaultInviteComment,
+    hrActionConfirmSettings?.confirmReject,
+    hrActionConfirmSettings?.confirmArchive,
   ]);
 
   const organizationInitials = useMemo(() => {
@@ -350,6 +379,17 @@ export function OrganizerProfilePage({
     setOrganizationMessage("Профиль организации сохранен.");
   };
 
+  const handleSaveHrSettings = () => {
+    if (!showHrSettingsTab || !onUpdateHrDefaultInviteComment) return;
+
+    onUpdateHrDefaultInviteComment(hrDefaultInviteCommentDraft.trim());
+    onUpdateHrActionConfirmSettings?.({
+      confirmReject: confirmRejectWarning,
+      confirmArchive: confirmArchiveWarning,
+    });
+    setHrInviteCommentMessage("Настройки HR сохранены.");
+  };
+
   return (
     <div className="max-w-4xl mx-auto flex flex-col gap-6">
       <section>
@@ -361,10 +401,10 @@ export function OrganizerProfilePage({
         </div>
       </section>
 
-      <div className="inline-flex rounded-lg bg-secondary p-1 gap-1 w-fit">
+      <div className="inline-flex w-full sm:w-fit rounded-xl bg-secondary p-1.5 gap-1">
         <button
           onClick={() => setActiveTab("personal")}
-          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+          className={`min-h-10 flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
             activeTab === "personal"
               ? "bg-card text-foreground shadow-sm"
               : "text-muted-foreground hover:text-foreground"
@@ -373,12 +413,21 @@ export function OrganizerProfilePage({
         </button>
         <button
           onClick={() => setActiveTab("organization")}
-          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+          className={`min-h-10 flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
             activeTab === "organization"
               ? "bg-card text-foreground shadow-sm"
               : "text-muted-foreground hover:text-foreground"
           }`}>
           Информация об организации
+        </button>
+        <button
+          onClick={() => setActiveTab("settings")}
+          className={`min-h-10 flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
+            activeTab === "settings"
+              ? "bg-card text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          }`}>
+          Настройки
         </button>
       </div>
 
@@ -482,87 +531,6 @@ export function OrganizerProfilePage({
             </button>
             {passwordMessage && (
               <p className="text-sm text-muted-foreground">{passwordMessage}</p>
-            )}
-          </section>
-
-          <section className="bg-card border border-border rounded-xl p-5 space-y-4">
-            <div className="flex items-center gap-2 text-foreground font-semibold">
-              <Bell className="w-4 h-4" />
-              Уведомления
-            </div>
-            <div className="space-y-2 text-sm">
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={notifications.verificationRequests}
-                  onChange={(e) =>
-                    setNotifications((prev) => ({
-                      ...prev,
-                      verificationRequests: e.target.checked,
-                    }))
-                  }
-                />
-                Запросы на подтверждение достижений
-              </label>
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={notifications.newRegistrations}
-                  onChange={(e) =>
-                    setNotifications((prev) => ({
-                      ...prev,
-                      newRegistrations: e.target.checked,
-                    }))
-                  }
-                />
-                Новые регистрации на мероприятия
-              </label>
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={notifications.reports}
-                  onChange={(e) =>
-                    setNotifications((prev) => ({
-                      ...prev,
-                      reports: e.target.checked,
-                    }))
-                  }
-                />
-                Отчеты и аналитика
-              </label>
-            </div>
-
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-foreground">
-                Каналы доставки
-              </p>
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                {DELIVERY_CHANNEL_OPTIONS.map((channel) => (
-                  <label
-                    key={channel.value}
-                    className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={notifications.deliveryChannels.includes(
-                        channel.value,
-                      )}
-                      onChange={() => handleNotificationToggle(channel.value)}
-                    />
-                    {channel.label}
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <button
-              onClick={handleNotificationsSave}
-              className="px-4 py-2 rounded-lg border border-border hover:bg-secondary transition-colors text-sm font-medium">
-              Сохранить настройки уведомлений
-            </button>
-            {notificationMessage && (
-              <p className="text-sm text-muted-foreground">
-                {notificationMessage}
-              </p>
             )}
           </section>
 
@@ -894,6 +862,159 @@ export function OrganizerProfilePage({
             </p>
           )}
         </section>
+      )}
+
+      {activeTab === "settings" && (
+        <div className="space-y-4">
+          <section className="bg-card border border-border rounded-xl p-5 space-y-4">
+            <div className="flex items-center gap-2 text-foreground font-semibold">
+              <Bell className="w-4 h-4" />
+              Уведомления
+            </div>
+            <div className="space-y-2 text-sm">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={notifications.verificationRequests}
+                  onChange={(e) =>
+                    setNotifications((prev) => ({
+                      ...prev,
+                      verificationRequests: e.target.checked,
+                    }))
+                  }
+                />
+                Запросы на подтверждение достижений
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={notifications.newRegistrations}
+                  onChange={(e) =>
+                    setNotifications((prev) => ({
+                      ...prev,
+                      newRegistrations: e.target.checked,
+                    }))
+                  }
+                />
+                Новые регистрации на мероприятия
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={notifications.reports}
+                  onChange={(e) =>
+                    setNotifications((prev) => ({
+                      ...prev,
+                      reports: e.target.checked,
+                    }))
+                  }
+                />
+                Отчеты и аналитика
+              </label>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-foreground">
+                Каналы доставки
+              </p>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                {DELIVERY_CHANNEL_OPTIONS.map((channel) => (
+                  <label
+                    key={channel.value}
+                    className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={notifications.deliveryChannels.includes(
+                        channel.value,
+                      )}
+                      onChange={() => handleNotificationToggle(channel.value)}
+                    />
+                    {channel.label}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <button
+              onClick={handleNotificationsSave}
+              className="px-4 py-2 rounded-lg border border-border hover:bg-secondary transition-colors text-sm font-medium">
+              Сохранить настройки уведомлений
+            </button>
+            {notificationMessage && (
+              <p className="text-sm text-muted-foreground">
+                {notificationMessage}
+              </p>
+            )}
+          </section>
+
+          {showHrSettingsTab && (
+            <section className="bg-card border border-border rounded-xl p-5 space-y-4">
+              <h3 className="text-lg font-semibold text-foreground">
+                Настройки HR
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Этот комментарий будет автоматически подставляться при
+                приглашении кандидата из профиля и из карточки в канбане.
+              </p>
+
+              <label className="block space-y-2">
+                <span className="text-sm font-medium text-foreground">
+                  Комментарий по умолчанию
+                </span>
+                <textarea
+                  value={hrDefaultInviteCommentDraft}
+                  onChange={(event) => {
+                    setHrDefaultInviteCommentDraft(event.target.value);
+                    setHrInviteCommentMessage(null);
+                  }}
+                  rows={6}
+                  placeholder="Например: Будем рады обсудить детали и ответить на ваши вопросы"
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm"
+                />
+              </label>
+
+              <div className="rounded-lg border border-border bg-secondary/30 p-4 space-y-3">
+                <p className="text-sm font-medium text-foreground">
+                  Предупреждения в карточке кандидата
+                </p>
+                <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-foreground">
+                  <input
+                    type="checkbox"
+                    checked={confirmRejectWarning}
+                    onChange={(event) => {
+                      setConfirmRejectWarning(event.target.checked);
+                      setHrInviteCommentMessage(null);
+                    }}
+                  />
+                  Показывать подтверждение перед отклонением кандидата
+                </label>
+                <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-foreground">
+                  <input
+                    type="checkbox"
+                    checked={confirmArchiveWarning}
+                    onChange={(event) => {
+                      setConfirmArchiveWarning(event.target.checked);
+                      setHrInviteCommentMessage(null);
+                    }}
+                  />
+                  Показывать подтверждение перед добавлением кандидата в архив
+                </label>
+              </div>
+
+              <button
+                onClick={handleSaveHrSettings}
+                className="px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors text-sm font-medium">
+                Сохранить настройки
+              </button>
+
+              {hrInviteCommentMessage && (
+                <p className="text-sm text-muted-foreground">
+                  {hrInviteCommentMessage}
+                </p>
+              )}
+            </section>
+          )}
+        </div>
       )}
     </div>
   );

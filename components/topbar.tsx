@@ -1,8 +1,9 @@
 "use client";
 
 import { AppNotification, AuthUser, UserRole } from "@/lib/types";
-import { Building2, LogOut, User, Bell } from "lucide-react";
+import { Building2, LogOut, User, Bell, UsersRound } from "lucide-react";
 import { useMemo, useState } from "react";
+import { cn } from "@/lib/utils";
 
 interface TopBarProps {
   role: UserRole;
@@ -22,6 +23,7 @@ export function TopBar({
   onLogout,
 }: TopBarProps) {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const isStudent = role === "student";
 
   const latestNotifications = useMemo(
     () => notifications.slice(0, 10),
@@ -30,15 +32,33 @@ export function TopBar({
   const unreadCount = notifications.filter((item) => !item.isRead).length;
 
   return (
-    <div className="fixed top-0 left-64 right-0 h-16 border-b border-border bg-background flex items-center justify-between px-8 z-30">
-      <div className="inline-flex items-center gap-2 rounded-lg border border-border bg-secondary/60 px-3 py-1.5 text-sm">
+    <div
+      className={cn(
+        "fixed left-64 right-0 top-0 z-30 flex h-16 items-center justify-between px-8",
+        isStudent
+          ? "border-b border-white/45 bg-white/44 backdrop-blur-xl shadow-[0_18px_42px_-34px_rgba(29,55,108,0.9)]"
+          : "border-b border-border bg-background",
+      )}>
+      <div
+        className={cn(
+          "inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm",
+          isStudent
+            ? "border-white/65 bg-white/68 text-slate-800"
+            : "border-border bg-secondary/60",
+        )}>
         {role === "student" ? (
           <User className="w-4 h-4" />
-        ) : (
+        ) : role === "organizer" ? (
           <Building2 className="w-4 h-4" />
+        ) : (
+          <UsersRound className="w-4 h-4" />
         )}
         <span className="font-medium text-foreground">
-          {role === "student" ? "Ученик" : "Организатор"}
+          {role === "student"
+            ? "Ученик"
+            : role === "organizer"
+              ? "Организатор"
+              : "HR"}
         </span>
       </div>
 
@@ -47,7 +67,12 @@ export function TopBar({
           <button
             type="button"
             onClick={() => setIsNotificationsOpen((prev) => !prev)}
-            className="relative p-2 rounded-lg border border-border hover:bg-secondary transition-colors"
+            className={cn(
+              "relative rounded-lg border p-2 transition-colors",
+              isStudent
+                ? "border-white/60 bg-white/62 hover:bg-white/80"
+                : "border-border hover:bg-secondary",
+            )}
             aria-label="Уведомления">
             <Bell className="w-4 h-4" />
             {unreadCount > 0 && (
@@ -58,8 +83,18 @@ export function TopBar({
           </button>
 
           {isNotificationsOpen && (
-            <div className="absolute right-0 mt-2 w-[360px] max-w-[80vw] bg-background border border-border rounded-xl shadow-xl z-[120]">
-              <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+            <div
+              className={cn(
+                "absolute right-0 z-[120] mt-2 w-[360px] max-w-[80vw] rounded-xl border shadow-xl",
+                isStudent
+                  ? "border-white/70 bg-white/88 backdrop-blur-2xl"
+                  : "border-border bg-background",
+              )}>
+              <div
+                className={cn(
+                  "flex items-center justify-between border-b px-4 py-3",
+                  isStudent ? "border-white/60" : "border-border",
+                )}>
                 <p className="text-sm font-semibold text-foreground">
                   Уведомления
                 </p>
@@ -82,7 +117,12 @@ export function TopBar({
                       key={item.id}
                       type="button"
                       onClick={() => onMarkNotificationRead(item.id)}
-                      className="w-full px-4 py-3 border-b border-border last:border-b-0 text-left hover:bg-secondary/60 transition-colors">
+                      className={cn(
+                        "w-full border-b px-4 py-3 text-left transition-colors last:border-b-0",
+                        isStudent
+                          ? "border-white/45 hover:bg-white"
+                          : "border-border hover:bg-secondary/60",
+                      )}>
                       <div className="flex items-start justify-between gap-2">
                         <p className="text-sm font-medium text-foreground">
                           {item.title}
@@ -111,12 +151,23 @@ export function TopBar({
           </div>
           <div className="text-xs text-muted-foreground">{user.email}</div>
         </div>
-        <div className="w-9 h-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm">
+        <div
+          className={cn(
+            "flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold",
+            isStudent
+              ? "bg-gradient-to-br from-cyan-500 to-sky-600 text-white shadow-[0_10px_24px_-14px_rgba(6,92,149,0.9)]"
+              : "bg-primary text-primary-foreground",
+          )}>
           {user.name[0]}
         </div>
         <button
           onClick={onLogout}
-          className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
+          className={cn(
+            "inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-colors",
+            isStudent
+              ? "border-white/60 bg-white/64 text-slate-700 hover:bg-white/85 hover:text-slate-900"
+              : "border-border text-muted-foreground hover:bg-secondary hover:text-foreground",
+          )}>
           <LogOut className="w-4 h-4" />
           Выйти
         </button>

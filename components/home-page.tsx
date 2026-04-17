@@ -10,11 +10,17 @@ import {
   ArrowUpRight,
 } from "lucide-react";
 import { EVENT_LEVEL_LABELS, EVENT_TYPE_LABELS } from "@/lib/event-meta";
+import {
+  SubscriberPreviewItem,
+  SubscribersPreviewCard,
+} from "@/components/subscribers-preview-card";
 
 interface HomePageProps {
   achievements: Achievement[];
   events: Event[];
   user: AuthUser;
+  subscribers: SubscriberPreviewItem[];
+  onOpenSubscribers: () => void;
   onOpenEvent: (eventId: string) => void;
   onOpenAchievement: (achievementId: string) => void;
 }
@@ -23,6 +29,8 @@ export function HomePage({
   achievements,
   events,
   user,
+  subscribers,
+  onOpenSubscribers,
   onOpenEvent,
   onOpenAchievement,
 }: HomePageProps) {
@@ -50,64 +58,65 @@ export function HomePage({
   const firstName = user.name.split(" ")[1] || user.name;
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="relative z-10 flex flex-col gap-8 lg:gap-9">
       {/* Welcome */}
-      <section className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-primary/20 via-accent/10 to-background p-6 md:p-8">
-        <div className="absolute -right-12 -top-12 h-44 w-44 rounded-full bg-primary/20 blur-3xl" />
-        <div className="absolute -left-16 -bottom-16 h-48 w-48 rounded-full bg-accent/20 blur-3xl" />
+      <section className="relative overflow-hidden rounded-[1.75rem] border border-white/50 bg-white/48 p-6 shadow-[0_26px_60px_-40px_rgba(38,72,142,0.8)] backdrop-blur-2xl md:p-8">
+        <div className="student-float-fast absolute -right-16 -top-16 h-52 w-52 rounded-full bg-cyan-200/55 blur-3xl" />
+        <div className="student-float-slow absolute -left-20 -bottom-20 h-56 w-56 rounded-full bg-pink-200/55 blur-3xl" />
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,rgba(255,255,255,0.56)_0%,rgba(255,255,255,0.22)_45%,rgba(255,255,255,0.42)_100%)]" />
 
         <div className="relative z-10 grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-6 lg:gap-8 items-end">
           <div className="space-y-4">
-            <div className="inline-flex items-center gap-2 rounded-full bg-card/70 border border-border px-3 py-1.5 text-xs font-semibold text-foreground backdrop-blur">
-              <Sparkles className="w-3.5 h-3.5 text-primary" />
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/72 px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-[0_10px_20px_-16px_rgba(44,74,136,0.95)] backdrop-blur">
+              <Sparkles className="h-3.5 w-3.5 text-sky-600" />
               Личный кабинет ученика
             </div>
 
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground text-balance leading-tight">
+            <h2 className="text-balance text-3xl font-bold leading-tight text-slate-900 md:text-4xl">
               Добро пожаловать, {firstName}
             </h2>
 
-            <p className="text-muted-foreground max-w-2xl">
+            <p className="max-w-2xl text-slate-700">
               Здесь отображаются ваши новые достижения и ближайшие мероприятия,
               рекомендованные организаторами.
             </p>
 
             <div className="flex flex-wrap gap-3 pt-1">
-              <div className="inline-flex items-center gap-2 rounded-lg bg-card/75 border border-border px-3 py-2 text-sm backdrop-blur">
-                <Trophy className="w-4 h-4 text-primary" />
-                <span className="text-muted-foreground">Подтверждено:</span>
-                <span className="font-semibold text-foreground">
+              <div className="inline-flex items-center gap-2 rounded-xl border border-emerald-200/70 bg-emerald-50/70 px-3 py-2 text-sm text-emerald-900 shadow-[0_14px_26px_-20px_rgba(17,129,91,0.92)] backdrop-blur">
+                <Trophy className="h-4 w-4 text-emerald-600" />
+                <span className="text-emerald-800/85">Подтверждено:</span>
+                <span className="font-semibold text-emerald-900">
                   {confirmedCount}
                 </span>
               </div>
-              <div className="inline-flex items-center gap-2 rounded-lg bg-card/75 border border-border px-3 py-2 text-sm backdrop-blur">
-                <Target className="w-4 h-4 text-primary" />
-                <span className="text-muted-foreground">Рекомендовано:</span>
-                <span className="font-semibold text-foreground">
+              <div className="inline-flex items-center gap-2 rounded-xl border border-sky-200/75 bg-sky-50/72 px-3 py-2 text-sm text-sky-900 shadow-[0_14px_26px_-20px_rgba(10,105,181,0.86)] backdrop-blur">
+                <Target className="h-4 w-4 text-sky-600" />
+                <span className="text-sky-800/85">Рекомендовано:</span>
+                <span className="font-semibold text-sky-900">
                   {recommendedEvents.length}
                 </span>
               </div>
             </div>
           </div>
 
-          <div className="rounded-xl border border-border bg-card/85 p-4 md:p-5 backdrop-blur space-y-3">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">
+          <div className="space-y-3 rounded-2xl border border-white/65 bg-white/76 p-4 shadow-[0_22px_38px_-30px_rgba(51,87,154,0.95)] backdrop-blur-xl md:p-5">
+            <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
               Ближайшая возможность
             </p>
             {nextRecommendedEvent ? (
               <button
                 type="button"
                 onClick={() => onOpenEvent(nextRecommendedEvent.id)}
-                className="w-full text-left space-y-3 group">
-                <p className="font-semibold text-foreground leading-snug">
+                className="group w-full space-y-3 rounded-xl border border-transparent p-1 text-left transition-colors hover:border-white/70">
+                <p className="leading-snug font-semibold text-slate-900">
                   {nextRecommendedEvent.title}
                 </p>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-slate-600">
                   {EVENT_TYPE_LABELS[nextRecommendedEvent.type]} ·{" "}
                   {EVENT_LEVEL_LABELS[nextRecommendedEvent.level]}
                 </p>
                 <div className="flex items-center justify-between pt-1">
-                  <span className="text-sm text-foreground">
+                  <span className="text-sm font-medium text-slate-800">
                     {new Date(
                       nextRecommendedEvent.dates.start,
                     ).toLocaleDateString("ru-RU", {
@@ -116,16 +125,25 @@ export function HomePage({
                       day: "numeric",
                     })}
                   </span>
-                  <ArrowUpRight className="w-4 h-4 text-primary group-hover:translate-x-0.5 transition-transform" />
+                  <ArrowUpRight className="h-4 w-4 text-sky-600 transition-transform group-hover:translate-x-0.5" />
                 </div>
               </button>
             ) : (
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-slate-600">
                 Сейчас нет новых рекомендаций. Проверьте позже.
               </p>
             )}
           </div>
         </div>
+      </section>
+
+      <section>
+        <SubscribersPreviewCard
+          title="Подписчики профиля"
+          description="HR, которые следят за вашими обновлениями"
+          subscribers={subscribers}
+          onOpen={onOpenSubscribers}
+        />
       </section>
 
       {/* New achievements */}
@@ -140,30 +158,30 @@ export function HomePage({
                 key={achievement.id}
                 type="button"
                 onClick={() => onOpenAchievement(achievement.id)}
-                className="text-left relative bg-card border border-border rounded-lg p-5 hover:shadow-md transition-shadow">
-                <span className="absolute -top-2.5 right-4 bg-primary text-primary-foreground px-2.5 py-0.5 rounded-full text-xs font-semibold flex items-center gap-1">
-                  <Sparkles className="w-3 h-3" />
+                className="group relative rounded-2xl border border-white/55 bg-white/62 p-5 text-left shadow-[0_20px_40px_-30px_rgba(59,93,160,0.88)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_26px_46px_-26px_rgba(66,92,151,0.85)]">
+                <span className="absolute -top-2.5 right-4 flex items-center gap-1 rounded-full border border-amber-200/70 bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-900">
+                  <Sparkles className="h-3 w-3" />
                   Новое
                 </span>
                 <div className="space-y-3 pt-1">
-                  <p className="font-semibold text-foreground leading-snug pr-2">
+                  <p className="pr-2 font-semibold leading-snug text-slate-900">
                     {achievement.title}
                   </p>
                   <div className="space-y-1.5 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Уровень</span>
-                      <span className="font-medium text-foreground">
+                      <span className="text-slate-600">Уровень</span>
+                      <span className="font-medium text-slate-900">
                         {achievement.level}
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Результат</span>
-                      <span className="font-medium text-foreground">
+                      <span className="text-slate-600">Результат</span>
+                      <span className="font-medium text-slate-900">
                         {achievement.result}
                       </span>
                     </div>
                   </div>
-                  <div className="pt-2 border-t border-border text-xs text-muted-foreground">
+                  <div className="border-t border-white/60 pt-2 text-xs text-slate-600">
                     Добавлено организатором
                   </div>
                 </div>
@@ -171,7 +189,7 @@ export function HomePage({
             ))}
           </div>
         ) : (
-          <div className="bg-card border border-border rounded-lg py-10 text-center text-muted-foreground">
+          <div className="rounded-2xl border border-white/60 bg-white/66 py-10 text-center text-slate-600 shadow-[0_16px_40px_-34px_rgba(58,90,154,0.95)]">
             Новые достижения отсутствуют
           </div>
         )}
@@ -189,20 +207,20 @@ export function HomePage({
                 key={event.id}
                 type="button"
                 onClick={() => onOpenEvent(event.id)}
-                className="text-left bg-card border border-border rounded-lg p-5 hover:shadow-md transition-shadow space-y-3">
-                <p className="font-semibold text-foreground leading-snug">
+                className="group space-y-3 rounded-2xl border border-white/55 bg-white/62 p-5 text-left shadow-[0_20px_40px_-30px_rgba(59,93,160,0.86)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_26px_46px_-26px_rgba(66,92,151,0.85)]">
+                <p className="leading-snug font-semibold text-slate-900">
                   {event.title}
                 </p>
                 <div className="space-y-1.5 text-sm">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Tag className="w-4 h-4 flex-shrink-0" />
+                  <div className="flex items-center gap-2 text-slate-600">
+                    <Tag className="h-4 w-4 flex-shrink-0 text-sky-600" />
                     <span>
                       {EVENT_TYPE_LABELS[event.type]} ·{" "}
                       {EVENT_LEVEL_LABELS[event.level]}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <CalendarDays className="w-4 h-4 flex-shrink-0" />
+                  <div className="flex items-center gap-2 text-slate-600">
+                    <CalendarDays className="h-4 w-4 flex-shrink-0 text-sky-600" />
                     <span>
                       {new Date(event.dates.start).toLocaleDateString("ru-RU", {
                         year: "numeric",
@@ -212,11 +230,14 @@ export function HomePage({
                     </span>
                   </div>
                 </div>
+                <div className="pt-1 text-xs font-medium text-sky-700 opacity-0 transition-opacity group-hover:opacity-100">
+                  Открыть карточку мероприятия
+                </div>
               </button>
             ))}
           </div>
         ) : (
-          <div className="bg-card border border-border rounded-lg py-10 text-center text-muted-foreground">
+          <div className="rounded-2xl border border-white/60 bg-white/66 py-10 text-center text-slate-600 shadow-[0_16px_40px_-34px_rgba(58,90,154,0.95)]">
             Нет рекомендуемых мероприятий
           </div>
         )}
