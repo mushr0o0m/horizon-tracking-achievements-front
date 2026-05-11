@@ -24,8 +24,8 @@ export interface LoginPayload {
 }
 
 interface RegisterFormProps {
-  onRegister: (payload: RegistrationPayload) => string | null;
-  onLogin: (payload: LoginPayload) => string | null;
+  onRegister: (payload: RegistrationPayload) => string | null | Promise<string | null>;
+  onLogin: (payload: LoginPayload) => string | null | Promise<string | null>;
 }
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -45,7 +45,7 @@ export function RegisterForm({ onRegister, onLogin }: RegisterFormProps) {
     return password.length >= 8 ? "Надежный пароль" : "Слишком короткий пароль";
   }, [password]);
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     const normalizedEmail = email.trim().toLowerCase();
@@ -62,7 +62,7 @@ export function RegisterForm({ onRegister, onLogin }: RegisterFormProps) {
       }
 
       setError(null);
-      const loginError = onLogin({
+      const loginError = await onLogin({
         email: normalizedEmail,
         password,
       });
@@ -89,7 +89,7 @@ export function RegisterForm({ onRegister, onLogin }: RegisterFormProps) {
     }
 
     setError(null);
-    const registerError = onRegister({
+    const registerError = await onRegister({
       name: normalizedName,
       email: normalizedEmail,
       password,

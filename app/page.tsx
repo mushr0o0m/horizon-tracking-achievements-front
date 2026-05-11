@@ -109,6 +109,12 @@ import {
 } from "@/lib/hr-network";
 import { SubscriberPreviewItem } from "@/components/subscribers-preview-card";
 import { cn } from "@/lib/utils";
+import {
+  backendLogin,
+  backendRegister,
+  clearBackendToken,
+  syncBackendBootstrapIfNeeded,
+} from "@/lib/backend-api";
 
 const AUTH_USERS_KEY = "hta.auth.users";
 const AUTH_SESSION_KEY = "hta.auth.session";
@@ -714,29 +720,64 @@ function AppContent() {
     updatedPassword?: string,
   ) => {
     const accounts = parseStoredAccounts();
-    const updatedAccounts = accounts.map((acc) => {
-      if (acc.user.id !== updatedUser.id) return acc;
+    const existingAccount = accounts.find((acc) => acc.user.id === updatedUser.id);
+    const updatedAccounts = existingAccount
+      ? accounts.map((acc) => {
+          if (acc.user.id !== updatedUser.id) return acc;
 
-      return {
-        ...acc,
-        email: updatedUser.email,
-        password: updatedPassword ?? acc.password,
-        user: updatedUser,
-      };
-    });
+          return {
+            ...acc,
+            email: updatedUser.email,
+            password: updatedPassword ?? acc.password,
+            user: updatedUser,
+          };
+        })
+      : [
+          ...accounts,
+          {
+            email: updatedUser.email,
+            password: updatedPassword ?? "",
+            user: updatedUser,
+          },
+        ];
 
     localStorage.setItem(AUTH_USERS_KEY, JSON.stringify(updatedAccounts));
     localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(updatedUser));
     setCurrentUser(updatedUser);
   };
 
-  const handleRegister = (payload: RegistrationPayload): string | null => {
+  const navigateAfterAuth = (user: AuthUser) => {
+    if (user.role === "student") {
+      setStudentView("home");
+    } else if (user.role === "organizer") {
+      setOrganizerView("events");
+    } else {
+      setHrView("home");
+      setSelectedHrCandidateId(null);
+      setSelectedHrProfileId(null);
+    }
+  };
+
+  const handleRegister = async (payload: RegistrationPayload): Promise<string | null> => {
     const accounts = parseStoredAccounts();
     const duplicate = accounts.some(
       (acc) => acc.email === payload.email.toLowerCase(),
     );
     if (duplicate) {
       return "Пользователь с таким email уже существует.";
+    }
+
+    try {
+      const createdUser = await backendRegister(payload);
+      persistUserInStorage(createdUser, payload.password);
+      navigateAfterAuth(createdUser);
+      return null;
+    } catch (error) {
+      const backendMessage = error instanceof Error ? error.message : "";
+      if (backendMessage.toLowerCase().includes("already exists")) {
+        return "Пользователь с таким email уже существует.";
+      }
+      console.warn("Backend registration failed; using local frontend fallback.", error);
     }
 
     const userIdPrefix =
@@ -774,19 +815,20 @@ function AppContent() {
     localStorage.setItem(AUTH_USERS_KEY, JSON.stringify(updatedAccounts));
     localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(createdUser));
     setCurrentUser(createdUser);
-    if (createdUser.role === "student") {
-      setStudentView("home");
-    } else if (createdUser.role === "organizer") {
-      setOrganizerView("events");
-    } else {
-      setHrView("home");
-      setSelectedHrCandidateId(null);
-      setSelectedHrProfileId(null);
-    }
+    navigateAfterAuth(createdUser);
     return null;
   };
 
-  const handleLogin = (payload: LoginPayload): string | null => {
+  const handleLogin = async (payload: LoginPayload): Promise<string | null> => {
+    try {
+      const user = await backendLogin(payload);
+      persistUserInStorage(user, payload.password);
+      navigateAfterAuth(user);
+      return null;
+    } catch (error) {
+      console.warn("Backend login failed; trying local frontend fallback.", error);
+    }
+
     const accounts = parseStoredAccounts();
     const normalizedEmail = payload.email.trim().toLowerCase();
 
@@ -800,15 +842,7 @@ function AppContent() {
 
     localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(account.user));
     setCurrentUser(account.user);
-    if (account.user.role === "student") {
-      setStudentView("home");
-    } else if (account.user.role === "organizer") {
-      setOrganizerView("events");
-    } else {
-      setHrView("home");
-      setSelectedHrCandidateId(null);
-      setSelectedHrProfileId(null);
-    }
+    navigateAfterAuth(account.user);
     return null;
   };
 
@@ -938,6 +972,7 @@ function AppContent() {
     );
     localStorage.setItem(AUTH_USERS_KEY, JSON.stringify(updatedAccounts));
     localStorage.removeItem(AUTH_SESSION_KEY);
+    clearBackendToken();
 
     if (currentUser.role === "student") {
       removeStudentAchievements(currentUser.id);
@@ -955,6 +990,7 @@ function AppContent() {
 
   const handleLogout = () => {
     localStorage.removeItem(AUTH_SESSION_KEY);
+    clearBackendToken();
     setCurrentUser(null);
     setStudentView("home");
     setOrganizerView("events");
@@ -2620,6 +2656,30 @@ function AppContent() {
 }
 
 export default function App() {
+  const [isBootstrapReady, setIsBootstrapReady] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    syncBackendBootstrapIfNeeded()
+      .catch((error) => {
+        console.warn("Backend bootstrap failed.", error);
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsBootstrapReady(true);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (!isBootstrapReady) {
+    return <div className="min-h-screen bg-background" />;
+  }
+
   return (
     <EventsStoreProvider>
       <AchievementsStoreProvider>

@@ -94,3 +94,24 @@ styles/              # глобальные стили
 ## Лицензия
 
 Лицензия не указана.
+---
+
+## Docker/server notes
+
+This frontend now includes:
+
+- `Dockerfile` for server build;
+- backend API helper `lib/backend-api.ts`;
+- initial backend bootstrap from `GET /api/public/bootstrap`;
+- auth integration with backend `/api/auth/login`, `/api/auth/register`, `/api/users/me` with local fallback.
+
+For the no-domain Yandex Cloud setup the recommended value is:
+
+```env
+NEXT_PUBLIC_API_URL=/api
+NEXT_PUBLIC_BACKEND_BOOTSTRAP=true
+```
+
+The `/api` path is proxied by Nginx to the backend container, so the server IP does not need to be compiled into the frontend image.
+
+Important MVP note: most existing screens still keep their local frontend stores for UI speed and compatibility. The first backend bootstrap fills those stores from backend demo data. The next hardening step is to replace all local mutations with direct backend API calls.
