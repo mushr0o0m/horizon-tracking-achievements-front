@@ -1,14 +1,14 @@
 import { Search } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { StatusWindowSelect } from "@/components/hr-dashboards/status-window-select";
+import { StatusWindowSelect } from "@/components/hr/dashboards/status-window-select";
 import {
   RECENT_ACTION_FILTERS,
-} from "@/components/hr-dashboards/constants";
+} from "@/components/hr/dashboards/constants";
 import {
   RecentActionType,
   StatusUpdateWindow,
-} from "@/components/hr-dashboards/types";
+} from "@/components/hr/dashboards/types";
 
 interface HrRecentActionsTabProps {
   statusUpdateWindowDays: StatusUpdateWindow;

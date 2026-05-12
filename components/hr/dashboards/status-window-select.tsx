@@ -1,5 +1,5 @@
-import { STATUS_UPDATE_FILTER_OPTIONS } from "@/components/hr-dashboards/constants";
-import { StatusUpdateWindow } from "@/components/hr-dashboards/types";
+import { STATUS_UPDATE_FILTER_OPTIONS } from "@/components/hr/dashboards/constants";
+import { StatusUpdateWindow } from "@/components/hr/dashboards/types";
 import { cn } from "@/lib/utils";
 
 interface StatusWindowSelectProps {

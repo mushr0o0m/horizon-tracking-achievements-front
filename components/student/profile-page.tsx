@@ -26,7 +26,7 @@ import {
 import {
   SubscriberPreviewItem,
   SubscribersPreviewCard,
-} from "@/components/subscribers-preview-card";
+} from "@/components/shared/subscribers-preview-card";
 
 interface ProfilePageProps {
   user: AuthUser;
@@ -39,15 +39,20 @@ interface ProfilePageProps {
     activityIndex: number;
     percentile: number;
   };
-  onUpdateEmail: (newEmail: string, currentPassword: string) => string | null;
-  onUpdatePhone: (phone: string) => string | null;
+  onUpdateEmail: (
+    newEmail: string,
+    currentPassword: string,
+  ) => string | null | Promise<string | null>;
+  onUpdatePhone: (phone: string) => string | null | Promise<string | null>;
   onChangePassword: (
     currentPassword: string,
     newPassword: string,
-  ) => string | null;
+  ) => string | null | Promise<string | null>;
   onUpdateNotifications: (settings: NotificationSettings) => void;
   onUpdatePublicProfile: (profile: PublicProfile) => void;
-  onDeleteAccount: (confirmationText: string) => string | null;
+  onDeleteAccount: (
+    confirmationText: string,
+  ) => string | null | Promise<string | null>;
 }
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -184,32 +189,34 @@ export function ProfilePage({
       .includes(query);
   });
 
-  const handleEmailSave = () => {
+  const handleEmailSave = async () => {
     const normalized = nextEmail.trim().toLowerCase();
     if (!EMAIL_REGEX.test(normalized)) {
       setEmailMessage("Введите корректный email.");
       return;
     }
 
-    const result = onUpdateEmail(normalized, currentPasswordForEmail);
+    const result = await Promise.resolve(
+      onUpdateEmail(normalized, currentPasswordForEmail),
+    );
     setEmailMessage(result ?? "Email успешно обновлен.");
     if (!result) {
       setCurrentPasswordForEmail("");
     }
   };
 
-  const handlePhoneSave = () => {
+  const handlePhoneSave = async () => {
     const normalized = phone.trim();
     if (normalized && !PHONE_REGEX.test(normalized)) {
       setPhoneMessage("Введите корректный телефон в формате +79991234567.");
       return;
     }
 
-    const result = onUpdatePhone(normalized);
+    const result = await Promise.resolve(onUpdatePhone(normalized));
     setPhoneMessage(result ?? "Телефон успешно обновлен.");
   };
 
-  const handlePasswordSave = () => {
+  const handlePasswordSave = async () => {
     if (newPassword.length < 8) {
       setPasswordMessage("Новый пароль должен содержать минимум 8 символов.");
       return;
@@ -219,7 +226,9 @@ export function ProfilePage({
       return;
     }
 
-    const result = onChangePassword(currentPassword, newPassword);
+    const result = await Promise.resolve(
+      onChangePassword(currentPassword, newPassword),
+    );
     setPasswordMessage(result ?? "Пароль успешно обновлен.");
     if (!result) {
       setCurrentPassword("");
@@ -233,8 +242,10 @@ export function ProfilePage({
     setNotificationMessage("Настройки уведомлений сохранены.");
   };
 
-  const handleDelete = () => {
-    const result = onDeleteAccount(deleteConfirmText.trim());
+  const handleDelete = async () => {
+    const result = await Promise.resolve(
+      onDeleteAccount(deleteConfirmText.trim()),
+    );
     setDeleteMessage(result ?? "Аккаунт удален.");
   };
 

@@ -9,11 +9,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ALLOWED_TRANSITIONS } from "@/components/hr-dashboards/constants";
+import { ALLOWED_TRANSITIONS } from "@/components/hr/dashboards/constants";
 import {
   FunnelCandidate,
   KanbanStatus,
-} from "@/components/hr-dashboards/types";
+} from "@/components/hr/dashboards/types";
 
 const STATUS_STYLES: Record<KanbanStatus, string> = {
   "На рассмотрении": "bg-amber-100 text-amber-700 border-amber-200",

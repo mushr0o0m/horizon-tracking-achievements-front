@@ -1,6 +1,6 @@
 import { ArrowUpRight, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { QuickSearchRow } from "@/components/hr-dashboards/types";
+import { QuickSearchRow } from "@/components/hr/dashboards/types";
 
 interface HrQuickSearchTabProps {
   searchQuery: string;

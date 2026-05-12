@@ -11,12 +11,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { StatusWindowSelect } from "@/components/hr-dashboards/status-window-select";
-import { COLUMN_THEME, KANBAN_STATUSES } from "@/components/hr-dashboards/constants";
+import { StatusWindowSelect } from "@/components/hr/dashboards/status-window-select";
+import { COLUMN_THEME, KANBAN_STATUSES } from "@/components/hr/dashboards/constants";
 import {
   DashboardMetrics,
   StatusUpdateWindow,
-} from "@/components/hr-dashboards/types";
+} from "@/components/hr/dashboards/types";
 
 interface HrSummaryTabProps {
   metrics: DashboardMetrics;

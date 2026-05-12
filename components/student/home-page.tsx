@@ -1,6 +1,7 @@
 "use client";
 
-import { Achievement, AuthUser, Event } from "@/lib/types";
+import type { Event as AppEvent } from "@/lib/types";
+import { Achievement, AuthUser } from "@/lib/types";
 import {
   Sparkles,
   CalendarDays,
@@ -13,26 +14,28 @@ import { EVENT_LEVEL_LABELS, EVENT_TYPE_LABELS } from "@/lib/event-meta";
 import {
   SubscriberPreviewItem,
   SubscribersPreviewCard,
-} from "@/components/subscribers-preview-card";
+} from "@/components/shared/subscribers-preview-card";
 
 interface HomePageProps {
   achievements: Achievement[];
-  events: Event[];
+  recommendedEvents: AppEvent[];
   user: AuthUser;
   subscribers: SubscriberPreviewItem[];
   onOpenSubscribers: () => void;
   onOpenEvent: (eventId: string) => void;
   onOpenAchievement: (achievementId: string) => void;
+  onOpenRecommendedEvents: () => void;
 }
 
 export function HomePage({
   achievements,
-  events,
+  recommendedEvents,
   user,
   subscribers,
   onOpenSubscribers,
   onOpenEvent,
   onOpenAchievement,
+  onOpenRecommendedEvents,
 }: HomePageProps) {
   // Last 3 confirmed achievements sorted newest first
   const newAchievements = achievements
@@ -40,21 +43,11 @@ export function HomePage({
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .slice(0, 3);
 
-  // Recommended: events from organizer that student hasn't participated in yet
-  const studentEventIds = new Set(
-    achievements.map((a) => a.eventId).filter(Boolean),
-  );
-  const recommendedEvents = events
-    .filter((e) => e.status === "published" && !studentEventIds.has(e.id))
-    .sort(
-      (a, b) =>
-        new Date(a.dates.start).getTime() - new Date(b.dates.start).getTime(),
-    )
-    .slice(0, 3);
+  const recommendedPreview = recommendedEvents.slice(0, 3);
   const confirmedCount = achievements.filter(
     (a) => a.status === "Подтверждено",
   ).length;
-  const nextRecommendedEvent = recommendedEvents[0];
+  const nextRecommendedEvent = recommendedPreview[0];
   const firstName = user.name.split(" ")[1] || user.name;
 
   return (
@@ -197,12 +190,20 @@ export function HomePage({
 
       {/* Recommended events — driven by organizer-created events */}
       <section className="space-y-4">
-        <h3 className="text-xl font-semibold text-foreground">
-          Рекомендуемые мероприятия
-        </h3>
-        {recommendedEvents.length > 0 ? (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h3 className="text-xl font-semibold text-foreground">
+            Рекомендуемые мероприятия
+          </h3>
+          <button
+            type="button"
+            onClick={onOpenRecommendedEvents}
+            className="text-sm font-semibold text-sky-700 hover:text-sky-800">
+            Все рекомендации
+          </button>
+        </div>
+        {recommendedPreview.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {recommendedEvents.map((event) => (
+            {recommendedPreview.map((event) => (
               <button
                 key={event.id}
                 type="button"

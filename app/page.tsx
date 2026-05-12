@@ -27,42 +27,46 @@ import {
   AchievementLevel,
 } from "@/lib/types";
 import { calculateStudentMetrics } from "@/lib/metrics";
-import { Sidebar } from "@/components/sidebar";
-import { TopBar } from "@/components/topbar";
-import { HomePage } from "@/components/home-page";
-import { DashboardsPage } from "@/components/dashboards-page";
-import { AchievementsPage } from "@/components/achievements-page";
-import { StudentInvitationsPage } from "@/components/student-invitations-page";
-import { OrganizerEvents } from "@/components/organizer-events";
-import { EventForm } from "@/components/event-form";
-import { UploadResults } from "@/components/upload-results";
-import { ProfilePage } from "@/components/profile-page";
-import { OrganizerProfilePage } from "@/components/organizer-profile-page";
-import { EventDetailsPage } from "@/components/event-details-page";
-import { AchievementRequestForm } from "@/components/achievement-request-form";
-import { VerificationRequestsPage } from "@/components/verification-requests-page";
-import { AchievementDetailsModal } from "@/components/achievement-details-modal";
+import { Sidebar } from "@/components/shared/sidebar";
+import { TopBar } from "@/components/shared/topbar";
+import { HomePage } from "@/components/student/home-page";
+import { DashboardsPage } from "@/components/student/dashboards-page";
+import { AchievementsPage } from "@/components/student/achievements-page";
+import {
+  StudentEventsPage,
+  StudentEventsTab,
+} from "@/components/student/student-events-page";
+import { StudentInvitationsPage } from "@/components/student/student-invitations-page";
+import { OrganizerEvents } from "@/components/organizer/organizer-events";
+import { EventForm } from "@/components/organizer/event-form";
+import { UploadResults } from "@/components/organizer/upload-results";
+import { ProfilePage } from "@/components/student/profile-page";
+import { OrganizerProfilePage } from "@/components/organizer/organizer-profile-page";
+import { EventDetailsPage } from "@/components/shared/event-details-page";
+import { AchievementRequestForm } from "@/components/student/achievement-request-form";
+import { VerificationRequestsPage } from "@/components/organizer/verification-requests-page";
+import { AchievementDetailsModal } from "@/components/student/achievement-details-modal";
 import {
   HrHomePage,
   HrHomeTopAchievementCandidate,
   HrHomeTopSubscriberCandidate,
-} from "@/components/hr-home-page";
-import { HrDashboardsPage } from "@/components/hr-dashboards-page";
+} from "@/components/hr/hr-home-page";
+import { HrDashboardsPage } from "@/components/hr/hr-dashboards-page";
 import {
   HrCandidateSummary,
   HrCandidatesSearchPage,
-} from "@/components/hr-candidates-search-page";
+} from "@/components/hr/hr-candidates-search-page";
 import {
   HrCandidateProfilePage,
   HrInvitationPayload,
-} from "@/components/hr-candidate-profile-page";
-import { SubscribersPage } from "@/components/subscribers-page";
-import { HrPublicProfilePage } from "@/components/hr-public-profile-page";
+} from "@/components/hr/hr-candidate-profile-page";
+import { SubscribersPage } from "@/components/shared/subscribers-page";
+import { HrPublicProfilePage } from "@/components/hr/hr-public-profile-page";
 import {
   LoginPayload,
   RegisterForm,
   RegistrationPayload,
-} from "@/components/register-form";
+} from "@/components/shared/register-form";
 import {
   EVENT_LEVEL_TO_ACHIEVEMENT_LEVEL,
   EVENT_TYPE_TO_ACHIEVEMENT_TYPE,
@@ -82,55 +86,55 @@ import {
 } from "@/stores/notifications-store";
 import { useOrganizerEvents } from "@/hooks/use-organizer-events";
 import { buildBadgeViewModels } from "@/lib/badges";
-import {
-  archiveHrCandidateManually,
-  getHrCandidateNote,
-  getHrCandidateStatus,
-  getHrCandidateStatusHistory,
-  HrFunnelStatus,
-  setHrCandidateNote,
-  setHrCandidateStatus,
-} from "@/lib/hr-funnel";
-import {
-  clearHrCandidateAchievementUpdate,
-  clearHrCandidateAchievementUpdates,
-  createHrInvitation,
-  getHrActionConfirmSettings,
-  getHrCandidateSubscriberIds,
+import { HrFunnelStatus, HrStatusHistoryEntry } from "@/lib/hr-funnel";
+import type {
   HrActionConfirmSettings,
-  markHrCandidateAchievementUpdate,
-  getHrDefaultInviteComment,
-  getStudentHrInvitations,
-  isHrSubscribedToCandidate,
-  respondToHrInvitation,
-  setHrActionConfirmSettings,
-  setHrDefaultInviteComment,
-  toggleHrCandidateSubscription,
+  HrCandidateInvitation,
 } from "@/lib/hr-network";
-import { SubscriberPreviewItem } from "@/components/subscribers-preview-card";
+import { SubscriberPreviewItem } from "@/components/shared/subscribers-preview-card";
 import { cn } from "@/lib/utils";
 import {
   backendLogin,
   backendRegister,
+  backendGetProfile,
+  backendChangePassword,
   clearBackendToken,
-  syncBackendBootstrapIfNeeded,
+  createHrCandidateInvitation,
+  createOrganizerEvent,
+  createStudentAchievement,
+  deleteOrganizerEvent,
+  fetchHrCandidateDetails,
+  fetchHrCandidatesSearch,
+  fetchHrHome,
+  fetchHrSettings,
+  fetchNotifications,
+  fetchOrganizerEventParticipants,
+  fetchOrganizerEvents,
+  fetchOrganizerVerificationRequests,
+  fetchPublicEvents,
+  fetchPublicHrProfile,
+  fetchPublicOrganizerProfile,
+  fetchStudentAchievements,
+  fetchStudentInvitations,
+  fetchStudentSubscribers,
+  hasBackendToken,
+  markAllNotificationsRead,
+  markNotificationRead,
+  publishOrganizerResults,
+  registerStudentForEvent,
+  rejectAchievementRequest,
+  respondToStudentInvitation,
+  toggleHrCandidateSubscriptionApi,
+  unregisterStudentForEvent,
+  updateHrCandidateNote,
+  updateHrCandidateStatus,
+  updateHrSettings,
+  updateOrganizerEvent,
+  updateOrganizerProfile,
+  updateStudentProfile,
+  verifyAchievementRequest,
+  archiveHrCandidate,
 } from "@/lib/backend-api";
-
-const AUTH_USERS_KEY = "hta.auth.users";
-const AUTH_SESSION_KEY = "hta.auth.session";
-
-interface StoredAccount {
-  email: string;
-  password: string;
-  user: AuthUser;
-}
-
-interface LegacyStoredAccount {
-  email?: unknown;
-  password?: unknown;
-  user?: unknown;
-  student?: unknown;
-}
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -173,7 +177,6 @@ const DEFAULT_SOCIAL_LINKS: SocialLinks = {
 
 const DEFAULT_ORGANIZER_NOTIFICATION_CHANNELS: OrganizerNotificationChannel[] =
   ["interface", "email"];
-
 const DEFAULT_ORGANIZER_NOTIFICATIONS: OrganizerNotificationSettings = {
   verificationRequests: true,
   newRegistrations: true,
@@ -571,57 +574,13 @@ function normalizeUser(raw: unknown): AuthUser | null {
   };
 }
 
-function parseStoredAccounts(): StoredAccount[] {
-  try {
-    const raw = localStorage.getItem(AUTH_USERS_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) return [];
-
-    return parsed
-      .map((entry): StoredAccount | null => {
-        const maybeEntry = entry as LegacyStoredAccount;
-        const rawUser = maybeEntry.user ?? maybeEntry.student;
-        const normalizedUser = normalizeUser(rawUser);
-        const email =
-          typeof maybeEntry.email === "string"
-            ? maybeEntry.email.trim().toLowerCase()
-            : (normalizedUser?.email ?? "");
-        const password =
-          typeof maybeEntry.password === "string" ? maybeEntry.password : "";
-
-        if (!normalizedUser || !email || !password) {
-          return null;
-        }
-
-        return {
-          email,
-          password,
-          user: normalizedUser,
-        };
-      })
-      .filter((entry): entry is StoredAccount => entry !== null);
-  } catch {
-    return [];
-  }
-}
-
-function parseStoredSession(): AuthUser | null {
-  try {
-    const raw = localStorage.getItem(AUTH_SESSION_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    return normalizeUser(parsed);
-  } catch {
-    return null;
-  }
-}
-
 function AppContent() {
   // Shared state — both roles read/write these
   const {
     events,
     applications,
+    setEvents,
+    setApplications,
     createEvent,
     updateEvent,
     deleteEvent,
@@ -632,16 +591,31 @@ function AppContent() {
   } = useEventsStore();
   const {
     achievements,
+    setAchievements,
     addAchievements,
     removeStudentAchievements,
-    createAchievementRequest,
-    reviewAchievementRequest,
-    addSimulatedAchievement,
   } = useAchievementsStore();
-  const { notifications, addNotification, markRead, markAllRead } =
-    useNotificationsStore();
+  const {
+    notifications,
+    setNotifications,
+    addNotification,
+    markRead,
+    markAllRead,
+  } = useNotificationsStore();
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [isAuthResolved, setIsAuthResolved] = useState(false);
+  const [studentInvitationsState, setStudentInvitationsState] = useState<
+    HrCandidateInvitation[]
+  >([]);
+  const [studentSubscribersState, setStudentSubscribersState] = useState<
+    SubscriberPreviewItem[]
+  >([]);
+  const [studentAppliedEventIds, setStudentAppliedEventIds] = useState<
+    string[]
+  >([]);
+  const [selectedEventOrganizerInfo, setSelectedEventOrganizerInfo] =
+    useState<OrganizerOrganizationProfile | null>(null);
+  const [isDataLoading, setIsDataLoading] = useState(false);
 
   // Role & navigation state
   const [studentView, setStudentView] = useState<StudentView>("home");
@@ -660,9 +634,24 @@ function AppContent() {
   const [selectedHrProfileId, setSelectedHrProfileId] = useState<string | null>(
     null,
   );
+  const [selectedHrProfileUser, setSelectedHrProfileUser] =
+    useState<AuthUser | null>(null);
+  const [hrHomeSummary, setHrHomeSummary] = useState<{
+    topByAchievements: HrHomeTopAchievementCandidate[];
+    topBySubscribers: HrHomeTopSubscriberCandidate[];
+  }>({ topByAchievements: [], topBySubscribers: [] });
+  const [hrCandidates, setHrCandidates] = useState<HrCandidateSummary[]>([]);
+  const [selectedHrCandidateData, setSelectedHrCandidateData] = useState<{
+    candidate: AuthUser | null;
+    achievements: Achievement[];
+    status: HrFunnelStatus;
+    statusHistory: HrStatusHistoryEntry[];
+    note: string;
+    subscribers: SubscriberPreviewItem[];
+    isCurrentHrSubscribed: boolean;
+  } | null>(null);
   const [studentSubscribersReturnView, setStudentSubscribersReturnView] =
     useState<"home" | "profile">("home");
-  const [hrMetaVersion, setHrMetaVersion] = useState(0);
   const [hrDefaultInviteComment, setHrDefaultInviteCommentState] = useState("");
   const [hrActionConfirmSettings, setHrActionConfirmSettingsState] =
     useState<HrActionConfirmSettings>({
@@ -673,33 +662,48 @@ function AppContent() {
     string | null
   >(null);
   const [studentEventReturnView, setStudentEventReturnView] = useState<
-    "home" | "achievements"
+    "home" | "achievements" | "events"
   >("home");
-  const [organizerAccountOptions, setOrganizerAccountOptions] = useState<
-    Array<{ id: string; label: string; email: string }>
-  >([]);
+  const [studentEventsTab, setStudentEventsTab] =
+    useState<StudentEventsTab>("table");
 
   const role: UserRole = currentUser?.role ?? "student";
 
   useEffect(() => {
-    setCurrentUser(parseStoredSession());
-    setIsAuthResolved(true);
+    let cancelled = false;
+
+    const resolveSession = async () => {
+      if (!hasBackendToken()) {
+        if (!cancelled) {
+          setCurrentUser(null);
+          setIsAuthResolved(true);
+        }
+        return;
+      }
+
+      try {
+        const profile = await backendGetProfile();
+        if (!cancelled) {
+          setCurrentUser(profile);
+        }
+      } catch (error) {
+        clearBackendToken();
+        if (!cancelled) {
+          setCurrentUser(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsAuthResolved(true);
+        }
+      }
+    };
+
+    resolveSession();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
-
-  useEffect(() => {
-    if (!isAuthResolved) return;
-
-    const options = parseStoredAccounts()
-      .filter((account) => account.user.role === "organizer")
-      .map((account) => ({
-        id: account.user.id,
-        label:
-          account.user.organizerProfile?.organizationName || account.user.name,
-        email: account.user.email,
-      }));
-
-    setOrganizerAccountOptions(options);
-  }, [isAuthResolved, currentUser]);
 
   useEffect(() => {
     if (!currentUser || currentUser.role !== "hr") {
@@ -710,41 +714,196 @@ function AppContent() {
       });
       return;
     }
+    const loadSettings = async () => {
+      try {
+        const settings = await fetchHrSettings();
+        setHrDefaultInviteCommentState(settings.defaultInviteComment);
+        setHrActionConfirmSettingsState({
+          confirmReject: settings.confirmRejectAction,
+          confirmArchive: settings.confirmArchiveAction,
+        });
+      } catch (error) {
+        console.warn("Failed to load HR settings.", error);
+        setHrDefaultInviteCommentState("");
+        setHrActionConfirmSettingsState({
+          confirmReject: true,
+          confirmArchive: true,
+        });
+      }
+    };
 
-    setHrDefaultInviteCommentState(getHrDefaultInviteComment(currentUser.id));
-    setHrActionConfirmSettingsState(getHrActionConfirmSettings(currentUser.id));
+    loadSettings();
   }, [currentUser]);
 
-  const persistUserInStorage = (
-    updatedUser: AuthUser,
-    updatedPassword?: string,
-  ) => {
-    const accounts = parseStoredAccounts();
-    const existingAccount = accounts.find((acc) => acc.user.id === updatedUser.id);
-    const updatedAccounts = existingAccount
-      ? accounts.map((acc) => {
-          if (acc.user.id !== updatedUser.id) return acc;
+  useEffect(() => {
+    if (!currentUser) return;
+    let cancelled = false;
 
-          return {
-            ...acc,
-            email: updatedUser.email,
-            password: updatedPassword ?? acc.password,
-            user: updatedUser,
-          };
-        })
-      : [
-          ...accounts,
-          {
-            email: updatedUser.email,
-            password: updatedPassword ?? "",
-            user: updatedUser,
-          },
-        ];
+    const loadData = async () => {
+      setIsDataLoading(true);
+      try {
+        if (currentUser.role === "student") {
+          const [
+            eventsData,
+            achievementsData,
+            notificationsData,
+            invitationsData,
+            subscribersData,
+          ] = await Promise.all([
+            fetchPublicEvents(),
+            fetchStudentAchievements(currentUser.id),
+            fetchNotifications(currentUser.id),
+            fetchStudentInvitations(currentUser.id),
+            fetchStudentSubscribers(),
+          ]);
 
-    localStorage.setItem(AUTH_USERS_KEY, JSON.stringify(updatedAccounts));
-    localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(updatedUser));
-    setCurrentUser(updatedUser);
-  };
+          if (cancelled) return;
+
+          setEvents(eventsData);
+          setAchievements(achievementsData);
+          setNotifications(notificationsData);
+          setStudentInvitationsState(invitationsData);
+          const normalizedSubscribers = subscribersData.reduce<
+            SubscriberPreviewItem[]
+          >((acc, item) => {
+            const firstName = item.firstName ?? "";
+            const lastName = item.lastName ?? "";
+            const name =
+              [lastName, firstName].filter(Boolean).join(" ").trim() ||
+              item.companyName ||
+              item.email ||
+              "HR";
+            const id = item.hrId ?? item.id ?? item.email ?? "";
+            if (!id) return acc;
+            acc.push({
+              id,
+              name,
+              email: item.email ?? "",
+            });
+            return acc;
+          }, []);
+          setStudentSubscribersState(normalizedSubscribers);
+          setStudentAppliedEventIds([]);
+          setApplications([]);
+        } else if (currentUser.role === "organizer") {
+          const [eventsData, requestsData, notificationsData] =
+            await Promise.all([
+              fetchOrganizerEvents(),
+              fetchOrganizerVerificationRequests(),
+              fetchNotifications(currentUser.id),
+            ]);
+
+          if (cancelled) return;
+
+          setEvents(eventsData);
+          setAchievements(requestsData);
+          setNotifications(notificationsData);
+          setStudentInvitationsState([]);
+          setStudentSubscribersState([]);
+          setStudentAppliedEventIds([]);
+          setApplications([]);
+        } else {
+          const [eventsData, notificationsData, hrHomeData, hrCandidatesData] =
+            await Promise.all([
+              fetchPublicEvents(),
+              fetchNotifications(currentUser.id),
+              fetchHrHome(),
+              fetchHrCandidatesSearch(),
+            ]);
+          if (cancelled) return;
+
+          setAchievements([]);
+          setEvents(eventsData);
+          setApplications([]);
+          setNotifications(notificationsData);
+          setHrHomeSummary({
+            topByAchievements: hrHomeData.topByAchievements,
+            topBySubscribers: hrHomeData.topBySubscribers,
+          });
+          setHrCandidates(
+            hrCandidatesData.map((candidate) => ({
+              id: candidate.id,
+              name: candidate.name,
+              email: candidate.email,
+              university: candidate.university,
+              faculty: candidate.faculty,
+              course: candidate.course,
+              totalAchievementsCount: candidate.totalAchievementsCount,
+              confirmedAchievementsCount: candidate.confirmedAchievementsCount,
+              candidateStatus: candidate.candidateStatus,
+            })),
+          );
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setEvents([]);
+          setAchievements([]);
+          setNotifications([]);
+          setStudentInvitationsState([]);
+          setStudentSubscribersState([]);
+          setStudentAppliedEventIds([]);
+          setApplications([]);
+          setHrHomeSummary({ topByAchievements: [], topBySubscribers: [] });
+          setHrCandidates([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsDataLoading(false);
+        }
+      }
+    };
+
+    loadData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    currentUser,
+    setAchievements,
+    setApplications,
+    setEvents,
+    setNotifications,
+  ]);
+
+  useEffect(() => {
+    if (!selectedHrProfileId) {
+      setSelectedHrProfileUser(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadProfile = async () => {
+      try {
+        const profile = await fetchPublicHrProfile(selectedHrProfileId);
+        if (!cancelled) {
+          setSelectedHrProfileUser(profile);
+        }
+      } catch (error) {
+        console.warn("Failed to load HR public profile.", error);
+        if (!cancelled) {
+          setSelectedHrProfileUser(null);
+        }
+      }
+    };
+
+    loadProfile();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedHrProfileId]);
+
+  const refreshCurrentUser = useCallback(async () => {
+    try {
+      if (!hasBackendToken()) return;
+      const profile = await backendGetProfile();
+      setCurrentUser(profile);
+    } catch (error) {
+      console.warn("Failed to refresh user profile.", error);
+    }
+  }, []);
 
   const navigateAfterAuth = (user: AuthUser) => {
     if (user.role === "student") {
@@ -758,18 +917,12 @@ function AppContent() {
     }
   };
 
-  const handleRegister = async (payload: RegistrationPayload): Promise<string | null> => {
-    const accounts = parseStoredAccounts();
-    const duplicate = accounts.some(
-      (acc) => acc.email === payload.email.toLowerCase(),
-    );
-    if (duplicate) {
-      return "Пользователь с таким email уже существует.";
-    }
-
+  const handleRegister = async (
+    payload: RegistrationPayload,
+  ): Promise<string | null> => {
     try {
       const createdUser = await backendRegister(payload);
-      persistUserInStorage(createdUser, payload.password);
+      setCurrentUser(createdUser);
       navigateAfterAuth(createdUser);
       return null;
     } catch (error) {
@@ -777,79 +930,27 @@ function AppContent() {
       if (backendMessage.toLowerCase().includes("already exists")) {
         return "Пользователь с таким email уже существует.";
       }
-      console.warn("Backend registration failed; using local frontend fallback.", error);
+      console.warn("Backend registration failed.", error);
+      return "Не удалось зарегистрироваться. Проверьте данные и повторите попытку.";
     }
-
-    const userIdPrefix =
-      payload.role === "organizer"
-        ? "organizer"
-        : payload.role === "hr"
-          ? "hr"
-          : "student";
-    const createdUser: AuthUser = {
-      id: `${userIdPrefix}-${Date.now()}`,
-      name: payload.name,
-      email: payload.email,
-      role: payload.role,
-      notifications: { ...DEFAULT_NOTIFICATIONS },
-      publicProfile: buildDefaultPublicProfile(payload.name),
-      organizerProfile:
-        payload.role === "organizer" || payload.role === "hr"
-          ? buildDefaultOrganizerProfile(payload.name, payload.email)
-          : undefined,
-      organizerNotifications:
-        payload.role === "organizer" || payload.role === "hr"
-          ? {
-              ...DEFAULT_ORGANIZER_NOTIFICATIONS,
-              deliveryChannels: [
-                ...DEFAULT_ORGANIZER_NOTIFICATIONS.deliveryChannels,
-              ],
-            }
-          : undefined,
-    };
-
-    const updatedAccounts: StoredAccount[] = [
-      ...accounts,
-      { email: payload.email, password: payload.password, user: createdUser },
-    ];
-    localStorage.setItem(AUTH_USERS_KEY, JSON.stringify(updatedAccounts));
-    localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(createdUser));
-    setCurrentUser(createdUser);
-    navigateAfterAuth(createdUser);
-    return null;
   };
 
   const handleLogin = async (payload: LoginPayload): Promise<string | null> => {
     try {
       const user = await backendLogin(payload);
-      persistUserInStorage(user, payload.password);
+      setCurrentUser(user);
       navigateAfterAuth(user);
       return null;
     } catch (error) {
-      console.warn("Backend login failed; trying local frontend fallback.", error);
+      console.warn("Backend login failed.", error);
+      return "Не удалось войти. Проверьте email и пароль.";
     }
-
-    const accounts = parseStoredAccounts();
-    const normalizedEmail = payload.email.trim().toLowerCase();
-
-    const account = accounts.find((item) => item.email === normalizedEmail);
-    if (!account) {
-      return "Аккаунт с таким email не найден.";
-    }
-    if (account.password !== payload.password) {
-      return "Неверный пароль.";
-    }
-
-    localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(account.user));
-    setCurrentUser(account.user);
-    navigateAfterAuth(account.user);
-    return null;
   };
 
-  const handleUpdateEmail = (
+  const handleUpdateEmail = async (
     newEmail: string,
-    currentPassword: string,
-  ): string | null => {
+    _currentPassword: string,
+  ): Promise<string | null> => {
     if (!currentUser) return "Пользователь не найден.";
     const normalizedEmail = newEmail.trim().toLowerCase();
 
@@ -857,107 +958,145 @@ function AppContent() {
       return "Введите корректный email.";
     }
 
-    const accounts = parseStoredAccounts();
-    const currentAccount = accounts.find(
-      (acc) => acc.user.id === currentUser.id,
-    );
-    if (!currentAccount) {
-      return "Аккаунт не найден в хранилище.";
+    try {
+      if (currentUser.role === "student") {
+        const updated = await updateStudentProfile({ email: normalizedEmail });
+        setCurrentUser(updated);
+      } else if (currentUser.role === "organizer") {
+        const updated = await updateOrganizerProfile({
+          email: normalizedEmail,
+        });
+        setCurrentUser(updated);
+      } else {
+        return "Обновление email пока доступно только студенту и организатору.";
+      }
+      return null;
+    } catch (error) {
+      console.warn("Failed to update email.", error);
+      return "Не удалось обновить email. Попробуйте позже.";
     }
-
-    if (currentAccount.password !== currentPassword) {
-      return "Текущий пароль введен неверно.";
-    }
-
-    const duplicate = accounts.some(
-      (acc) => acc.user.id !== currentUser.id && acc.email === normalizedEmail,
-    );
-    if (duplicate) {
-      return "Этот email уже используется другим аккаунтом.";
-    }
-
-    persistUserInStorage({ ...currentUser, email: normalizedEmail });
-    return null;
   };
 
-  const handleUpdatePhone = (phone: string): string | null => {
+  const handleUpdatePhone = async (phone: string): Promise<string | null> => {
     if (!currentUser) return "Пользователь не найден.";
-    persistUserInStorage({ ...currentUser, phone: phone || undefined });
-    return null;
+    try {
+      if (currentUser.role === "student") {
+        const updated = await updateStudentProfile({
+          phone: phone || null,
+        });
+        setCurrentUser(updated);
+      } else if (currentUser.role === "organizer") {
+        const updated = await updateOrganizerProfile({
+          phone: phone || null,
+        });
+        setCurrentUser(updated);
+      } else {
+        return "Обновление телефона пока доступно только студенту и организатору.";
+      }
+      return null;
+    } catch (error) {
+      console.warn("Failed to update phone.", error);
+      return "Не удалось обновить телефон. Попробуйте позже.";
+    }
   };
 
-  const handleChangePassword = (
+  const handleChangePassword = async (
     currentPassword: string,
     newPassword: string,
-  ): string | null => {
+  ): Promise<string | null> => {
     if (!currentUser) return "Пользователь не найден.";
-
-    const accounts = parseStoredAccounts();
-    const currentAccount = accounts.find(
-      (acc) => acc.user.id === currentUser.id,
-    );
-    if (!currentAccount) {
-      return "Аккаунт не найден в хранилище.";
-    }
-
-    if (currentAccount.password !== currentPassword) {
-      return "Текущий пароль введен неверно.";
-    }
-
     if (newPassword.length < 8) {
       return "Новый пароль должен содержать минимум 8 символов.";
     }
 
-    persistUserInStorage(currentUser, newPassword);
-    return null;
+    try {
+      await backendChangePassword({
+        currentPassword,
+        newPassword,
+        confirmPassword: newPassword,
+      });
+      return null;
+    } catch (error) {
+      console.warn("Failed to update password.", error);
+      return "Не удалось обновить пароль. Проверьте текущий пароль.";
+    }
   };
 
-  const handleUpdateNotifications = (notifications: NotificationSettings) => {
+  const handleUpdateNotifications = (settings: NotificationSettings) => {
     if (!currentUser) return;
-    persistUserInStorage({
+    setCurrentUser({
       ...currentUser,
       notifications: {
-        invitations: Boolean(notifications.invitations),
-        verification: Boolean(notifications.verification),
-        recommendations: Boolean(notifications.recommendations),
+        invitations: Boolean(settings.invitations),
+        verification: Boolean(settings.verification),
+        recommendations: Boolean(settings.recommendations),
       },
     });
   };
 
   const handleUpdateOrganizerNotifications = (
-    notifications: OrganizerNotificationSettings,
+    settings: OrganizerNotificationSettings,
   ) => {
     if (!currentUser) return;
-    persistUserInStorage({
+    setCurrentUser({
       ...currentUser,
-      organizerNotifications: normalizeOrganizerNotifications(notifications),
+      organizerNotifications: normalizeOrganizerNotifications(settings),
     });
   };
 
-  const handleUpdatePublicProfile = (publicProfile: PublicProfile) => {
-    if (!currentUser) return;
-    persistUserInStorage({
-      ...currentUser,
-      publicProfile: normalizePublicProfile(publicProfile, currentUser.name),
-    });
+  const handleUpdatePublicProfile = async (publicProfile: PublicProfile) => {
+    if (!currentUser || currentUser.role !== "student") return;
+    try {
+      const updated = await updateStudentProfile({
+        firstName: publicProfile.firstName,
+        lastName: publicProfile.lastName,
+        middleName: publicProfile.middleName ?? null,
+        university: publicProfile.university,
+        faculty: publicProfile.faculty,
+        course: publicProfile.course,
+        city: publicProfile.city,
+        bio: publicProfile.bio,
+        avatarUrl: publicProfile.avatarUrl ?? null,
+        socialLinks: {
+          telegram: publicProfile.socialLinks.telegram,
+          github: publicProfile.socialLinks.github,
+          linkedin: publicProfile.socialLinks.linkedin,
+          website: publicProfile.socialLinks.website,
+        },
+        visibleAchievementIds: publicProfile.visibleAchievementIds,
+        visibleBadgeIds: publicProfile.visibleBadgeIds,
+      });
+      setCurrentUser(updated);
+    } catch (error) {
+      console.warn("Failed to update public profile.", error);
+    }
   };
 
-  const handleUpdateOrganizerProfile = (
+  const handleUpdateOrganizerProfile = async (
     organizerProfile: OrganizerOrganizationProfile,
   ) => {
-    if (!currentUser) return;
-    persistUserInStorage({
-      ...currentUser,
-      organizerProfile: normalizeOrganizerProfile(
-        {
-          ...organizerProfile,
-          eventsCount: organizerComputedStats.eventsCount,
-          totalParticipants: organizerComputedStats.totalParticipants,
+    if (!currentUser || currentUser.role !== "organizer") return;
+    try {
+      const updated = await updateOrganizerProfile({
+        organizationName: organizerProfile.organizationName,
+        shortName: organizerProfile.shortName,
+        organizationType: organizerProfile.organizationType,
+        website: organizerProfile.website,
+        description: organizerProfile.description,
+        contactEmail: organizerProfile.contactEmail,
+        contactPhone: organizerProfile.contactPhone ?? null,
+        logoUrl: organizerProfile.logoUrl ?? null,
+        foundedYear: organizerProfile.foundedYear ?? null,
+        socialLinks: {
+          telegram: organizerProfile.socialLinks.telegram,
+          vk: organizerProfile.socialLinks.vk,
+          youtube: organizerProfile.socialLinks.youtube,
         },
-        currentUser.name,
-        currentUser.email,
-      ),
-    });
+      });
+      setCurrentUser(updated);
+    } catch (error) {
+      console.warn("Failed to update organizer profile.", error);
+    }
   };
 
   const handleDeleteAccount = (confirmationText: string): string | null => {
@@ -966,17 +1105,14 @@ function AppContent() {
       return "Введите УДАЛИТЬ для подтверждения удаления аккаунта.";
     }
 
-    const accounts = parseStoredAccounts();
-    const updatedAccounts = accounts.filter(
-      (acc) => acc.user.id !== currentUser.id,
-    );
-    localStorage.setItem(AUTH_USERS_KEY, JSON.stringify(updatedAccounts));
-    localStorage.removeItem(AUTH_SESSION_KEY);
     clearBackendToken();
-
-    if (currentUser.role === "student") {
-      removeStudentAchievements(currentUser.id);
-    }
+    setEvents([]);
+    setAchievements([]);
+    setNotifications([]);
+    setApplications([]);
+    setStudentInvitationsState([]);
+    setStudentSubscribersState([]);
+    setStudentAppliedEventIds([]);
 
     setCurrentUser(null);
     setStudentView("home");
@@ -989,8 +1125,14 @@ function AppContent() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem(AUTH_SESSION_KEY);
     clearBackendToken();
+    setEvents([]);
+    setAchievements([]);
+    setNotifications([]);
+    setApplications([]);
+    setStudentInvitationsState([]);
+    setStudentSubscribersState([]);
+    setStudentAppliedEventIds([]);
     setCurrentUser(null);
     setStudentView("home");
     setOrganizerView("events");
@@ -1005,6 +1147,33 @@ function AppContent() {
     currentUser?.role === "student"
       ? achievements.filter((a) => a.studentId === currentUser.id)
       : [];
+
+  const studentEventIds = useMemo(
+    () =>
+      new Set(
+        studentAchievements
+          .map((achievement) => achievement.eventId)
+          .filter((eventId): eventId is string => Boolean(eventId)),
+      ),
+    [studentAchievements],
+  );
+
+  const availableStudentEvents = useMemo(
+    () =>
+      events
+        .filter((event) => event.status === "published")
+        .filter((event) => !studentEventIds.has(event.id)),
+    [events, studentEventIds],
+  );
+
+  const recommendedStudentEvents = useMemo(
+    () =>
+      [...availableStudentEvents].sort(
+        (a, b) =>
+          new Date(a.dates.start).getTime() - new Date(b.dates.start).getTime(),
+      ),
+    [availableStudentEvents],
+  );
 
   const publicStats = calculateStudentMetrics(studentAchievements);
   const studentBadges = buildBadgeViewModels(studentAchievements);
@@ -1028,174 +1197,57 @@ function AppContent() {
     ? notifications.filter((item) => item.userId === currentUser.id)
     : [];
   const handleMarkNotificationRead = useCallback(
-    (notificationId: string) => {
+    async (notificationId: string) => {
       if (!currentUser) return;
 
-      const notification = notifications.find(
-        (item) => item.id === notificationId && item.userId === currentUser.id,
-      );
-
-      markRead(notificationId);
-
-      if (
-        currentUser.role === "hr" &&
-        notification?.candidateId &&
-        !notification.isRead
-      ) {
-        clearHrCandidateAchievementUpdate(
-          currentUser.id,
-          notification.candidateId,
-        );
-        setHrMetaVersion((prev) => prev + 1);
+      try {
+        await markNotificationRead(notificationId);
+        const refreshed = await fetchNotifications(currentUser.id);
+        setNotifications(refreshed);
+      } catch (error) {
+        console.warn("Failed to mark notification as read.", error);
       }
     },
-    [currentUser, notifications, markRead],
+    [currentUser, setNotifications],
   );
   const handleMarkAllNotificationsRead = useCallback(() => {
     if (!currentUser) return;
 
-    const unreadCandidateIds =
-      currentUser.role === "hr"
-        ? currentUserNotifications
-            .filter((item) => !item.isRead && Boolean(item.candidateId))
-            .map((item) => item.candidateId as string)
-        : [];
+    const run = async () => {
+      try {
+        await markAllNotificationsRead();
+        const refreshed = await fetchNotifications(currentUser.id);
+        setNotifications(refreshed);
+      } catch (error) {
+        console.warn("Failed to mark notifications as read.", error);
+      }
+    };
 
-    markAllRead(currentUser.id);
-
-    if (currentUser.role === "hr" && unreadCandidateIds.length > 0) {
-      clearHrCandidateAchievementUpdates(currentUser.id, unreadCandidateIds);
-      setHrMetaVersion((prev) => prev + 1);
-    }
-  }, [currentUser, currentUserNotifications, markAllRead]);
+    run();
+  }, [currentUser, setNotifications]);
   const studentAchievementNotifications =
     currentUser?.role === "student"
       ? currentUserNotifications.filter((item) => item.type === "achievement")
       : [];
 
-  const studentAccounts = useMemo(
-    () =>
-      parseStoredAccounts()
-        .map((account) => account.user)
-        .filter((user) => user.role === "student"),
-    [currentUser],
-  );
-
-  const hrAccounts = useMemo(
-    () =>
-      parseStoredAccounts()
-        .map((account) => account.user)
-        .filter((user) => user.role === "hr"),
-    [currentUser, hrMetaVersion],
-  );
-
-  const hrById = useMemo(
-    () => new Map(hrAccounts.map((user) => [user.id, user])),
-    [hrAccounts],
-  );
-
   const studentSubscribers: SubscriberPreviewItem[] = useMemo(() => {
     if (!currentUser || currentUser.role !== "student") return [];
-
-    return getHrCandidateSubscriberIds(currentUser.id)
-      .map((hrId) => hrById.get(hrId) ?? null)
-      .filter((user): user is AuthUser => user !== null)
-      .map((user) => ({
-        id: user.id,
-        name: user.name,
-        email: user.email,
-      }));
-  }, [currentUser, hrById, hrMetaVersion]);
+    return studentSubscribersState;
+  }, [currentUser, studentSubscribersState]);
 
   const studentInvitations = useMemo(() => {
     if (!currentUser || currentUser.role !== "student") return [];
-    return getStudentHrInvitations(currentUser.id);
-  }, [currentUser, hrMetaVersion]);
+    return studentInvitationsState;
+  }, [currentUser, studentInvitationsState]);
 
-  const hrCandidates: HrCandidateSummary[] = useMemo(() => {
-    const totalCountByStudentId = achievements.reduce<Record<string, number>>(
-      (acc, item) => {
-        acc[item.studentId] = (acc[item.studentId] ?? 0) + 1;
-        return acc;
-      },
-      {},
-    );
-
-    const confirmedCountByStudentId = achievements
-      .filter((item) => item.status === "Подтверждено")
-      .reduce<Record<string, number>>((acc, item) => {
-        acc[item.studentId] = (acc[item.studentId] ?? 0) + 1;
-        return acc;
-      }, {});
-
-    return studentAccounts
-      .map((candidate) => {
-        const candidateStatus = getHrCandidateStatus(
-          candidate.id,
-          "Не отслеживается",
-        );
-
-        return {
-          id: candidate.id,
-          name: candidate.name,
-          email: candidate.email,
-          university: candidate.publicProfile.university,
-          faculty: candidate.publicProfile.faculty,
-          course: candidate.publicProfile.course,
-          totalAchievementsCount: totalCountByStudentId[candidate.id] ?? 0,
-          confirmedAchievementsCount:
-            confirmedCountByStudentId[candidate.id] ?? 0,
-          candidateStatus,
-        };
-      })
-      .sort(
-        (a, b) => b.confirmedAchievementsCount - a.confirmedAchievementsCount,
-      );
-  }, [achievements, studentAccounts]);
-
-  const hrTopByAchievements: HrHomeTopAchievementCandidate[] = useMemo(
-    () =>
-      [...hrCandidates]
-        .sort(
-          (a, b) =>
-            b.totalAchievementsCount - a.totalAchievementsCount ||
-            b.confirmedAchievementsCount - a.confirmedAchievementsCount ||
-            a.name.localeCompare(b.name, "ru"),
-        )
-        .slice(0, 3),
-    [hrCandidates],
+  const hrTopByAchievements = useMemo(
+    () => hrHomeSummary.topByAchievements,
+    [hrHomeSummary],
   );
 
-  const hrCandidatesById = useMemo(
-    () => new Map(hrCandidates.map((candidate) => [candidate.id, candidate])),
-    [hrCandidates],
-  );
-
-  const hrTopBySubscribers: HrHomeTopSubscriberCandidate[] = useMemo(
-    () =>
-      studentAccounts
-        .map((candidate) => {
-          const summary = hrCandidatesById.get(candidate.id);
-
-          return {
-            id: candidate.id,
-            name: candidate.name,
-            email: candidate.email,
-            university: candidate.publicProfile.university,
-            subscriberCount: getHrCandidateSubscriberIds(candidate.id).length,
-            totalAchievementsCount: summary?.totalAchievementsCount ?? 0,
-            candidateStatus:
-              summary?.candidateStatus ?? getHrCandidateStatus(candidate.id),
-          };
-        })
-        .sort(
-          (a, b) =>
-            b.subscriberCount - a.subscriberCount ||
-            b.totalAchievementsCount - a.totalAchievementsCount ||
-            a.name.localeCompare(b.name, "ru"),
-        )
-        .slice(0, 3),
-    [studentAccounts, hrCandidatesById, hrMetaVersion],
+  const hrTopBySubscribers = useMemo(
+    () => hrHomeSummary.topBySubscribers,
+    [hrHomeSummary],
   );
 
   const hrHomeNotifications = useMemo(() => {
@@ -1209,50 +1261,18 @@ function AppContent() {
       .slice(0, 8);
   }, [currentUser, currentUserNotifications]);
 
-  const selectedHrCandidate = selectedHrCandidateId
-    ? (studentAccounts.find(
-        (candidate) => candidate.id === selectedHrCandidateId,
-      ) ?? null)
-    : null;
-
-  const selectedHrCandidateAchievements = selectedHrCandidate
-    ? achievements.filter((item) => item.studentId === selectedHrCandidate.id)
-    : [];
-
-  const selectedHrCandidateStatus = selectedHrCandidate
-    ? getHrCandidateStatus(selectedHrCandidate.id, "Не отслеживается")
-    : "Не отслеживается";
-
-  const selectedHrCandidateStatusHistory = selectedHrCandidate
-    ? getHrCandidateStatusHistory(selectedHrCandidate.id)
-    : [];
-
-  const selectedHrCandidateNote = selectedHrCandidate
-    ? getHrCandidateNote(selectedHrCandidate.id)
-    : "";
-
-  const selectedHrCandidateSubscribers: SubscriberPreviewItem[] =
-    useMemo(() => {
-      if (!selectedHrCandidate) return [];
-
-      return getHrCandidateSubscriberIds(selectedHrCandidate.id)
-        .map((hrId) => hrById.get(hrId) ?? null)
-        .filter((user): user is AuthUser => user !== null)
-        .map((user) => ({
-          id: user.id,
-          name: user.name,
-          email: user.email,
-        }));
-    }, [selectedHrCandidate, hrById, hrMetaVersion]);
-
+  const selectedHrCandidate = selectedHrCandidateData?.candidate ?? null;
+  const selectedHrCandidateAchievements =
+    selectedHrCandidateData?.achievements ?? [];
+  const selectedHrCandidateStatus =
+    selectedHrCandidateData?.status ?? "Не отслеживается";
+  const selectedHrCandidateStatusHistory =
+    selectedHrCandidateData?.statusHistory ?? [];
+  const selectedHrCandidateNote = selectedHrCandidateData?.note ?? "";
+  const selectedHrCandidateSubscribers =
+    selectedHrCandidateData?.subscribers ?? [];
   const isSelectedCandidateSubscribedByCurrentHr =
-    currentUser?.role === "hr" && selectedHrCandidate
-      ? isHrSubscribedToCandidate(selectedHrCandidate.id, currentUser.id)
-      : false;
-
-  const selectedHrProfileUser = selectedHrProfileId
-    ? (hrById.get(selectedHrProfileId) ?? null)
-    : null;
+    selectedHrCandidateData?.isCurrentHrSubscribed ?? false;
 
   const selectedHrCandidateEvents = useMemo(() => {
     if (!selectedHrCandidate) return [];
@@ -1268,12 +1288,7 @@ function AppContent() {
     return eventIds
       .map((eventId) => events.find((event) => event.id === eventId) ?? null)
       .filter((event): event is Event => event !== null);
-  }, [
-    events,
-    selectedHrCandidate,
-    selectedHrCandidateAchievements,
-    hrMetaVersion,
-  ]);
+  }, [events, selectedHrCandidate, selectedHrCandidateAchievements]);
 
   const hrPublishedEventsCount = events.filter(
     (item) => item.status === "published",
@@ -1298,22 +1313,22 @@ function AppContent() {
       return;
     }
 
-    persistUserInStorage({
-      ...currentUser,
-      publicProfile: {
-        ...profile,
-        visibleAchievementIds: studentAchievements
-          .slice(0, 10)
-          .map((item) => item.id),
-      },
-    });
-    setVisibilitySeededForUserId(currentUser.id);
-  }, [
-    currentUser,
-    persistUserInStorage,
-    studentAchievements,
-    visibilitySeededForUserId,
-  ]);
+    const run = async () => {
+      try {
+        const updated = await updateStudentProfile({
+          visibleAchievementIds: studentAchievements
+            .slice(0, 10)
+            .map((item) => item.id),
+        });
+        setCurrentUser(updated);
+        setVisibilitySeededForUserId(currentUser.id);
+      } catch (error) {
+        console.warn("Failed to seed visible achievements.", error);
+      }
+    };
+
+    run();
+  }, [currentUser, studentAchievements, visibilitySeededForUserId]);
 
   useEffect(() => {
     if (!currentUser || currentUser.role !== "student") return;
@@ -1329,179 +1344,51 @@ function AppContent() {
       normalizedIds.every((id, index) => id === currentIds[index]);
     if (isSameContent) return;
 
-    persistUserInStorage({
-      ...currentUser,
-      publicProfile: {
-        ...currentUser.publicProfile,
-        visibleBadgeIds: normalizedIds,
-      },
-    });
-  }, [currentUser, unlockedBadgeIds, persistUserInStorage]);
+    const run = async () => {
+      try {
+        const updated = await updateStudentProfile({
+          visibleBadgeIds: normalizedIds,
+        });
+        setCurrentUser(updated);
+      } catch (error) {
+        console.warn("Failed to normalize visible badges.", error);
+      }
+    };
 
-  const getNewVisibleBadgeTitles = (
-    candidateId: string,
-    beforeAchievements: Achievement[],
-    afterAchievements: Achievement[],
-  ): string[] => {
-    const candidate = studentAccounts.find((item) => item.id === candidateId);
-    if (!candidate) return [];
-
-    const visibleIds = new Set(candidate.publicProfile.visibleBadgeIds);
-
-    const beforeVisible = new Set(
-      buildBadgeViewModels(beforeAchievements)
-        .filter((badge) => badge.unlocked && visibleIds.has(badge.id))
-        .map((badge) => badge.id),
-    );
-
-    return buildBadgeViewModels(afterAchievements)
-      .filter(
-        (badge) =>
-          badge.unlocked &&
-          visibleIds.has(badge.id) &&
-          !beforeVisible.has(badge.id),
-      )
-      .map((badge) => badge.title);
-  };
+    run();
+  }, [currentUser, unlockedBadgeIds]);
 
   const notifyCandidateSubscribers = useCallback(
     (
-      candidateId: string,
-      title: string,
-      description: string,
-      options?: {
+      _candidateId: string,
+      _title: string,
+      _description: string,
+      _options?: {
         skipHrId?: string;
         markAsAchievementUpdate?: boolean;
       },
     ) => {
-      const subscriberIds = getHrCandidateSubscriberIds(candidateId).filter(
-        (hrId) => hrId !== options?.skipHrId,
-      );
-
-      subscriberIds.forEach((hrId) => {
-        addNotification(
-          hrId,
-          title,
-          description,
-          "message",
-          options?.markAsAchievementUpdate ? candidateId : undefined,
-        );
-        if (options?.markAsAchievementUpdate) {
-          markHrCandidateAchievementUpdate(hrId, candidateId);
-        }
-      });
-
-      if (options?.markAsAchievementUpdate && subscriberIds.length > 0) {
-        setHrMetaVersion((prev) => prev + 1);
-      }
+      // Placeholder for backend-driven notifications.
     },
-    [addNotification],
+    [],
   );
 
-  // ── Demo: simulate publishing results for current student ─────────────────
-  const handleSimulateResults = () => {
-    if (!currentUser || currentUser.role !== "student") return;
-    const levels: AchievementLevel[] = [
-      "Международный",
-      "Всероссийский",
-      "Региональный",
-    ];
-    const eventTypes = [
-      "Олимпиада",
-      "Хакатон",
-      "Конференция",
-      "Чемпионат",
-    ] as const;
-    const results = ["1 место", "2 место", "3 место", "Призёр", "Медаль"];
-    const level = levels[Math.floor(Math.random() * levels.length)];
-    const type = eventTypes[Math.floor(Math.random() * eventTypes.length)];
-
-    const eventTypeMap = {
-      Олимпиада: "olympiad",
-      Хакатон: "hackathon",
-      Конференция: "conference",
-      Чемпионат: "other",
-    } as const;
-    const eventLevelMap = {
-      Международный: "international",
-      Всероссийский: "national",
-      Региональный: "regional",
-    } as const;
-
-    const simulatedEvent = createEvent(
-      {
-        title: `Симулированное мероприятие (${type})`,
-        type: eventTypeMap[type],
-        level: eventLevelMap[level],
-        dates: {
-          start: new Date().toISOString().split("T")[0],
-          end: new Date().toISOString().split("T")[0],
-          registrationDeadline: new Date().toISOString().split("T")[0],
-        },
-        format: "online",
-        location: "",
-        description: "Симуляция публикации результатов",
-        website: "",
-        contactEmail: "events@horizon.local",
-        logoUrl: "",
-        bannerUrl: "",
-        status: "published",
-        customFields: [],
-      },
-      "organizer-demo",
-    );
-
-    const created = addSimulatedAchievement({
-      eventId: simulatedEvent.id,
-      title: `Симулированное мероприятие (${type})`,
-      level,
-      date: new Date().toISOString().split("T")[0],
-      result: results[Math.floor(Math.random() * results.length)],
-      studentId: currentUser.id,
-      eventType: type,
-    });
-
-    const beforeAchievements = studentAchievements;
-    const afterAchievements = [...beforeAchievements, created];
-
-    const profile = currentUser.publicProfile;
-    if (!profile.visibleAchievementIds.includes(created.id)) {
-      const nextVisible = [created.id, ...profile.visibleAchievementIds];
-      persistUserInStorage({
-        ...currentUser,
-        publicProfile: {
-          ...profile,
-          visibleAchievementIds: nextVisible.slice(0, 10),
-        },
-      });
-    }
-
-    notifyCandidateSubscribers(
-      currentUser.id,
-      "Новое мероприятие кандидата",
-      `${currentUser.name} добавил новое достижение по мероприятию «${created.title}».`,
-      { markAsAchievementUpdate: true },
-    );
-
-    const newVisibleBadges = getNewVisibleBadgeTitles(
-      currentUser.id,
-      beforeAchievements,
-      afterAchievements,
-    );
-    newVisibleBadges.forEach((badgeTitle) => {
-      notifyCandidateSubscribers(
-        currentUser.id,
-        "Новый открытый значок кандидата",
-        `${currentUser.name} открыл значок «${badgeTitle}».`,
-      );
-    });
-  };
-
   // ── Organizer: CRUD ────────────────────────────────────────────────────────
-  const handleCreateEvent = (data: EventFormPayload) => {
+  const handleCreateEvent = async (data: EventFormPayload) => {
     if (!currentUser || currentUser.role !== "organizer") return;
-    createEvent(data, currentUser.id);
-    setOrganizerView("events");
+    try {
+      await createOrganizerEvent({
+        ...data,
+        logoUrl: data.logoUrl ?? "",
+        bannerUrl: data.bannerUrl ?? "",
+        status: data.status ?? "draft",
+      });
+      const refreshed = await fetchOrganizerEvents();
+      setEvents(refreshed);
+      setOrganizerView("events");
+    } catch (error) {
+      console.warn("Failed to create event.", error);
+    }
   };
 
   const handleEditEvent = (id: string) => {
@@ -1509,15 +1396,32 @@ function AppContent() {
     setOrganizerView("edit-event");
   };
 
-  const handleSaveEdit = (data: EventFormPayload) => {
-    if (!selectedEventId) return;
-    updateEvent(selectedEventId, data);
-    setSelectedEventId(null);
-    setOrganizerView("events");
+  const handleSaveEdit = async (data: EventFormPayload) => {
+    if (!selectedEventId || !currentUser) return;
+    try {
+      await updateOrganizerEvent(selectedEventId, {
+        ...data,
+        logoUrl: data.logoUrl ?? "",
+        bannerUrl: data.bannerUrl ?? "",
+        status: data.status ?? "draft",
+      });
+      const refreshed = await fetchOrganizerEvents();
+      setEvents(refreshed);
+      setSelectedEventId(null);
+      setOrganizerView("events");
+    } catch (error) {
+      console.warn("Failed to update event.", error);
+    }
   };
 
-  const handleDeleteEvent = (id: string) => {
-    deleteEvent(id);
+  const handleDeleteEvent = async (id: string) => {
+    try {
+      await deleteOrganizerEvent(id);
+      const refreshed = await fetchOrganizerEvents();
+      setEvents(refreshed);
+    } catch (error) {
+      console.warn("Failed to delete event.", error);
+    }
   };
 
   const handleUploadResults = (id: string) => {
@@ -1532,7 +1436,7 @@ function AppContent() {
 
   const handleOpenStudentEvent = (
     id: string,
-    returnView: "home" | "achievements",
+    returnView: "home" | "achievements" | "events",
   ) => {
     setSelectedEventId(id);
     setStudentEventReturnView(returnView);
@@ -1544,26 +1448,78 @@ function AppContent() {
     setHrView("event-details");
   };
 
-  const handleSaveHrCandidateNote = (note: string) => {
+  const handleSaveHrCandidateNote = async (note: string) => {
     if (!selectedHrCandidate) return;
-    setHrCandidateNote(selectedHrCandidate.id, note);
-    setHrMetaVersion((prev) => prev + 1);
+    try {
+      await updateHrCandidateNote(selectedHrCandidate.id, note);
+      setSelectedHrCandidateData((prev) =>
+        prev
+          ? {
+              ...prev,
+              note,
+            }
+          : prev,
+      );
+    } catch (error) {
+      console.warn("Failed to update HR note.", error);
+    }
   };
 
-  const handleUpdateHrDefaultInviteComment = (comment: string) => {
+  const handleUpdateHrDefaultInviteComment = async (comment: string) => {
     if (!currentUser || currentUser.role !== "hr") return;
-    setHrDefaultInviteComment(currentUser.id, comment);
-    setHrDefaultInviteCommentState(comment);
+    try {
+      const updated = await updateHrSettings({ defaultInviteComment: comment });
+      setHrDefaultInviteCommentState(updated.defaultInviteComment);
+    } catch (error) {
+      console.warn("Failed to update HR settings.", error);
+    }
   };
 
-  const handleUpdateHrActionConfirmSettings = (
+  const handleUpdateHrActionConfirmSettings = async (
     settings: HrActionConfirmSettings,
   ) => {
     if (!currentUser || currentUser.role !== "hr") return;
-
-    setHrActionConfirmSettings(currentUser.id, settings);
-    setHrActionConfirmSettingsState(settings);
+    try {
+      const updated = await updateHrSettings({
+        confirmRejectAction: settings.confirmReject,
+        confirmArchiveAction: settings.confirmArchive,
+      });
+      setHrActionConfirmSettingsState({
+        confirmReject: updated.confirmRejectAction,
+        confirmArchive: updated.confirmArchiveAction,
+      });
+    } catch (error) {
+      console.warn("Failed to update HR settings.", error);
+    }
   };
+
+  const getCandidateStatusById = useCallback(
+    (candidateId: string): HrFunnelStatus => {
+      const candidate = hrCandidates.find((item) => item.id === candidateId);
+      return (
+        candidate?.candidateStatus ??
+        selectedHrCandidateData?.status ??
+        "Не отслеживается"
+      );
+    },
+    [hrCandidates, selectedHrCandidateData],
+  );
+
+  const updateCandidateStatusState = useCallback(
+    (candidateId: string, status: HrFunnelStatus) => {
+      setHrCandidates((prev) =>
+        prev.map((candidate) =>
+          candidate.id === candidateId
+            ? { ...candidate, candidateStatus: status }
+            : candidate,
+        ),
+      );
+      setSelectedHrCandidateData((prev) =>
+        prev && prev.candidate?.id === candidateId ? { ...prev, status } : prev,
+      );
+    },
+    [],
+  );
 
   const handleMoveHrCandidateStatus = (
     candidateId: string,
@@ -1574,7 +1530,7 @@ function AppContent() {
       return "Операция доступна только для HR.";
     }
 
-    const currentStatus = getHrCandidateStatus(candidateId, "Не отслеживается");
+    const currentStatus = getCandidateStatusById(candidateId);
 
     if (currentStatus === toStatus) {
       return null;
@@ -1584,13 +1540,16 @@ function AppContent() {
       return `Переход из «${currentStatus}» в «${toStatus}» запрещен.`;
     }
 
-    setHrCandidateStatus(candidateId, toStatus, {
-      fromStatus: currentStatus,
-      actorName: currentUser.name,
-      note,
-    });
+    const run = async () => {
+      try {
+        await updateHrCandidateStatus(candidateId, toStatus, note);
+        updateCandidateStatusState(candidateId, toStatus);
+      } catch (error) {
+        console.warn("Failed to update HR candidate status.", error);
+      }
+    };
 
-    setHrMetaVersion((prev) => prev + 1);
+    run();
     return null;
   };
 
@@ -1599,18 +1558,25 @@ function AppContent() {
       return "Добавление в воронку доступно только для HR.";
     }
 
-    const currentStatus = getHrCandidateStatus(candidateId, "Не отслеживается");
+    const currentStatus = getCandidateStatusById(candidateId);
     if (isHrKanbanStatus(currentStatus)) {
       return "Кандидат уже находится в воронке.";
     }
 
-    setHrCandidateStatus(candidateId, "На рассмотрении", {
-      fromStatus: currentStatus,
-      actorName: currentUser.name,
-      note: "Кандидат добавлен в воронку",
-    });
+    const run = async () => {
+      try {
+        await updateHrCandidateStatus(
+          candidateId,
+          "На рассмотрении",
+          "Кандидат добавлен в воронку",
+        );
+        updateCandidateStatusState(candidateId, "На рассмотрении");
+      } catch (error) {
+        console.warn("Failed to add candidate to funnel.", error);
+      }
+    };
 
-    setHrMetaVersion((prev) => prev + 1);
+    run();
     return null;
   };
 
@@ -1619,29 +1585,24 @@ function AppContent() {
       return "Архивирование доступно только для HR.";
     }
 
-    const currentStatus = getHrCandidateStatus(candidateId, "Не отслеживается");
+    const currentStatus = getCandidateStatusById(candidateId);
     if (!isHrKanbanStatus(currentStatus)) {
       return "В архив можно перемещать только кандидатов из воронки.";
     }
 
-    if (currentStatus !== "Отклонён") {
-      if (!canMoveHrCandidateStatus(currentStatus, "Отклонён")) {
-        return `Переход из «${currentStatus}» в «Отклонён» запрещен.`;
+    const run = async () => {
+      try {
+        await archiveHrCandidate(
+          candidateId,
+          "Кандидат добавлен в архив вручную",
+        );
+        updateCandidateStatusState(candidateId, "Отклонён");
+      } catch (error) {
+        console.warn("Failed to archive HR candidate.", error);
       }
+    };
 
-      setHrCandidateStatus(candidateId, "Отклонён", {
-        fromStatus: currentStatus,
-        actorName: currentUser.name,
-        note: "Кандидат перемещен в архив",
-      });
-    }
-
-    archiveHrCandidateManually(candidateId, {
-      actorName: currentUser.name,
-      note: "Кандидат добавлен в архив вручную",
-    });
-
-    setHrMetaVersion((prev) => prev + 1);
+    run();
     return null;
   };
 
@@ -1654,7 +1615,7 @@ function AppContent() {
     }
 
     const candidate =
-      studentAccounts.find((item) => item.id === candidateId) ?? null;
+      hrCandidates.find((item) => item.id === candidateId) ?? null;
     if (!candidate) {
       return "Кандидат не выбран.";
     }
@@ -1663,10 +1624,7 @@ function AppContent() {
       return "Комментарий к приглашению обязателен.";
     }
 
-    const currentStatus = getHrCandidateStatus(
-      candidate.id,
-      "Не отслеживается",
-    );
+    const currentStatus = getCandidateStatusById(candidate.id);
 
     if (!canMoveHrCandidateStatus(currentStatus, "Приглашён")) {
       return `Переход из «${currentStatus}» в «Приглашён» запрещен.`;
@@ -1689,33 +1647,20 @@ function AppContent() {
       return moveError;
     }
 
-    createHrInvitation({
-      candidateId: candidate.id,
-      candidateName: candidate.name,
-      hrId: currentUser.id,
-      hrName: currentUser.name,
-      position: payload.position,
-      message: payload.message,
-      sendNow: payload.sendNow,
-      scheduledAt: payload.scheduledAt,
-    });
+    const run = async () => {
+      try {
+        await createHrCandidateInvitation(candidate.id, {
+          position: payload.position,
+          message: payload.message,
+          sendNow: payload.sendNow,
+          scheduledAt: payload.scheduledAt,
+        });
+      } catch (error) {
+        console.warn("Failed to create HR invitation.", error);
+      }
+    };
 
-    addNotification(
-      currentUser.id,
-      "Приглашение отправлено",
-      `Кандидат ${candidate.name} приглашен на позицию ${payload.position}.`,
-      "message",
-    );
-
-    addNotification(
-      candidate.id,
-      "Приглашение отправлено",
-      payload.message.trim()
-        ? payload.message
-        : `Вам отправлено приглашение на позицию ${payload.position}.`,
-      "message",
-    );
-
+    run();
     return null;
   };
 
@@ -1723,23 +1668,25 @@ function AppContent() {
     if (!currentUser || currentUser.role !== "hr") return;
     if (!selectedHrCandidate) return;
 
-    const result = toggleHrCandidateSubscription(
-      selectedHrCandidate.id,
-      currentUser.id,
-    );
+    const run = async () => {
+      try {
+        const result = await toggleHrCandidateSubscriptionApi(
+          selectedHrCandidate.id,
+        );
+        setSelectedHrCandidateData((prev) =>
+          prev
+            ? {
+                ...prev,
+                isCurrentHrSubscribed: result.isSubscribed,
+              }
+            : prev,
+        );
+      } catch (error) {
+        console.warn("Failed to toggle HR subscription.", error);
+      }
+    };
 
-    addNotification(
-      selectedHrCandidate.id,
-      result.isSubscribed
-        ? "Новый подписчик профиля"
-        : "Подписка на профиль снята",
-      result.isSubscribed
-        ? `HR ${currentUser.name} подписался на ваши обновления.`
-        : `HR ${currentUser.name} больше не подписан на ваши обновления.`,
-      "system",
-    );
-
-    setHrMetaVersion((prev) => prev + 1);
+    run();
   };
 
   const handleStudentInvitationResponse = (
@@ -1750,55 +1697,24 @@ function AppContent() {
       return "Ответ доступен только студенту.";
     }
 
-    const updatedInvitation = respondToHrInvitation(invitationId, response);
-    if (!updatedInvitation) {
-      return "Приглашение уже обработано или не найдено.";
-    }
-
-    const currentStatus = getHrCandidateStatus(
-      currentUser.id,
-      "Не отслеживается",
-    );
-
-    if (response === "accepted") {
-      if (!canMoveHrCandidateStatus(currentStatus, "Ответили на приглашение")) {
-        return `Переход из «${currentStatus}» в «Ответили на приглашение» запрещен.`;
+    const run = async () => {
+      try {
+        const updatedInvitation = await respondToStudentInvitation(
+          invitationId,
+          response,
+          currentUser.id,
+        );
+        setStudentInvitationsState((prev) =>
+          prev.map((item) =>
+            item.id === invitationId ? updatedInvitation : item,
+          ),
+        );
+      } catch (error) {
+        console.warn("Failed to respond to invitation.", error);
       }
+    };
 
-      setHrCandidateStatus(currentUser.id, "Ответили на приглашение", {
-        fromStatus: currentStatus,
-        actorName: currentUser.name,
-        note: `Принято приглашение на позицию «${updatedInvitation.position}»`,
-      });
-    } else {
-      if (!canMoveHrCandidateStatus(currentStatus, "Отклонён")) {
-        return `Переход из «${currentStatus}» в «Отклонён» запрещен.`;
-      }
-
-      setHrCandidateStatus(currentUser.id, "Отклонён", {
-        fromStatus: currentStatus,
-        actorName: currentUser.name,
-        note: `Отклонено приглашение на позицию «${updatedInvitation.position}»`,
-      });
-    }
-
-    addNotification(
-      updatedInvitation.hrId,
-      response === "accepted"
-        ? "Кандидат принял приглашение"
-        : "Кандидат отклонил приглашение",
-      `${currentUser.name} ${response === "accepted" ? "принял" : "отклонил"} приглашение на позицию ${updatedInvitation.position}.`,
-      "message",
-    );
-
-    notifyCandidateSubscribers(
-      currentUser.id,
-      "Ответ кандидата на приглашение",
-      `${currentUser.name} ${response === "accepted" ? "принял" : "отклонил"} одно из HR-приглашений.`,
-      { skipHrId: updatedInvitation.hrId },
-    );
-
-    setHrMetaVersion((prev) => prev + 1);
+    run();
     return null;
   };
 
@@ -1806,7 +1722,7 @@ function AppContent() {
     setSelectedAchievementId(achievementId);
   };
 
-  const handleToggleAchievementVisibility = (
+  const handleToggleAchievementVisibility = async (
     achievementId: string,
     nextVisible: boolean,
   ) => {
@@ -1832,16 +1748,17 @@ function AppContent() {
       return;
     }
 
-    persistUserInStorage({
-      ...currentUser,
-      publicProfile: {
-        ...profile,
+    try {
+      const updated = await updateStudentProfile({
         visibleAchievementIds: nextIds,
-      },
-    });
+      });
+      setCurrentUser(updated);
+    } catch (error) {
+      console.warn("Failed to update achievement visibility.", error);
+    }
   };
 
-  const handleToggleBadgeVisibility = (badgeId: string) => {
+  const handleToggleBadgeVisibility = async (badgeId: string) => {
     if (!currentUser || currentUser.role !== "student") return;
 
     const profile = currentUser.publicProfile;
@@ -1866,13 +1783,14 @@ function AppContent() {
       return;
     }
 
-    persistUserInStorage({
-      ...currentUser,
-      publicProfile: {
-        ...profile,
+    try {
+      const updated = await updateStudentProfile({
         visibleBadgeIds: nextIds,
-      },
-    });
+      });
+      setCurrentUser(updated);
+    } catch (error) {
+      console.warn("Failed to update badge visibility.", error);
+    }
 
     if (!wasVisible) {
       const badgeTitle =
@@ -1885,70 +1803,39 @@ function AppContent() {
     }
   };
 
-  const handlePublishResults = (
+  const handlePublishResults = async (
     eventId: string,
     participants: Participant[],
   ) => {
-    const event = events.find((e) => e.id === eventId);
-    if (!event) return;
-    const newAchievements: Achievement[] = participants.map((p) => ({
-      id: `ach-${Date.now()}-${p.id}`,
-      title: event.title,
-      level: EVENT_LEVEL_TO_ACHIEVEMENT_LEVEL[event.level],
-      date: event.dates.end || event.dates.start,
-      result: p.result,
-      status: "Подтверждено" as const,
-      studentId: p.studentId,
-      studentName: p.studentName,
-      eventId: event.id,
-      eventType: EVENT_TYPE_TO_ACHIEVEMENT_TYPE[event.type],
-      source: "organizer" as const,
-    }));
-    addAchievements(newAchievements);
-    participants.forEach((participant) => {
-      const participantBefore = achievements.filter(
-        (item) => item.studentId === participant.studentId,
-      );
-      const participantAdded = newAchievements.filter(
-        (item) => item.studentId === participant.studentId,
-      );
-      const participantAfter = [...participantBefore, ...participantAdded];
-
-      addNotification(
-        participant.studentId,
-        "Достижение подтверждено организатором",
-        `По мероприятию ${event.title} добавлен результат: ${participant.result}`,
-        "achievement",
-      );
-
-      notifyCandidateSubscribers(
-        participant.studentId,
-        "Новое мероприятие кандидата",
-        `${participant.studentName} получил новое достижение по мероприятию «${event.title}».`,
-        { markAsAchievementUpdate: true },
-      );
-
-      const newVisibleBadges = getNewVisibleBadgeTitles(
-        participant.studentId,
-        participantBefore,
-        participantAfter,
-      );
-      newVisibleBadges.forEach((badgeTitle) => {
-        notifyCandidateSubscribers(
-          participant.studentId,
-          "Новый открытый значок кандидата",
-          `${participant.studentName} открыл значок «${badgeTitle}».`,
-        );
-      });
-    });
-    applyResults(eventId);
-    setSelectedEventId(null);
-    setOrganizerView("events");
+    if (!currentUser || currentUser.role !== "organizer") return;
+    try {
+      await publishOrganizerResults(eventId, participants);
+      const refreshed = await fetchOrganizerEvents();
+      setEvents(refreshed);
+      setSelectedEventId(null);
+      setOrganizerView("events");
+    } catch (error) {
+      console.warn("Failed to publish results.", error);
+    }
   };
 
-  const handleToggleApplication = (eventId: string) => {
+  const handleToggleApplication = async (eventId: string) => {
     if (!currentUser || currentUser.role !== "student") return;
-    toggleApplication(eventId, currentUser.id, currentUser.name);
+    const isApplied = studentAppliedEventIds.includes(eventId);
+
+    try {
+      if (isApplied) {
+        await unregisterStudentForEvent(eventId);
+        setStudentAppliedEventIds((prev) =>
+          prev.filter((id) => id !== eventId),
+        );
+      } else {
+        await registerStudentForEvent(eventId);
+        setStudentAppliedEventIds((prev) => [...prev, eventId]);
+      }
+    } catch (error) {
+      console.warn("Failed to update event application.", error);
+    }
   };
 
   const handleOpenHrCandidateProfile = useCallback(
@@ -1958,8 +1845,46 @@ function AppContent() {
     ) => {
       if (!currentUser || currentUser.role !== "hr") return;
 
-      clearHrCandidateAchievementUpdate(currentUser.id, candidateId);
-      setHrMetaVersion((prev) => prev + 1);
+      const run = async () => {
+        try {
+          const details = await fetchHrCandidateDetails(candidateId);
+          const subscribers = details.subscribers.reduce<
+            SubscriberPreviewItem[]
+          >((acc, item) => {
+            const firstName = item.firstName ?? "";
+            const lastName = item.lastName ?? "";
+            const name =
+              [lastName, firstName].filter(Boolean).join(" ").trim() ||
+              item.companyName ||
+              item.email ||
+              "HR";
+            const id = item.hrId ?? item.id ?? item.email ?? "";
+            if (!id) return acc;
+            acc.push({
+              id,
+              name,
+              email: item.email ?? "",
+            });
+            return acc;
+          }, []);
+          setSelectedHrCandidateData({
+            candidate: details.candidate,
+            achievements: details.achievements,
+            status: details.status,
+            statusHistory: details.statusHistory,
+            note: details.note,
+            subscribers,
+            isCurrentHrSubscribed: subscribers.some(
+              (item) => item.id === currentUser.id,
+            ),
+          });
+        } catch (error) {
+          console.warn("Failed to load HR candidate details.", error);
+          setSelectedHrCandidateData(null);
+        }
+      };
+
+      run();
       setSelectedHrCandidateId(candidateId);
       setSelectedHrProfileId(null);
       setHrCandidateBackView(backView);
@@ -1967,6 +1892,38 @@ function AppContent() {
     },
     [currentUser],
   );
+
+  useEffect(() => {
+    if (!currentUser || currentUser.role !== "organizer") {
+      setApplications([]);
+      return;
+    }
+    if (!selectedEventId) {
+      setApplications([]);
+      return;
+    }
+
+    let cancelled = false;
+    const loadParticipants = async () => {
+      try {
+        const items = await fetchOrganizerEventParticipants(selectedEventId);
+        if (!cancelled) {
+          setApplications(items);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setApplications([]);
+        }
+        console.warn("Failed to load event participants.", error);
+      }
+    };
+
+    loadParticipants();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser, selectedEventId, setApplications]);
 
   const selectedEvent = events.find((e) => e.id === selectedEventId);
   const selectedAchievement = selectedAchievementId
@@ -1980,19 +1937,11 @@ function AppContent() {
     : [];
   const isCurrentStudentApplied =
     currentUser?.role === "student" && selectedEventId
-      ? applications.some(
-          (item) =>
-            item.eventId === selectedEventId &&
-            item.studentId === currentUser.id,
-        )
+      ? studentAppliedEventIds.includes(selectedEventId)
       : false;
 
   const organizerOptions = useMemo(() => {
     const map = new Map<string, { label: string; email: string }>();
-
-    organizerAccountOptions.forEach((option) => {
-      map.set(option.id, { label: option.label, email: option.email });
-    });
 
     events.forEach((event) => {
       if (!map.has(event.organizerId)) {
@@ -2007,93 +1956,65 @@ function AppContent() {
       label: value.label,
       email: value.email,
     }));
-  }, [events, organizerAccountOptions]);
+  }, [events]);
 
   const organizerVerificationRequests =
-    currentUser?.role === "organizer"
-      ? achievements.filter(
-          (achievement) =>
-            achievement.status === "На проверке" &&
-            achievement.requestedOrganizerId === currentUser.id,
-        )
-      : [];
+    currentUser?.role === "organizer" ? achievements : [];
 
   const handleReviewRequest = (
     achievementId: string,
     decision: "Подтверждено" | "Отклонено",
     comment?: string,
   ) => {
-    const targetAchievement = achievements.find(
-      (item) => item.id === achievementId,
-    );
-    reviewAchievementRequest(achievementId, decision, comment);
+    if (!currentUser || currentUser.role !== "organizer") return;
 
-    if (
-      decision === "Подтверждено" &&
-      targetAchievement?.eventId &&
-      targetAchievement.studentId
-    ) {
-      if (currentUser?.role === "organizer") {
-        assignEventOrganizer(
-          targetAchievement.eventId,
-          currentUser.id,
-          currentUser.email,
-        );
+    const run = async () => {
+      try {
+        if (decision === "Подтверждено") {
+          await verifyAchievementRequest(achievementId, comment);
+        } else {
+          await rejectAchievementRequest(achievementId, comment);
+        }
+
+        const refreshed = await fetchOrganizerVerificationRequests();
+        setAchievements(refreshed);
+      } catch (error) {
+        console.warn("Failed to review achievement request.", error);
       }
+    };
 
-      ensureApplication(
-        targetAchievement.eventId,
-        targetAchievement.studentId,
-        targetAchievement.studentName || targetAchievement.studentId,
-      );
-    }
-
-    if (targetAchievement) {
-      addNotification(
-        targetAchievement.studentId,
-        decision === "Подтверждено"
-          ? "Запрос на достижение подтвержден"
-          : "Запрос на достижение отклонен",
-        comment?.trim()
-          ? comment
-          : decision === "Подтверждено"
-            ? `Достижение ${targetAchievement.title} подтверждено.`
-            : `Достижение ${targetAchievement.title} отклонено.`,
-        "achievement",
-      );
-
-      if (decision === "Подтверждено") {
-        const studentBefore = achievements.filter(
-          (item) => item.studentId === targetAchievement.studentId,
-        );
-        const studentAfter = studentBefore.map((item) =>
-          item.id === achievementId
-            ? { ...item, status: "Подтверждено" as const }
-            : item,
-        );
-
-        notifyCandidateSubscribers(
-          targetAchievement.studentId,
-          "Новое мероприятие кандидата",
-          `${targetAchievement.studentName || "Кандидат"} получил подтверждение по мероприятию «${targetAchievement.title}».`,
-          { markAsAchievementUpdate: true },
-        );
-
-        const newVisibleBadges = getNewVisibleBadgeTitles(
-          targetAchievement.studentId,
-          studentBefore,
-          studentAfter,
-        );
-        newVisibleBadges.forEach((badgeTitle) => {
-          notifyCandidateSubscribers(
-            targetAchievement.studentId,
-            "Новый открытый значок кандидата",
-            `${targetAchievement.studentName || "Кандидат"} открыл значок «${badgeTitle}».`,
-          );
-        });
-      }
-    }
+    run();
   };
+
+  useEffect(() => {
+    if (!selectedEvent?.organizerId) {
+      setSelectedEventOrganizerInfo(null);
+      return;
+    }
+
+    let cancelled = false;
+    const loadOrganizer = async () => {
+      try {
+        const profile = await fetchPublicOrganizerProfile(
+          selectedEvent.organizerId,
+        );
+        if (!cancelled) {
+          setSelectedEventOrganizerInfo(profile);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setSelectedEventOrganizerInfo(null);
+        }
+        console.warn("Failed to load organizer profile.", error);
+      }
+    };
+
+    loadOrganizer();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedEvent?.organizerId]);
 
   if (!isAuthResolved) {
     return <div className="min-h-screen bg-background" />;
@@ -2103,34 +2024,24 @@ function AppContent() {
     return <RegisterForm onRegister={handleRegister} onLogin={handleLogin} />;
   }
 
-  const eventOrganizerAccount = selectedEvent
-    ? parseStoredAccounts().find(
-        (item) => item.user.id === selectedEvent.organizerId,
-      )
-    : null;
   const eventOrganizerInfo = selectedEvent
-    ? {
-        organizationName:
-          eventOrganizerAccount?.user.organizerProfile?.organizationName ||
-          eventOrganizerAccount?.user.name ||
-          "Организатор",
-        shortName:
-          eventOrganizerAccount?.user.organizerProfile?.shortName || undefined,
-        organizationType:
-          eventOrganizerAccount?.user.organizerProfile?.organizationType ||
-          undefined,
-        description:
-          eventOrganizerAccount?.user.organizerProfile?.description ||
-          undefined,
-        website:
-          eventOrganizerAccount?.user.organizerProfile?.website || undefined,
-        contactEmail:
-          eventOrganizerAccount?.user.organizerProfile?.contactEmail ||
-          selectedEvent.contactEmail,
-        contactPhone:
-          eventOrganizerAccount?.user.organizerProfile?.contactPhone ||
-          undefined,
-      }
+    ? selectedEventOrganizerInfo
+      ? {
+          organizationName: selectedEventOrganizerInfo.organizationName,
+          shortName: selectedEventOrganizerInfo.shortName || undefined,
+          organizationType:
+            selectedEventOrganizerInfo.organizationType || undefined,
+          description: selectedEventOrganizerInfo.description || undefined,
+          website: selectedEventOrganizerInfo.website || undefined,
+          contactEmail:
+            selectedEventOrganizerInfo.contactEmail ||
+            selectedEvent.contactEmail,
+          contactPhone: selectedEventOrganizerInfo.contactPhone || undefined,
+        }
+      : {
+          organizationName: "Организатор",
+          contactEmail: selectedEvent.contactEmail,
+        }
     : undefined;
 
   const isStudentRole = role === "student";
@@ -2155,7 +2066,12 @@ function AppContent() {
         studentView={studentView}
         organizerView={organizerView}
         hrView={hrView}
-        onStudentViewChange={setStudentView}
+        onStudentViewChange={(view) => {
+          if (view === "events") {
+            setStudentEventsTab("table");
+          }
+          setStudentView(view);
+        }}
         onOrganizerViewChange={setOrganizerView}
         onHrViewChange={setHrView}
       />
@@ -2180,7 +2096,7 @@ function AppContent() {
               {studentView === "home" && (
                 <HomePage
                   achievements={studentAchievements}
-                  events={events}
+                  recommendedEvents={recommendedStudentEvents}
                   user={currentUser}
                   subscribers={studentSubscribers}
                   onOpenSubscribers={() => {
@@ -2192,6 +2108,21 @@ function AppContent() {
                     handleOpenStudentEvent(eventId, "home")
                   }
                   onOpenAchievement={handleOpenAchievement}
+                  onOpenRecommendedEvents={() => {
+                    setStudentEventsTab("recommended");
+                    setStudentView("events");
+                  }}
+                />
+              )}
+              {studentView === "events" && (
+                <StudentEventsPage
+                  events={availableStudentEvents}
+                  recommendedEvents={recommendedStudentEvents}
+                  activeTab={studentEventsTab}
+                  onTabChange={setStudentEventsTab}
+                  onOpenEvent={(eventId) =>
+                    handleOpenStudentEvent(eventId, "events")
+                  }
                 />
               )}
               {studentView === "dashboards" && (
@@ -2208,7 +2139,6 @@ function AppContent() {
                   onCreateAchievement={() =>
                     setStudentView("create-achievement")
                   }
-                  onSimulateResult={handleSimulateResults}
                   achievementNotifications={studentAchievementNotifications}
                   visibleBadgeIds={currentUser.publicProfile.visibleBadgeIds.filter(
                     (id) => unlockedBadgeIds.has(id),
@@ -2252,91 +2182,85 @@ function AppContent() {
                       (item) => item.id === payload.requestedOrganizerId,
                     );
 
-                    const targetEvent = payload.eventNotInList
-                      ? payload.newEvent
-                        ? createEvent(
-                            {
-                              title: payload.newEvent.title,
-                              type: ACHIEVEMENT_EVENT_TO_ORGANIZER_TYPE[
-                                payload.eventType
-                              ],
-                              level:
-                                ACHIEVEMENT_LEVEL_TO_ORGANIZER_LEVEL[
-                                  payload.level
-                                ],
-                              dates: {
-                                start: payload.date,
-                                end: payload.date,
-                                registrationDeadline:
-                                  payload.newEvent.registrationDeadline ||
-                                  payload.date,
-                              },
-                              format: payload.newEvent.format,
-                              location: payload.newEvent.location ?? "",
-                              description: payload.newEvent.description,
-                              website: payload.newEvent.website ?? "",
-                              contactEmail:
-                                payload.newEvent.contactEmail ||
-                                selectedOrganizer?.email ||
-                                "events@horizon.local",
-                              logoUrl: "",
-                              bannerUrl: "",
-                              status: "draft",
-                              customFields: [],
-                            },
-                            payload.requestedOrganizerId,
-                          )
-                        : null
-                      : (events.find((event) => event.id === payload.eventId) ??
-                        null);
-
-                    if (!targetEvent) {
-                      addNotification(
-                        currentUser.id,
-                        "Ошибка запроса",
-                        "Не удалось определить мероприятие для достижения.",
-                        "system",
+                    const descriptionParts: string[] = [];
+                    if (payload.requestComment?.trim()) {
+                      descriptionParts.push(payload.requestComment.trim());
+                    }
+                    if (payload.eventNotInList && payload.newEvent) {
+                      descriptionParts.push(
+                        `Мероприятие вне списка: ${payload.newEvent.title}. ${payload.newEvent.description}`,
                       );
-                      return;
+                      if (payload.newEvent.location) {
+                        descriptionParts.push(
+                          `Локация: ${payload.newEvent.location}`,
+                        );
+                      }
+                      if (payload.newEvent.registrationDeadline) {
+                        descriptionParts.push(
+                          `Дедлайн регистрации: ${payload.newEvent.registrationDeadline}`,
+                        );
+                      }
+                      if (payload.newEvent.website) {
+                        descriptionParts.push(
+                          `Сайт: ${payload.newEvent.website}`,
+                        );
+                      }
+                      if (payload.newEvent.contactEmail) {
+                        descriptionParts.push(
+                          `Контакт: ${payload.newEvent.contactEmail}`,
+                        );
+                      }
                     }
 
-                    const created = createAchievementRequest(
-                      currentUser.id,
-                      currentUser.name,
-                      {
-                        ...payload,
-                        eventId: targetEvent.id,
-                        title: payload.title || targetEvent.title,
-                        eventType:
-                          payload.eventType ||
-                          EVENT_TYPE_TO_ACHIEVEMENT_TYPE[targetEvent.type],
-                        eventNotInList: payload.eventNotInList,
-                        requestComment: payload.requestComment,
-                      },
-                    );
+                    const run = async () => {
+                      try {
+                        const created = await createStudentAchievement({
+                          title: payload.title,
+                          type: payload.eventType,
+                          level: payload.level,
+                          date: payload.date,
+                          result: payload.result,
+                          eventId: payload.eventNotInList
+                            ? undefined
+                            : payload.eventId,
+                          organizerName: payload.eventNotInList
+                            ? selectedOrganizer?.label || ""
+                            : undefined,
+                          description: descriptionParts.join("\n"),
+                        });
 
-                    const profile = currentUser.publicProfile;
-                    const nextVisible = [
-                      created.id,
-                      ...profile.visibleAchievementIds,
-                    ].slice(0, 10);
-                    persistUserInStorage({
-                      ...currentUser,
-                      publicProfile: {
-                        ...profile,
-                        visibleAchievementIds: nextVisible,
-                      },
-                    });
+                        const refreshed = await fetchStudentAchievements(
+                          currentUser.id,
+                        );
+                        setAchievements(refreshed);
 
-                    addNotification(
-                      payload.requestedOrganizerId,
-                      "Новый запрос на подтверждение",
-                      payload.eventNotInList
-                        ? `${currentUser.name} отправил запрос на достижение ${payload.title}. Мероприятие добавлено вне списка.`
-                        : `${currentUser.name} отправил запрос на достижение ${payload.title}`,
-                      "achievement",
-                    );
-                    setStudentView("achievements");
+                        const profile = currentUser.publicProfile;
+                        if (
+                          !profile.visibleAchievementIds.includes(created.id)
+                        ) {
+                          const nextVisible = [
+                            created.id,
+                            ...profile.visibleAchievementIds,
+                          ].slice(0, 10);
+                          const updated = await updateStudentProfile({
+                            visibleAchievementIds: nextVisible,
+                          });
+                          setCurrentUser(updated);
+                        }
+
+                        setStudentView("achievements");
+                      } catch (error) {
+                        console.warn("Failed to create achievement.", error);
+                        addNotification(
+                          currentUser.id,
+                          "Ошибка запроса",
+                          "Не удалось отправить запрос на достижение.",
+                          "system",
+                        );
+                      }
+                    };
+
+                    run();
                   }}
                 />
               )}
@@ -2497,6 +2421,7 @@ function AppContent() {
                   publishedEventsCount={hrPublishedEventsCount}
                   defaultInviteComment={hrDefaultInviteComment}
                   actionConfirmSettings={hrActionConfirmSettings}
+                  onSaveCandidateNote={handleSaveHrCandidateNote}
                   onOpenCandidate={(candidateId) =>
                     handleOpenHrCandidateProfile(candidateId, "dashboards")
                   }
@@ -2656,30 +2581,6 @@ function AppContent() {
 }
 
 export default function App() {
-  const [isBootstrapReady, setIsBootstrapReady] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    syncBackendBootstrapIfNeeded()
-      .catch((error) => {
-        console.warn("Backend bootstrap failed.", error);
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setIsBootstrapReady(true);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  if (!isBootstrapReady) {
-    return <div className="min-h-screen bg-background" />;
-  }
-
   return (
     <EventsStoreProvider>
       <AchievementsStoreProvider>

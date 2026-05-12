@@ -29,7 +29,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   SubscriberPreviewItem,
   SubscribersPreviewCard,
-} from "@/components/subscribers-preview-card";
+} from "@/components/shared/subscribers-preview-card";
 
 export interface HrInvitationPayload {
   position: string;
@@ -113,26 +113,14 @@ export function HrCandidateProfilePage({
     setMessage(defaultInviteComment);
   }, [savedNote, candidate?.id, defaultInviteComment]);
 
-  if (!candidate) {
-    return (
-      <div className="space-y-4">
-        <h2 className="text-3xl font-bold text-foreground">
-          Профиль кандидата
-        </h2>
-        <div className="bg-card border border-border rounded-xl py-12 text-center text-muted-foreground">
-          Кандидат не выбран. Перейдите в поиск кандидатов и откройте профиль.
-        </div>
-      </div>
-    );
-  }
-
   const eventById = useMemo(
     () => new Map(events.map((event) => [event.id, event])),
     [events],
   );
 
-  const allowedAchievementIds = new Set(
-    candidate.publicProfile.visibleAchievementIds,
+  const allowedAchievementIds = useMemo(
+    () => new Set(candidate?.publicProfile.visibleAchievementIds ?? []),
+    [candidate?.publicProfile.visibleAchievementIds],
   );
 
   const visibleAchievements = useMemo(
@@ -157,11 +145,24 @@ export function HrCandidateProfilePage({
 
   const visibleBadges = useMemo(
     () =>
-      candidate.publicProfile.visibleBadgeIds
+      (candidate?.publicProfile.visibleBadgeIds ?? [])
         .map((badgeId) => visibleBadgeMap.get(badgeId) ?? null)
         .filter((badge): badge is NonNullable<typeof badge> => badge !== null),
-    [candidate.publicProfile.visibleBadgeIds, visibleBadgeMap],
+    [candidate?.publicProfile.visibleBadgeIds, visibleBadgeMap],
   );
+
+  if (!candidate) {
+    return (
+      <div className="space-y-4">
+        <h2 className="text-3xl font-bold text-foreground">
+          Профиль кандидата
+        </h2>
+        <div className="bg-card border border-border rounded-xl py-12 text-center text-muted-foreground">
+          Кандидат не выбран. Перейдите в поиск кандидатов и откройте профиль.
+        </div>
+      </div>
+    );
+  }
   const canAddToFunnel = candidateStatus === "Не отслеживается";
   const canInvite =
     candidateStatus === "На рассмотрении" || candidateStatus === "Интересует";

@@ -5,7 +5,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { CircleHelp } from "lucide-react";
-import { StatusWindowSelect } from "@/components/hr-dashboards/status-window-select";
+import { StatusWindowSelect } from "@/components/hr/dashboards/status-window-select";
 import {
   Tooltip,
   TooltipContent,
@@ -14,7 +14,7 @@ import {
 import {
   ArchiveCandidate,
   StatusUpdateWindow,
-} from "@/components/hr-dashboards/types";
+} from "@/components/hr/dashboards/types";
 
 function formatDate(value: string): string {
   const timestamp = new Date(value).getTime();

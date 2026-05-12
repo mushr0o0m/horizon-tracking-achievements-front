@@ -1,3 +1,7 @@
+s@s.s
+12345678
+
+
 # Horizon Tracking Achievements Front
 
 Frontend-приложение для учета достижений студентов и работы организаторов мероприятий.

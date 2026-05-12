@@ -232,6 +232,7 @@ export interface Participant {
 export type UserRole = "student" | "organizer" | "hr";
 export type StudentView =
   | "home"
+  | "events"
   | "dashboards"
   | "achievements"
   | "invitations"

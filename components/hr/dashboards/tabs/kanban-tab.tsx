@@ -9,14 +9,14 @@ import {
 import {
   COLUMN_DESCRIPTIONS,
   COLUMN_THEME,
-} from "@/components/hr-dashboards/constants";
+} from "@/components/hr/dashboards/constants";
 import {
   FunnelCandidate,
   FunnelData,
   KanbanStatus,
   StatusUpdateWindow,
-} from "@/components/hr-dashboards/types";
-import { StatusWindowSelect } from "@/components/hr-dashboards/status-window-select";
+} from "@/components/hr/dashboards/types";
+import { StatusWindowSelect } from "@/components/hr/dashboards/status-window-select";
 
 interface HrKanbanTabProps {
   statusUpdateWindowDays: StatusUpdateWindow;

@@ -5,8 +5,12 @@ import {
   ArchiveCandidate,
   StatusCounts,
   StatusUpdateWindow,
-} from "@/components/hr-dashboards/types";
-import { buildDashboardSnapshot } from "@/components/hr-dashboards/utils";
+} from "@/components/hr/dashboards/types";
+import {
+  fetchHrArchive,
+  fetchHrDashboard,
+  fetchHrRecentActions,
+} from "@/lib/backend-api";
 
 function buildEmptyFunnelData(): FunnelData {
   return {
@@ -28,10 +32,7 @@ function buildEmptyStatusCounts(): StatusCounts {
   };
 }
 
-export function useHrDashboardData(
-  statusUpdateWindowDays: StatusUpdateWindow,
-  hrId?: string,
-) {
+export function useHrDashboardData(statusUpdateWindowDays: StatusUpdateWindow) {
   const [funnelData, setFunnelData] =
     useState<FunnelData>(buildEmptyFunnelData);
   const [archiveCandidates, setArchiveCandidates] = useState<
@@ -45,20 +46,33 @@ export function useHrDashboardData(
     byStatus: buildEmptyStatusCounts(),
   });
 
-  const syncDashboardData = useCallback(() => {
-    const snapshot = buildDashboardSnapshot(statusUpdateWindowDays, hrId);
-    setFunnelData(snapshot.funnelData);
-    setArchiveCandidates(snapshot.archiveCandidates);
-    setRecentActions(snapshot.recentActions);
-    setMetrics(snapshot.metrics);
-  }, [statusUpdateWindowDays, hrId]);
+  const syncDashboardData = useCallback(async () => {
+    try {
+      const [dashboard, archive, recent] = await Promise.all([
+        fetchHrDashboard(statusUpdateWindowDays),
+        fetchHrArchive(statusUpdateWindowDays),
+        fetchHrRecentActions({ days: statusUpdateWindowDays }),
+      ]);
+      setFunnelData(dashboard.funnelData);
+      setArchiveCandidates(archive);
+      setRecentActions(recent);
+      setMetrics(dashboard.metrics);
+    } catch (error) {
+      console.warn("Failed to load HR dashboard data.", error);
+      setFunnelData(buildEmptyFunnelData());
+      setArchiveCandidates([]);
+      setRecentActions([]);
+      setMetrics({
+        inFunnelCount: 0,
+        activeCount: 0,
+        confirmedAchievementsCount: 0,
+        byStatus: buildEmptyStatusCounts(),
+      });
+    }
+  }, [statusUpdateWindowDays]);
 
   useEffect(() => {
-    syncDashboardData();
-
-    const onStorage = () => syncDashboardData();
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    void syncDashboardData();
   }, [syncDashboardData]);
 
   return {

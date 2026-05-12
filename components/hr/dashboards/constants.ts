@@ -1,4 +1,4 @@
-import { KanbanStatus, RecentActionType, StatusUpdateWindow } from "@/components/hr-dashboards/types";
+import { KanbanStatus, RecentActionType, StatusUpdateWindow } from "@/components/hr/dashboards/types";
 
 export const KANBAN_STATUSES: KanbanStatus[] = [
   "На рассмотрении",
@@ -76,7 +76,4 @@ export const RECENT_ACTION_FILTERS: Array<{ id: RecentActionType; label: string 
   { id: "notes", label: "Заметки" },
 ];
 
-export const AUTH_USERS_KEY = "hta.auth.users";
-export const ACHIEVEMENTS_STORAGE_KEY = "hta.store.achievements";
-export const HR_INVITATIONS_STORAGE_KEY = "hta.store.hr.invitations";
 export const THIRTY_DAYS_IN_MS = 30 * 24 * 60 * 60 * 1000;

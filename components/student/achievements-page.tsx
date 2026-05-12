@@ -8,7 +8,6 @@ import {
   ChevronUp,
   ChevronDown,
   Lock,
-  Sparkles,
   Eye,
   EyeOff,
 } from "lucide-react";
@@ -21,7 +20,6 @@ interface AchievementsPageProps {
   onOpenEvent: (eventId: string) => void;
   onOpenAchievement: (achievementId: string) => void;
   onCreateAchievement: () => void;
-  onSimulateResult: () => void;
   achievementNotifications: AppNotification[];
   visibleBadgeIds: string[];
   onToggleBadgeVisibility: (badgeId: string) => void;
@@ -46,7 +44,6 @@ export function AchievementsPage({
   onOpenEvent,
   onOpenAchievement,
   onCreateAchievement,
-  onSimulateResult,
   achievementNotifications,
   visibleBadgeIds,
   onToggleBadgeVisibility,
@@ -143,14 +140,6 @@ export function AchievementsPage({
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={onSimulateResult}
-              title="Симулировать публикацию результатов"
-              aria-label="Симулировать публикацию результатов"
-              className="rounded-lg border border-white/65 bg-white/70 p-2.5 text-sky-700 transition-colors hover:bg-white">
-              <Sparkles className="w-4 h-4" />
-            </button>
             <button
               type="button"
               onClick={onCreateAchievement}

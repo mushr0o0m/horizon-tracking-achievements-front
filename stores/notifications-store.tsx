@@ -2,7 +2,6 @@
 
 import {
   createContext,
-  useEffect,
   ReactNode,
   useCallback,
   useContext,
@@ -11,13 +10,12 @@ import {
 } from "react";
 import { AppNotification, AppNotificationType } from "@/lib/types";
 
-const NOTIFICATIONS_STORAGE_KEY = "hta.store.notifications";
-
 interface NotificationsState {
   notifications: AppNotification[];
 }
 
 type NotificationsAction =
+  | { type: "SET_ALL"; payload: AppNotification[] }
   | {
       type: "ADD";
       payload: {
@@ -46,6 +44,10 @@ function notificationsReducer(
   action: NotificationsAction,
 ): NotificationsState {
   switch (action.type) {
+    case "SET_ALL":
+      return {
+        notifications: [...action.payload],
+      };
     case "ADD":
       return {
         notifications: [
@@ -85,6 +87,7 @@ function notificationsReducer(
 
 interface NotificationsStoreContextValue {
   notifications: AppNotification[];
+  setNotifications: (items: AppNotification[]) => void;
   addNotification: (
     userId: string,
     title: string,
@@ -99,36 +102,18 @@ interface NotificationsStoreContextValue {
 const NotificationsStoreContext =
   createContext<NotificationsStoreContextValue | null>(null);
 
-function getInitialNotifications(): AppNotification[] {
-  if (typeof window === "undefined") {
-    return [];
-  }
-
-  try {
-    const raw = localStorage.getItem(NOTIFICATIONS_STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as AppNotification[]) : [];
-  } catch {
-    return [];
-  }
-}
-
 export function NotificationsStoreProvider({
   children,
 }: {
   children: ReactNode;
 }) {
   const [state, dispatch] = useReducer(notificationsReducer, {
-    notifications: getInitialNotifications(),
+    notifications: [],
   });
 
-  useEffect(() => {
-    localStorage.setItem(
-      NOTIFICATIONS_STORAGE_KEY,
-      JSON.stringify(state.notifications),
-    );
-  }, [state.notifications]);
+  const setNotifications = useCallback((items: AppNotification[]) => {
+    dispatch({ type: "SET_ALL", payload: items });
+  }, []);
 
   const addNotification = useCallback(
     (
@@ -163,11 +148,18 @@ export function NotificationsStoreProvider({
   const value = useMemo(
     () => ({
       notifications: state.notifications,
+      setNotifications,
       addNotification,
       markRead,
       markAllRead,
     }),
-    [state.notifications, addNotification, markRead, markAllRead],
+    [
+      state.notifications,
+      setNotifications,
+      addNotification,
+      markRead,
+      markAllRead,
+    ],
   );
 
   return (

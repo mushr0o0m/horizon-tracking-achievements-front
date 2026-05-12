@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowLeft, Building2, Mail, UserRound } from "lucide-react";
-import { SubscriberPreviewItem } from "@/components/subscribers-preview-card";
+import { SubscriberPreviewItem } from "@/components/shared/subscribers-preview-card";
 
 interface SubscribersPageProps {
   title: string;

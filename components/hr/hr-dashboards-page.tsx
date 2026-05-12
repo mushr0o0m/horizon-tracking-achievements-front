@@ -3,19 +3,19 @@
 import { useEffect, useMemo, useState } from "react";
 import { CircleHelp, TriangleAlert } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { HrFunnelStatus, setHrCandidateNote } from "@/lib/hr-funnel";
-import { KANBAN_STATUSES } from "@/components/hr-dashboards/constants";
+import { HrFunnelStatus } from "@/lib/hr-funnel";
+import { KANBAN_STATUSES } from "@/components/hr/dashboards/constants";
 import {
   FunnelCandidate,
   KanbanStatus,
   StatusUpdateWindow,
-} from "@/components/hr-dashboards/types";
-import { HrKanbanTab } from "@/components/hr-dashboards/tabs/kanban-tab";
-import { HrSummaryTab } from "@/components/hr-dashboards/tabs/summary-tab";
-import { HrQuickSearchTab } from "@/components/hr-dashboards/tabs/quick-search-tab";
-import { HrRecentActionsTab } from "@/components/hr-dashboards/tabs/recent-actions-tab";
-import { HrArchiveTab } from "@/components/hr-dashboards/tabs/archive-tab";
-import { CandidateModal } from "@/components/hr-dashboards/candidate-modal";
+} from "@/components/hr/dashboards/types";
+import { HrKanbanTab } from "@/components/hr/dashboards/tabs/kanban-tab";
+import { HrSummaryTab } from "@/components/hr/dashboards/tabs/summary-tab";
+import { HrQuickSearchTab } from "@/components/hr/dashboards/tabs/quick-search-tab";
+import { HrRecentActionsTab } from "@/components/hr/dashboards/tabs/recent-actions-tab";
+import { HrArchiveTab } from "@/components/hr/dashboards/tabs/archive-tab";
+import { CandidateModal } from "@/components/hr/dashboards/candidate-modal";
 import {
   Tooltip,
   TooltipContent,
@@ -40,6 +40,7 @@ interface HrDashboardsPageProps {
   hrId: string;
   publishedEventsCount: number;
   defaultInviteComment: string;
+  onSaveCandidateNote: (candidateId: string, note: string) => Promise<void>;
   onOpenCandidate: (candidateId: string) => void;
   onChangeCandidateStatus: (
     candidateId: string,
@@ -62,6 +63,7 @@ export function HrDashboardsPage({
   hrId,
   publishedEventsCount,
   defaultInviteComment,
+  onSaveCandidateNote,
   onOpenCandidate,
   onChangeCandidateStatus,
   onInviteCandidate,
@@ -79,7 +81,7 @@ export function HrDashboardsPage({
     recentActions,
     metrics,
     syncDashboardData,
-  } = useHrDashboardData(statusUpdateWindowDays, hrId);
+  } = useHrDashboardData(statusUpdateWindowDays);
 
   const {
     searchQuery,
@@ -179,23 +181,27 @@ export function HrDashboardsPage({
     syncDashboardData();
   };
 
-  const handleSaveModalNote = () => {
+  const handleSaveModalNote = async () => {
     if (!modalCandidate) return;
-
-    setHrCandidateNote(modalCandidate.candidate.id, modalNoteDraft);
-    setModalNoteMessage("Заметка сохранена.");
-    setModalCandidate((prev) =>
-      prev
-        ? {
-            ...prev,
-            candidate: {
-              ...prev.candidate,
-              note: modalNoteDraft,
-            },
-          }
-        : prev,
-    );
-    syncDashboardData();
+    try {
+      await onSaveCandidateNote(modalCandidate.candidate.id, modalNoteDraft);
+      setModalNoteMessage("Заметка сохранена.");
+      setModalCandidate((prev) =>
+        prev
+          ? {
+              ...prev,
+              candidate: {
+                ...prev.candidate,
+                note: modalNoteDraft,
+              },
+            }
+          : prev,
+      );
+      syncDashboardData();
+    } catch (error) {
+      console.warn("Failed to save HR note.", error);
+      setModalNoteMessage("Не удалось сохранить заметку.");
+    }
   };
 
   const archiveCandidateFromModal = () => {

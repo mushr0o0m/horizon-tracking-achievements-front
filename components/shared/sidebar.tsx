@@ -25,6 +25,7 @@ interface SidebarProps {
 
 const STUDENT_ITEMS = [
   { id: "home" as StudentView, label: "Главная", icon: Home },
+  { id: "events" as StudentView, label: "Мероприятия", icon: CalendarDays },
   { id: "dashboards" as StudentView, label: "Дашборды", icon: BarChart3 },
   { id: "achievements" as StudentView, label: "Достижения", icon: Award },
   { id: "invitations" as StudentView, label: "Приглашения", icon: MailOpen },
