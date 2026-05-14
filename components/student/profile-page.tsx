@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import {
   Achievement,
   AuthUser,
@@ -27,6 +28,8 @@ import {
   SubscriberPreviewItem,
   SubscribersPreviewCard,
 } from "@/components/shared/subscribers-preview-card";
+import { updateStudentProfile } from "@/lib/backend-api";
+import { EMAIL_REGEX } from "@/app/shared/common/validation";
 
 interface ProfilePageProps {
   user: AuthUser;
@@ -39,23 +42,16 @@ interface ProfilePageProps {
     activityIndex: number;
     percentile: number;
   };
-  onUpdateEmail: (
-    newEmail: string,
-    currentPassword: string,
-  ) => string | null | Promise<string | null>;
-  onUpdatePhone: (phone: string) => string | null | Promise<string | null>;
+  setCurrentUser: Dispatch<SetStateAction<AuthUser | null>>;
   onChangePassword: (
     currentPassword: string,
     newPassword: string,
   ) => string | null | Promise<string | null>;
-  onUpdateNotifications: (settings: NotificationSettings) => void;
-  onUpdatePublicProfile: (profile: PublicProfile) => void;
   onDeleteAccount: (
     confirmationText: string,
   ) => string | null | Promise<string | null>;
 }
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_REGEX = /^\+?[0-9]{10,15}$/;
 const DEFAULT_NOTIFICATIONS: NotificationSettings = {
   invitations: true,
@@ -102,6 +98,93 @@ function buildFallbackPublicProfile(fullName: string): PublicProfile {
   };
 }
 
+function useStudentProfileHandlers(
+  setCurrentUser: Dispatch<SetStateAction<AuthUser | null>>,
+) {
+  const handleUpdateEmail = async (
+    newEmail: string,
+    _currentPassword: string,
+  ): Promise<string | null> => {
+    const normalizedEmail = newEmail.trim().toLowerCase();
+    if (!EMAIL_REGEX.test(normalizedEmail)) {
+      return "Введите корректный email.";
+    }
+    try {
+      const updated = await updateStudentProfile({ email: normalizedEmail });
+      setCurrentUser(updated);
+      return null;
+    } catch (error) {
+      console.warn("Failed to update student email.", error);
+      return "Не удалось обновить email. Попробуйте позже.";
+    }
+  };
+
+  const handleUpdatePhone = async (phone: string): Promise<string | null> => {
+    try {
+      const updated = await updateStudentProfile({
+        phone: phone.trim() || null,
+      });
+      setCurrentUser(updated);
+      return null;
+    } catch (error) {
+      console.warn("Failed to update student phone.", error);
+      return "Не удалось обновить телефон. Попробуйте позже.";
+    }
+  };
+
+  const handleUpdateNotifications = (settings: NotificationSettings) => {
+    setCurrentUser((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        notifications: {
+          invitations: Boolean(settings.invitations),
+          verification: Boolean(settings.verification),
+          recommendations: Boolean(settings.recommendations),
+        },
+      };
+    });
+  };
+
+  const handleUpdatePublicProfile = async (
+    profile: PublicProfile,
+  ): Promise<string | null> => {
+    try {
+      const updated = await updateStudentProfile({
+        firstName: profile.firstName,
+        lastName: profile.lastName,
+        middleName: profile.middleName ?? null,
+        university: profile.university,
+        faculty: profile.faculty,
+        course: profile.course,
+        city: profile.city,
+        bio: profile.bio,
+        avatarUrl: profile.avatarUrl ?? null,
+        socialLinks: {
+          telegram: profile.socialLinks.telegram,
+          github: profile.socialLinks.github,
+          linkedin: profile.socialLinks.linkedin,
+          website: profile.socialLinks.website,
+        },
+        visibleAchievementIds: profile.visibleAchievementIds,
+        visibleBadgeIds: profile.visibleBadgeIds,
+      });
+      setCurrentUser(updated);
+      return null;
+    } catch (error) {
+      console.warn("Failed to update student public profile.", error);
+      return "Не удалось сохранить публичную визитку.";
+    }
+  };
+
+  return {
+    handleUpdateEmail,
+    handleUpdatePhone,
+    handleUpdateNotifications,
+    handleUpdatePublicProfile,
+  };
+}
+
 export function ProfilePage({
   user,
   achievements,
@@ -109,11 +192,8 @@ export function ProfilePage({
   subscribers,
   onOpenSubscribers,
   publicStats,
-  onUpdateEmail,
-  onUpdatePhone,
+  setCurrentUser,
   onChangePassword,
-  onUpdateNotifications,
-  onUpdatePublicProfile,
   onDeleteAccount,
 }: ProfilePageProps) {
   const [activeTab, setActiveTab] = useState<ProfileTab>("personal");
@@ -143,6 +223,12 @@ export function ProfilePage({
   const [publicMessage, setPublicMessage] = useState<string | null>(null);
   const [visibleAchievementsQuery, setVisibleAchievementsQuery] = useState("");
   const [visibleBadgesQuery, setVisibleBadgesQuery] = useState("");
+  const {
+    handleUpdateEmail,
+    handleUpdatePhone,
+    handleUpdateNotifications,
+    handleUpdatePublicProfile,
+  } = useStudentProfileHandlers(setCurrentUser);
 
   useEffect(() => {
     setNextEmail(user.email);
@@ -197,7 +283,7 @@ export function ProfilePage({
     }
 
     const result = await Promise.resolve(
-      onUpdateEmail(normalized, currentPasswordForEmail),
+      handleUpdateEmail(normalized, currentPasswordForEmail),
     );
     setEmailMessage(result ?? "Email успешно обновлен.");
     if (!result) {
@@ -212,7 +298,7 @@ export function ProfilePage({
       return;
     }
 
-    const result = await Promise.resolve(onUpdatePhone(normalized));
+    const result = await Promise.resolve(handleUpdatePhone(normalized));
     setPhoneMessage(result ?? "Телефон успешно обновлен.");
   };
 
@@ -238,7 +324,7 @@ export function ProfilePage({
   };
 
   const handleNotificationsSave = () => {
-    onUpdateNotifications(notifications);
+    handleUpdateNotifications(notifications);
     setNotificationMessage("Настройки уведомлений сохранены.");
   };
 
@@ -302,11 +388,15 @@ export function ProfilePage({
       return;
     }
 
-    onUpdatePublicProfile({
+    const nextProfile: PublicProfile = {
       ...publicProfile,
       visibleBadgeIds: visibleBadgeIdsNormalized,
-    });
-    setPublicMessage("Публичная визитка сохранена.");
+    };
+    const run = async () => {
+      const result = await handleUpdatePublicProfile(nextProfile);
+      setPublicMessage(result ?? "Публичная визитка сохранена.");
+    };
+    run();
   };
 
   return (

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import {
   AuthUser,
   OrganizerNotificationChannel,
@@ -21,6 +22,9 @@ import {
   Users,
 } from "lucide-react";
 import { HrActionConfirmSettings } from "@/lib/hr-network";
+import { updateOrganizerProfile } from "@/lib/backend-api";
+import { EMAIL_REGEX } from "@/app/shared/common/validation";
+import { normalizeOrganizerNotifications } from "@/app/shared/auth/normalizers";
 
 interface OrganizerProfilePageProps {
   user: AuthUser;
@@ -28,17 +32,11 @@ interface OrganizerProfilePageProps {
     eventsCount: number;
     totalParticipants: number;
   };
-  onUpdateEmail: (
-    newEmail: string,
-    currentPassword: string,
-  ) => string | null | Promise<string | null>;
-  onUpdatePhone: (phone: string) => string | null | Promise<string | null>;
+  setCurrentUser: Dispatch<SetStateAction<AuthUser | null>>;
   onChangePassword: (
     currentPassword: string,
     newPassword: string,
   ) => string | null | Promise<string | null>;
-  onUpdateNotifications: (settings: OrganizerNotificationSettings) => void;
-  onUpdateOrganizationProfile: (profile: OrganizerOrganizationProfile) => void;
   onDeleteAccount: (
     confirmationText: string,
   ) => string | null | Promise<string | null>;
@@ -48,7 +46,6 @@ interface OrganizerProfilePageProps {
   onUpdateHrActionConfirmSettings?: (settings: HrActionConfirmSettings) => void;
 }
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_REGEX = /^\+?[0-9]{10,15}$/;
 const URL_REGEX = /^https?:\/\//i;
 
@@ -106,20 +103,115 @@ function buildFallbackOrganizationProfile(
   };
 }
 
+function useOrganizerProfileHandlers(
+  userRole: AuthUser["role"],
+  setCurrentUser: Dispatch<SetStateAction<AuthUser | null>>,
+) {
+  const handleUpdateEmail = async (
+    newEmail: string,
+    _currentPassword: string,
+  ): Promise<string | null> => {
+    if (userRole !== "organizer") {
+      return "Обновление email доступно только для роли организатора.";
+    }
+    const normalizedEmail = newEmail.trim().toLowerCase();
+    if (!EMAIL_REGEX.test(normalizedEmail)) {
+      return "Введите корректный email.";
+    }
+    try {
+      const updated = await updateOrganizerProfile({ email: normalizedEmail });
+      setCurrentUser(updated);
+      return null;
+    } catch (error) {
+      console.warn("Failed to update organizer email.", error);
+      return "Не удалось обновить email. Попробуйте позже.";
+    }
+  };
+
+  const handleUpdatePhone = async (phone: string): Promise<string | null> => {
+    if (userRole !== "organizer") {
+      return "Обновление телефона доступно только для роли организатора.";
+    }
+    try {
+      const updated = await updateOrganizerProfile({
+        phone: phone.trim() || null,
+      });
+      setCurrentUser(updated);
+      return null;
+    } catch (error) {
+      console.warn("Failed to update organizer phone.", error);
+      return "Не удалось обновить телефон. Попробуйте позже.";
+    }
+  };
+
+  const handleUpdateNotifications = (
+    settings: OrganizerNotificationSettings,
+  ) => {
+    setCurrentUser((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        organizerNotifications: normalizeOrganizerNotifications(settings),
+      };
+    });
+  };
+
+  const handleUpdateOrganizationProfile = async (
+    profile: OrganizerOrganizationProfile,
+  ): Promise<string | null> => {
+    if (userRole !== "organizer") {
+      return "Обновление профиля организации доступно только для роли организатора.";
+    }
+    try {
+      const updated = await updateOrganizerProfile({
+        organizationName: profile.organizationName,
+        shortName: profile.shortName,
+        organizationType: profile.organizationType,
+        website: profile.website,
+        description: profile.description,
+        contactEmail: profile.contactEmail,
+        contactPhone: profile.contactPhone ?? null,
+        logoUrl: profile.logoUrl ?? null,
+        foundedYear: profile.foundedYear ?? null,
+        socialLinks: {
+          telegram: profile.socialLinks.telegram,
+          vk: profile.socialLinks.vk,
+          youtube: profile.socialLinks.youtube,
+        },
+      });
+      setCurrentUser(updated);
+      return null;
+    } catch (error) {
+      console.warn("Failed to update organizer profile.", error);
+      return "Не удалось сохранить профиль организации.";
+    }
+  };
+
+  return {
+    handleUpdateEmail,
+    handleUpdatePhone,
+    handleUpdateNotifications,
+    handleUpdateOrganizationProfile,
+  };
+}
+
 export function OrganizerProfilePage({
   user,
   organizationStats,
-  onUpdateEmail,
-  onUpdatePhone,
+  setCurrentUser,
   onChangePassword,
-  onUpdateNotifications,
-  onUpdateOrganizationProfile,
   onDeleteAccount,
   hrDefaultInviteComment,
   onUpdateHrDefaultInviteComment,
   hrActionConfirmSettings,
   onUpdateHrActionConfirmSettings,
 }: OrganizerProfilePageProps) {
+  const {
+    handleUpdateEmail,
+    handleUpdatePhone,
+    handleUpdateNotifications,
+    handleUpdateOrganizationProfile,
+  } = useOrganizerProfileHandlers(user.role, setCurrentUser);
   const showHrSettingsTab =
     typeof onUpdateHrDefaultInviteComment === "function";
 
@@ -220,7 +312,7 @@ export function OrganizerProfilePage({
     }
 
     const result = await Promise.resolve(
-      onUpdateEmail(normalized, currentPasswordForEmail),
+      handleUpdateEmail(normalized, currentPasswordForEmail),
     );
     setEmailMessage(result ?? "Email успешно обновлен.");
     if (!result) {
@@ -235,7 +327,7 @@ export function OrganizerProfilePage({
       return;
     }
 
-    const result = await Promise.resolve(onUpdatePhone(normalized));
+    const result = await Promise.resolve(handleUpdatePhone(normalized));
     setPhoneMessage(result ?? "Телефон успешно обновлен.");
   };
 
@@ -286,7 +378,7 @@ export function OrganizerProfilePage({
       return;
     }
 
-    onUpdateNotifications(notifications);
+    handleUpdateNotifications(notifications);
     setNotificationMessage("Настройки уведомлений сохранены.");
   };
 
@@ -379,15 +471,19 @@ export function OrganizerProfilePage({
       return;
     }
 
-    onUpdateOrganizationProfile({
+    const nextProfile: OrganizerOrganizationProfile = {
       ...organizationProfile,
       website: organizationProfile.website.trim(),
       contactEmail: organizationProfile.contactEmail.trim().toLowerCase(),
       contactPhone: organizationProfile.contactPhone?.trim() ?? "",
       eventsCount: organizationStats.eventsCount,
       totalParticipants: organizationStats.totalParticipants,
-    });
-    setOrganizationMessage("Профиль организации сохранен.");
+    };
+    const run = async () => {
+      const result = await handleUpdateOrganizationProfile(nextProfile);
+      setOrganizationMessage(result ?? "Профиль организации сохранен.");
+    };
+    run();
   };
 
   const handleSaveHrSettings = () => {

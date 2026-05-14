@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CalendarDays, ChevronDown, ChevronUp, Search } from "lucide-react";
 import type {
   Event,
@@ -31,10 +31,33 @@ interface StudentEventsPageProps {
   activeTab: StudentEventsTab;
   onTabChange: (tab: StudentEventsTab) => void;
   onOpenEvent: (eventId: string) => void;
+  filtersState?: StudentEventsFiltersState;
+  onFiltersStateChange?: (nextState: StudentEventsFiltersState) => void;
 }
 
 type SortField = "title" | "date" | "level";
 type SortOrder = "asc" | "desc";
+
+export interface StudentEventsFiltersState {
+  searchQuery: string;
+  selectedType: OrganizerEventType | "";
+  selectedLevel: OrganizerEventLevel | "";
+  sortField: SortField;
+  sortOrder: SortOrder;
+}
+
+function isSameFiltersState(
+  left: StudentEventsFiltersState,
+  right: StudentEventsFiltersState,
+): boolean {
+  return (
+    left.searchQuery === right.searchQuery &&
+    left.selectedType === right.selectedType &&
+    left.selectedLevel === right.selectedLevel &&
+    left.sortField === right.sortField &&
+    left.sortOrder === right.sortOrder
+  );
+}
 
 export function StudentEventsPage({
   events,
@@ -42,6 +65,8 @@ export function StudentEventsPage({
   activeTab,
   onTabChange,
   onOpenEvent,
+  filtersState,
+  onFiltersStateChange,
 }: StudentEventsPageProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedType, setSelectedType] = useState<OrganizerEventType | "">("");
@@ -50,6 +75,54 @@ export function StudentEventsPage({
   );
   const [sortField, setSortField] = useState<SortField>("date");
   const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
+
+  useEffect(() => {
+    if (!filtersState) return;
+    if (searchQuery !== filtersState.searchQuery) {
+      setSearchQuery(filtersState.searchQuery);
+    }
+    if (selectedType !== filtersState.selectedType) {
+      setSelectedType(filtersState.selectedType);
+    }
+    if (selectedLevel !== filtersState.selectedLevel) {
+      setSelectedLevel(filtersState.selectedLevel);
+    }
+    if (sortField !== filtersState.sortField) {
+      setSortField(filtersState.sortField);
+    }
+    if (sortOrder !== filtersState.sortOrder) {
+      setSortOrder(filtersState.sortOrder);
+    }
+  }, [
+    filtersState,
+    searchQuery,
+    selectedLevel,
+    selectedType,
+    sortField,
+    sortOrder,
+  ]);
+
+  useEffect(() => {
+    const nextState: StudentEventsFiltersState = {
+      searchQuery,
+      selectedType,
+      selectedLevel,
+      sortField,
+      sortOrder,
+    };
+    if (filtersState && isSameFiltersState(filtersState, nextState)) {
+      return;
+    }
+    onFiltersStateChange?.(nextState);
+  }, [
+    filtersState,
+    onFiltersStateChange,
+    searchQuery,
+    selectedLevel,
+    selectedType,
+    sortField,
+    sortOrder,
+  ]);
 
   const levelOrder = useMemo(
     () =>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Search, ArrowUpRight, PlusCircle, ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,6 +29,8 @@ interface HrCandidatesSearchPageProps {
   candidates: HrCandidateSummary[];
   onAddToFunnel: (candidateId: string) => string | null;
   onOpenCandidate: (candidateId: string) => void;
+  filtersState?: HrCandidatesSearchFiltersState;
+  onFiltersStateChange?: (nextState: HrCandidatesSearchFiltersState) => void;
 }
 
 type SortColumn = "candidate" | "study" | "achievements";
@@ -37,6 +39,29 @@ type SortDirection = "asc" | "desc";
 interface SortState {
   column: SortColumn;
   direction: SortDirection;
+}
+
+export interface HrCandidatesSearchFiltersState {
+  query: string;
+  selectedUniversity: string;
+  selectedStatuses: HrFunnelStatus[];
+  sortState: SortState | null;
+  page: number;
+}
+
+function isSameStatuses(
+  left: HrFunnelStatus[],
+  right: HrFunnelStatus[],
+): boolean {
+  if (left === right) return true;
+  if (left.length !== right.length) return false;
+  return left.every((item, index) => item === right[index]);
+}
+
+function isSameSortState(left: SortState | null, right: SortState | null): boolean {
+  if (left === right) return true;
+  if (!left || !right) return false;
+  return left.column === right.column && left.direction === right.direction;
 }
 
 function formatCourseLabel(rawCourse: string): string {
@@ -75,6 +100,8 @@ export function HrCandidatesSearchPage({
   candidates,
   onAddToFunnel,
   onOpenCandidate,
+  filtersState,
+  onFiltersStateChange,
 }: HrCandidatesSearchPageProps) {
   const [query, setQuery] = useState("");
   const [selectedUniversity, setSelectedUniversity] = useState("all");
@@ -85,6 +112,54 @@ export function HrCandidatesSearchPage({
   const [page, setPage] = useState(1);
   const [feedback, setFeedback] = useState<string | null>(null);
   const pageSize = 12;
+
+  useEffect(() => {
+    if (!filtersState) return;
+    if (query !== filtersState.query) {
+      setQuery(filtersState.query);
+    }
+    if (selectedUniversity !== filtersState.selectedUniversity) {
+      setSelectedUniversity(filtersState.selectedUniversity);
+    }
+    if (!isSameStatuses(selectedStatuses, filtersState.selectedStatuses)) {
+      setSelectedStatuses(filtersState.selectedStatuses);
+    }
+    if (!isSameSortState(sortState, filtersState.sortState)) {
+      setSortState(filtersState.sortState);
+    }
+    if (page !== filtersState.page) {
+      setPage(filtersState.page);
+    }
+  }, [filtersState, page, query, selectedStatuses, selectedUniversity, sortState]);
+
+  useEffect(() => {
+    const nextState: HrCandidatesSearchFiltersState = {
+      query,
+      selectedUniversity,
+      selectedStatuses,
+      sortState,
+      page,
+    };
+    if (
+      filtersState &&
+      filtersState.query === nextState.query &&
+      filtersState.selectedUniversity === nextState.selectedUniversity &&
+      isSameStatuses(filtersState.selectedStatuses, nextState.selectedStatuses) &&
+      isSameSortState(filtersState.sortState, nextState.sortState) &&
+      filtersState.page === nextState.page
+    ) {
+      return;
+    }
+    onFiltersStateChange?.(nextState);
+  }, [
+    filtersState,
+    onFiltersStateChange,
+    page,
+    query,
+    selectedStatuses,
+    selectedUniversity,
+    sortState,
+  ]);
 
   const universityOptions = useMemo(() => {
     const set = new Set<string>();
