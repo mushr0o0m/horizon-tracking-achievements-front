@@ -94,7 +94,7 @@ export function Sidebar({
       )}>
       <div
         className={cn(
-          "p-6",
+          "px-8 h-16 items-start flex flex-col justify-center",
           isStudent
             ? "border-b border-white/45"
             : "border-b border-sidebar-border",

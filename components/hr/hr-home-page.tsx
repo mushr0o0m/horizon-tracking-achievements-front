@@ -24,10 +24,16 @@ export interface HrHomeTopSubscriberCandidate {
   candidateStatus: HrFunnelStatus;
 }
 
+export interface HrTalentFeedComparison {
+  text: string;
+  tone: "up" | "down" | "stable" | "empty";
+}
+
 interface HrHomePageProps {
   topByAchievements: HrHomeTopAchievementCandidate[];
   topBySubscribers: HrHomeTopSubscriberCandidate[];
   notifications: AppNotification[];
+  talentFeedComparison?: HrTalentFeedComparison | null;
   onOpenCandidate: (candidateId: string) => void;
   onMarkNotificationRead: (notificationId: string) => void;
   onMarkAllNotificationsRead: () => void;
@@ -62,11 +68,19 @@ export function HrHomePage({
   topByAchievements,
   topBySubscribers,
   notifications,
+  talentFeedComparison,
   onOpenCandidate,
   onMarkNotificationRead,
   onMarkAllNotificationsRead,
 }: HrHomePageProps) {
   const unreadCount = notifications.filter((item) => !item.isRead).length;
+  const comparisonTone = talentFeedComparison?.tone ?? "empty";
+  const comparisonStyles = {
+    up: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    down: "border-rose-200 bg-rose-50 text-rose-700",
+    stable: "border-slate-200 bg-slate-50 text-slate-700",
+    empty: "border-border bg-card text-muted-foreground",
+  }[comparisonTone];
 
   return (
     <div className="flex h-[calc(100vh-8.5rem)] min-h-[680px] flex-col gap-4 overflow-hidden">
@@ -79,6 +93,15 @@ export function HrHomePage({
         </h2>
         <p className="mt-2 text-sm text-slate-600">
           Быстрый доступ к сильнейшим кандидатам и свежим уведомлениям.
+        </p>
+      </section>
+
+      <section className={`rounded-2xl border px-4 py-3 ${comparisonStyles}`}>
+        <p className="text-xs font-semibold uppercase tracking-wide">
+          Лента талантов
+        </p>
+        <p className="mt-1 text-sm">
+          {talentFeedComparison?.text ?? "Недостаточно данных для сравнения"}
         </p>
       </section>
 

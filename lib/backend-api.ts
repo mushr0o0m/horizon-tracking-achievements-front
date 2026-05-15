@@ -2,6 +2,7 @@ import type {
   Achievement,
   AchievementLevel,
   AchievementStatus,
+  AchievementTypeCode,
   AppNotification,
   AuthUser,
   CourseOption,
@@ -924,8 +925,35 @@ function mapBackendEventStatus(value?: string | null): OrganizerEventStatus {
   }
 }
 
-function mapBackendAchievementType(value?: string | null): EventType {
+function mapBackendAchievementType(value?: string | null): AchievementTypeCode {
   switch (normalizeEnum(value)) {
+    case "OLYMPIAD":
+      return "OLYMPIAD";
+    case "CONFERENCE":
+      return "CONFERENCE";
+    case "HACKATHON":
+      return "HACKATHON";
+    case "PUBLICATION":
+      return "PUBLICATION";
+    case "COURSE":
+      return "COURSE";
+    case "VOLUNTEERING":
+      return "VOLUNTEERING";
+    case "GRANT":
+      return "GRANT";
+    case "CHAMPIONSHIP":
+      return "CHAMPIONSHIP";
+    case "CONTEST":
+      return "CONTEST";
+    default:
+      return "OTHER";
+  }
+}
+
+function mapBackendAchievementTypeLabel(
+  value: AchievementTypeCode,
+): EventType {
+  switch (value) {
     case "OLYMPIAD":
       return "Олимпиада";
     case "CONFERENCE":
@@ -935,8 +963,6 @@ function mapBackendAchievementType(value?: string | null): EventType {
     case "CHAMPIONSHIP":
       return "Чемпионат";
     case "CONTEST":
-      return "Конкурс";
-    case "COURSE":
       return "Конкурс";
     default:
       return "Другое";
@@ -1057,6 +1083,7 @@ function mapBackendAchievement(
 ): Achievement {
   const eventId = dto.eventId ?? undefined;
   const studentId = dto.studentId ?? fallbackStudentId ?? "";
+  const achievementTypeCode = mapBackendAchievementType(dto.type);
   return {
     id: dto.id ?? "",
     title: dto.title ?? "",
@@ -1065,7 +1092,8 @@ function mapBackendAchievement(
     result: mapBackendAchievementResult(dto.result),
     status: mapBackendAchievementStatus(dto.status),
     eventId,
-    eventType: mapBackendAchievementType(dto.type),
+    achievementTypeCode,
+    eventType: mapBackendAchievementTypeLabel(achievementTypeCode),
     studentId,
     studentName: dto.studentName ?? undefined,
     requestedOrganizerId:

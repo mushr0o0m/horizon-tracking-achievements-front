@@ -114,6 +114,8 @@ export function StudentShellContent({
     string[]
   >([]);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [selectedEventSnapshot, setSelectedEventSnapshot] =
+    useState<Event | null>(null);
   const [selectedAchievementId, setSelectedAchievementId] = useState<
     string | null
   >(null);
@@ -144,6 +146,10 @@ export function StudentShellContent({
     isApplyingUrlStateRef.current = true;
     const mapped = normalizeStudentViewFromPath(pathParts.section, pathParts.tab);
     setStudentView(mapped.view);
+    if (mapped.view === "event-details") {
+      const eventIdFromUrl = searchParams.get("eventId");
+      setSelectedEventId(eventIdFromUrl || null);
+    }
     if (mapped.eventsTab) {
       setStudentEventsTab(mapped.eventsTab);
     }
@@ -196,6 +202,9 @@ export function StudentShellContent({
         nextParams.set("sortOrder", studentEventsFilters.sortOrder);
       }
     }
+    if (studentView === "event-details" && selectedEventId) {
+      nextParams.set("eventId", selectedEventId);
+    }
     const nextUrl = `${nextPath}${
       nextParams.toString() ? `?${nextParams.toString()}` : ""
     }`;
@@ -205,7 +214,15 @@ export function StudentShellContent({
     if (nextUrl !== currentUrl) {
       router.replace(nextUrl, { scroll: false });
     }
-  }, [pathname, router, searchParams, studentEventsFilters, studentEventsTab, studentView]);
+  }, [
+    pathname,
+    router,
+    searchParams,
+    selectedEventId,
+    studentEventsFilters,
+    studentEventsTab,
+    studentView,
+  ]);
 
   useEffect(() => {
     let cancelled = false;
@@ -346,6 +363,7 @@ export function StudentShellContent({
     () => events.find((event) => event.id === selectedEventId),
     [events, selectedEventId],
   );
+  const displayedEvent = selectedEvent ?? selectedEventSnapshot;
   const selectedEventApplications = useMemo(
     () =>
       selectedEventId
@@ -367,7 +385,7 @@ export function StudentShellContent({
 
   const eventOrganizerInfo: ComponentProps<
     typeof EventDetailsPage
-  >["organizerInfo"] = selectedEvent
+  >["organizerInfo"] = displayedEvent
     ? selectedEventOrganizerInfo
       ? {
           organizationName: selectedEventOrganizerInfo.organizationName,
@@ -377,12 +395,12 @@ export function StudentShellContent({
           description: selectedEventOrganizerInfo.description || undefined,
           website: selectedEventOrganizerInfo.website || undefined,
           contactEmail:
-            selectedEventOrganizerInfo.contactEmail || selectedEvent.contactEmail,
+            selectedEventOrganizerInfo.contactEmail || displayedEvent.contactEmail,
           contactPhone: selectedEventOrganizerInfo.contactPhone || undefined,
         }
       : {
           organizationName: "Организатор",
-          contactEmail: selectedEvent.contactEmail,
+          contactEmail: displayedEvent.contactEmail,
         }
     : undefined;
 
@@ -406,11 +424,22 @@ export function StudentShellContent({
   const handleOpenStudentEvent = useCallback(
     (id: string, returnView: "home" | "achievements" | "events") => {
       setSelectedEventId(id);
+      setSelectedEventSnapshot(events.find((event) => event.id === id) ?? null);
       setStudentEventReturnView(returnView);
       setStudentView("event-details");
     },
-    [setStudentView],
+    [events, setStudentView],
   );
+
+  useEffect(() => {
+    if (selectedEvent) {
+      setSelectedEventSnapshot(selectedEvent);
+      return;
+    }
+    if (!selectedEventId) {
+      setSelectedEventSnapshot(null);
+    }
+  }, [selectedEvent, selectedEventId]);
 
   const handleOpenAchievement = useCallback((achievementId: string) => {
     setSelectedAchievementId(achievementId);
@@ -718,14 +747,14 @@ export function StudentShellContent({
   }, [selectedHrProfileId]);
 
   useEffect(() => {
-    if (!selectedEvent?.organizerId) {
+    if (!displayedEvent?.organizerId) {
       setSelectedEventOrganizerInfo(null);
       return;
     }
     let cancelled = false;
     const loadOrganizer = async () => {
       try {
-        const profile = await fetchPublicOrganizerProfile(selectedEvent.organizerId);
+        const profile = await fetchPublicOrganizerProfile(displayedEvent.organizerId);
         if (!cancelled) {
           setSelectedEventOrganizerInfo(profile);
         }
@@ -739,7 +768,7 @@ export function StudentShellContent({
     return () => {
       cancelled = true;
     };
-  }, [selectedEvent?.organizerId]);
+  }, [displayedEvent?.organizerId]);
 
   useEffect(() => {
     if (visibilitySeededForUserId === currentUser.id) return;
@@ -863,15 +892,16 @@ export function StudentShellContent({
           onSubmit={createStudentAchievementSubmit}
         />
       )}
-      {studentView === "event-details" && selectedEvent && (
+      {studentView === "event-details" && displayedEvent && (
         <StudentEventDetailsSection
-          event={selectedEvent}
+          event={displayedEvent}
           organizerInfo={eventOrganizerInfo}
           applications={selectedEventApplications}
           isApplied={isCurrentStudentApplied}
-          onToggleApplication={() => handleToggleApplication(selectedEvent.id)}
+          onToggleApplication={() => handleToggleApplication(displayedEvent.id)}
           onBack={() => {
             setSelectedEventId(null);
+            setSelectedEventSnapshot(null);
             setStudentView(studentEventReturnView);
           }}
         />

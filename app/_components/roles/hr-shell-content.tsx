@@ -4,13 +4,15 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ComponentProps,
   type Dispatch,
   type SetStateAction,
 } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { HrHomePage, type HrHomeTopAchievementCandidate, type HrHomeTopSubscriberCandidate } from "@/components/hr/hr-home-page";
+import type { HrTalentFeedComparison } from "@/components/hr/hr-home-page";
 import { HrDashboardsPage } from "@/components/hr/hr-dashboards-page";
 import { HrCandidatesSearchPage, type HrCandidateSummary, type HrCandidatesSearchFiltersState } from "@/components/hr/hr-candidates-search-page";
 import { HrCandidateProfilePage, type HrInvitationPayload } from "@/components/hr/hr-candidate-profile-page";
@@ -92,12 +94,16 @@ export function HrShellContent({
 }: HrShellContentProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const isApplyingUrlStateRef = useRef(false);
   const { events, setEvents } = useEventsStore();
   const { notifications, setNotifications } = useNotificationsStore();
   const [hrHomeSummary, setHrHomeSummary] = useState<{
     topByAchievements: HrHomeTopAchievementCandidate[];
     topBySubscribers: HrHomeTopSubscriberCandidate[];
   }>({ topByAchievements: [], topBySubscribers: [] });
+  const [hrTalentFeedComparison, setHrTalentFeedComparison] =
+    useState<HrTalentFeedComparison | null>(null);
   const [hrCandidates, setHrCandidates] = useState<HrCandidateSummary[]>([]);
   const [selectedHrCandidateData, setSelectedHrCandidateData] =
     useState<SelectedHrCandidateData | null>(() => cachedSelectedHrCandidateData);
@@ -121,6 +127,20 @@ export function HrShellContent({
   const [eventsLoaded, setEventsLoaded] = useState(false);
 
   useEffect(() => {
+    const pathParts = pathname.split("/").filter(Boolean);
+    if (pathParts[0] !== "hr") return;
+
+    isApplyingUrlStateRef.current = true;
+    if (pathParts[1] === "candidate-profile") {
+      setSelectedHrCandidateId(searchParams.get("candidateId"));
+    }
+    queueMicrotask(() => {
+      isApplyingUrlStateRef.current = false;
+    });
+  }, [pathname, searchParams]);
+
+  useEffect(() => {
+    if (isApplyingUrlStateRef.current) return;
     const nextPath = buildPathForCurrentView({
       role: "hr",
       studentView: "home",
@@ -153,14 +173,26 @@ export function HrShellContent({
         nextParams.set("page", String(hrCandidatesSearchFilters.page));
       }
     }
+    if (hrView === "candidate-profile" && selectedHrCandidateId) {
+      nextParams.set("candidateId", selectedHrCandidateId);
+    }
     const nextUrl = `${nextPath}${
       nextParams.toString() ? `?${nextParams.toString()}` : ""
     }`;
-    const currentUrl = `${pathname}${typeof window !== "undefined" ? window.location.search : ""}`;
+    const currentUrl = `${pathname}${
+      searchParams.toString() ? `?${searchParams.toString()}` : ""
+    }`;
     if (nextUrl !== currentUrl) {
       router.replace(nextUrl, { scroll: false });
     }
-  }, [hrCandidatesSearchFilters, hrView, pathname, router]);
+  }, [
+    hrCandidatesSearchFilters,
+    hrView,
+    pathname,
+    router,
+    searchParams,
+    selectedHrCandidateId,
+  ]);
 
   const hrPublishedEventsCount = useMemo(
     () => events.filter((item) => item.status === "published").length,
@@ -561,10 +593,82 @@ export function HrShellContent({
             candidateStatus: candidate.candidateStatus,
           })),
         );
+
+        const trackedCandidates = hrCandidatesData.filter(
+          (candidate) => candidate.candidateStatus !== "Не отслеживается",
+        );
+        if (trackedCandidates.length === 0) {
+          if (!cancelled) {
+            setHrTalentFeedComparison({
+              text: "Недостаточно данных для сравнения",
+              tone: "empty",
+            });
+          }
+          return;
+        }
+
+        const candidateDetails = await Promise.all(
+          trackedCandidates.map(async (candidate) => {
+            try {
+              const details = await fetchHrCandidateDetails(candidate.id);
+              return details.achievements;
+            } catch (error) {
+              return [];
+            }
+          }),
+        );
+
+        const achievements = candidateDetails.flat();
+        const now = new Date();
+        const currentWindowStart = new Date(now);
+        currentWindowStart.setDate(now.getDate() - 6);
+        currentWindowStart.setHours(0, 0, 0, 0);
+        const previousWindowStart = new Date(now);
+        previousWindowStart.setDate(now.getDate() - 13);
+        previousWindowStart.setHours(0, 0, 0, 0);
+        const previousWindowEnd = new Date(now);
+        previousWindowEnd.setDate(now.getDate() - 7);
+        previousWindowEnd.setHours(23, 59, 59, 999);
+
+        const currentCount = achievements.filter((achievement) => {
+          const date = new Date(achievement.date);
+          return date >= currentWindowStart && date <= now;
+        }).length;
+        const previousCount = achievements.filter((achievement) => {
+          const date = new Date(achievement.date);
+          return date >= previousWindowStart && date <= previousWindowEnd;
+        }).length;
+
+        let tone: HrTalentFeedComparison["tone"] = "stable";
+        let text = "Столько же достижений, сколько на прошлой неделе";
+
+        if (currentCount > previousCount) {
+          tone = "up";
+          const percentage =
+            previousCount === 0
+              ? 100
+              : Math.round(((currentCount - previousCount) / previousCount) * 100);
+          text = `На ${percentage}% больше достижений, чем на прошлой неделе`;
+        } else if (currentCount < previousCount) {
+          tone = "down";
+          const percentage =
+            previousCount === 0
+              ? 100
+              : Math.round(((previousCount - currentCount) / previousCount) * 100);
+          text = `На ${percentage}% меньше достижений, чем на прошлой неделе`;
+        }
+
+        if (!cancelled) {
+          setHrTalentFeedComparison({ text, tone });
+        }
       } catch (error) {
         if (!cancelled) {
           setHrHomeSummary({ topByAchievements: [], topBySubscribers: [] });
           setHrCandidates([]);
+          setHrTalentFeedComparison({
+            text: "Недостаточно данных для сравнения",
+            tone: "empty",
+          });
         }
       }
     };
@@ -709,6 +813,7 @@ export function HrShellContent({
           topByAchievements={hrTopByAchievements}
           topBySubscribers={hrTopBySubscribers}
           notifications={hrHomeNotifications}
+          talentFeedComparison={hrTalentFeedComparison}
           onOpenCandidate={(candidateId) =>
             handleOpenHrCandidateProfile(candidateId, "home")
           }
@@ -766,6 +871,8 @@ export function HrShellContent({
           isCurrentHrSubscribed={isSelectedCandidateSubscribedByCurrentHr}
           onBackToPreviousPage={() => {
             setSelectedHrProfileId(null);
+            setSelectedHrCandidateId(null);
+            setSelectedHrCandidateData(null);
             setHrView(hrCandidateBackView);
           }}
           onOpenEvent={handleOpenHrEvent}
