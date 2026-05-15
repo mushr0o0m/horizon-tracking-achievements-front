@@ -8,6 +8,18 @@ export type AchievementLevel =
 
 export type AchievementStatus = "Подтверждено" | "На проверке" | "Отклонено";
 
+export type AchievementTypeCode =
+  | "OLYMPIAD"
+  | "CONFERENCE"
+  | "HACKATHON"
+  | "PUBLICATION"
+  | "COURSE"
+  | "VOLUNTEERING"
+  | "GRANT"
+  | "CONTEST"
+  | "CHAMPIONSHIP"
+  | "OTHER";
+
 export interface Achievement {
   id: string;
   title: string;
@@ -16,6 +28,7 @@ export interface Achievement {
   result: string;
   status: AchievementStatus;
   eventId?: string; // Links to organizing event
+  achievementTypeCode?: AchievementTypeCode;
   eventType?: EventType;
   studentId: string;
   studentName?: string;
@@ -232,6 +245,7 @@ export interface Participant {
 export type UserRole = "student" | "organizer" | "hr";
 export type StudentView =
   | "home"
+  | "events"
   | "dashboards"
   | "achievements"
   | "invitations"

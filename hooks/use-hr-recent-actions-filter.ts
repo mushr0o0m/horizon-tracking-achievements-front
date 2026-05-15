@@ -2,11 +2,11 @@ import { useMemo, useState } from "react";
 import {
   RecentActionType,
   StatusUpdateWindow,
-} from "@/components/hr-dashboards/types";
+} from "@/components/hr/dashboards/types";
 import {
   getRecentActionType,
   isRecentActionWithinWindow,
-} from "@/components/hr-dashboards/utils";
+} from "@/components/hr/dashboards/utils";
 
 export function useHrRecentActionsFilter(
   recentActions: string[],

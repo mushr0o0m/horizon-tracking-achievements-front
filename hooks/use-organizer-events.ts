@@ -43,13 +43,7 @@ export function useOrganizerEvents(
       }
     });
 
-    // Demo fallback: show seeded mocks for a newly registered organizer
-    // until they create their own events.
-    if (merged.length > 0) {
-      return merged;
-    }
-
-    return events;
+    return merged;
   }, [events, achievements, role, currentUser]);
 
   const organizerComputedStats = useMemo(

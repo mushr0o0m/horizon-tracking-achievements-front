@@ -2,17 +2,13 @@
 
 import {
   createContext,
-  useEffect,
   ReactNode,
   useCallback,
   useContext,
   useMemo,
   useReducer,
 } from "react";
-import { INITIAL_ACHIEVEMENTS } from "@/lib/data";
 import { Achievement, AchievementLevel, EventType } from "@/lib/types";
-
-const ACHIEVEMENTS_STORAGE_KEY = "hta.store.achievements";
 
 interface CreateAchievementRequestPayload {
   eventId: string;
@@ -26,16 +22,6 @@ interface CreateAchievementRequestPayload {
   requestComment?: string;
 }
 
-interface SimulatedAchievementPayload {
-  eventId: string;
-  studentId: string;
-  title: string;
-  level: AchievementLevel;
-  date: string;
-  result: string;
-  eventType: EventType;
-}
-
 type ReviewDecision = "Подтверждено" | "Отклонено";
 
 interface AchievementsState {
@@ -43,6 +29,7 @@ interface AchievementsState {
 }
 
 type AchievementsAction =
+  | { type: "SET_ALL"; payload: Achievement[] }
   | { type: "ADD_MANY"; payload: Achievement[] }
   | { type: "REMOVE_BY_STUDENT"; payload: { studentId: string } }
   | {
@@ -56,10 +43,6 @@ type AchievementsAction =
         decision: ReviewDecision;
         comment?: string;
       };
-    }
-  | {
-      type: "ADD_SIMULATED";
-      payload: Achievement;
     };
 
 function achievementsReducer(
@@ -67,6 +50,10 @@ function achievementsReducer(
   action: AchievementsAction,
 ): AchievementsState {
   switch (action.type) {
+    case "SET_ALL":
+      return {
+        achievements: [...action.payload],
+      };
     case "ADD_MANY":
       return {
         achievements: [...action.payload, ...state.achievements],
@@ -95,11 +82,6 @@ function achievementsReducer(
             : achievement,
         ),
       };
-    case "ADD_SIMULATED": {
-      return {
-        achievements: [action.payload, ...state.achievements],
-      };
-    }
     default:
       return state;
   }
@@ -107,6 +89,7 @@ function achievementsReducer(
 
 interface AchievementsStoreContextValue {
   achievements: Achievement[];
+  setAchievements: (items: Achievement[]) => void;
   addAchievements: (items: Achievement[]) => void;
   removeStudentAchievements: (studentId: string) => void;
   createAchievementRequest: (
@@ -119,34 +102,13 @@ interface AchievementsStoreContextValue {
     decision: ReviewDecision,
     comment?: string,
   ) => void;
-  addSimulatedAchievement: (
-    payload: SimulatedAchievementPayload,
-  ) => Achievement;
 }
 
 const AchievementsStoreContext =
   createContext<AchievementsStoreContextValue | null>(null);
 
 function getInitialAchievements(): Achievement[] {
-  if (typeof window === "undefined") {
-    return INITIAL_ACHIEVEMENTS;
-  }
-
-  try {
-    const raw = localStorage.getItem(ACHIEVEMENTS_STORAGE_KEY);
-    if (!raw) {
-      return INITIAL_ACHIEVEMENTS;
-    }
-
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) {
-      return INITIAL_ACHIEVEMENTS;
-    }
-
-    return parsed as Achievement[];
-  } catch {
-    return INITIAL_ACHIEVEMENTS;
-  }
+  return [];
 }
 
 export function AchievementsStoreProvider({
@@ -158,12 +120,9 @@ export function AchievementsStoreProvider({
     achievements: getInitialAchievements(),
   });
 
-  useEffect(() => {
-    localStorage.setItem(
-      ACHIEVEMENTS_STORAGE_KEY,
-      JSON.stringify(state.achievements),
-    );
-  }, [state.achievements]);
+  const setAchievements = useCallback((items: Achievement[]) => {
+    dispatch({ type: "SET_ALL", payload: items });
+  }, []);
 
   const addAchievements = useCallback((items: Achievement[]) => {
     dispatch({ type: "ADD_MANY", payload: items });
@@ -214,42 +173,22 @@ export function AchievementsStoreProvider({
     [],
   );
 
-  const addSimulatedAchievement = useCallback(
-    (payload: SimulatedAchievementPayload) => {
-      const created: Achievement = {
-        id: `sim-${Date.now()}`,
-        title: payload.title,
-        level: payload.level,
-        date: payload.date,
-        result: payload.result,
-        status: "Подтверждено",
-        studentId: payload.studentId,
-        eventId: payload.eventId,
-        eventType: payload.eventType,
-        source: "simulated",
-      };
-      dispatch({ type: "ADD_SIMULATED", payload: created });
-      return created;
-    },
-    [],
-  );
-
   const value = useMemo(
     () => ({
       achievements: state.achievements,
+      setAchievements,
       addAchievements,
       removeStudentAchievements,
       createAchievementRequest,
       reviewAchievementRequest,
-      addSimulatedAchievement,
     }),
     [
       state.achievements,
+      setAchievements,
       addAchievements,
       removeStudentAchievements,
       createAchievementRequest,
       reviewAchievementRequest,
-      addSimulatedAchievement,
     ],
   );
 

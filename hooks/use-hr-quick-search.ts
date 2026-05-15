@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import {
   FunnelData,
   QuickSearchRow,
-} from "@/components/hr-dashboards/types";
-import { KANBAN_STATUSES } from "@/components/hr-dashboards/constants";
+} from "@/components/hr/dashboards/types";
+import { KANBAN_STATUSES } from "@/components/hr/dashboards/constants";
 
 export function useHrQuickSearch(funnelData: FunnelData) {
   const [searchQuery, setSearchQuery] = useState("");

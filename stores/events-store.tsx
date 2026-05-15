@@ -2,7 +2,6 @@
 
 import {
   createContext,
-  useEffect,
   ReactNode,
   useCallback,
   useContext,
@@ -11,9 +10,6 @@ import {
 } from "react";
 import { Event, EventApplication } from "@/lib/types";
 import { buildEventQrCode } from "@/lib/event-meta";
-import { getMockEvents } from "@/lib/mock-events";
-
-const EVENTS_STORE_STORAGE_KEY = "hta.store.events";
 
 export type EventFormPayload = Omit<
   Event,
@@ -26,6 +22,8 @@ interface EventsState {
 }
 
 type EventsAction =
+  | { type: "SET_EVENTS"; payload: Event[] }
+  | { type: "SET_APPLICATIONS"; payload: EventApplication[] }
   | { type: "CREATE"; payload: Event }
   | { type: "UPDATE"; payload: { eventId: string; data: EventFormPayload } }
   | { type: "DELETE"; payload: { eventId: string } }
@@ -74,6 +72,17 @@ function recalculateParticipants(
 
 function eventsReducer(state: EventsState, action: EventsAction): EventsState {
   switch (action.type) {
+    case "SET_EVENTS":
+      return {
+        ...state,
+        events: recalculateParticipants(action.payload, state.applications),
+      };
+    case "SET_APPLICATIONS":
+      return {
+        ...state,
+        applications: action.payload,
+        events: recalculateParticipants(state.events, action.payload),
+      };
     case "CREATE":
       return { ...state, events: [action.payload, ...state.events] };
     case "UPDATE":
@@ -84,7 +93,7 @@ function eventsReducer(state: EventsState, action: EventsAction): EventsState {
             ? {
                 ...event,
                 ...action.payload.data,
-                qrCodeUrl: buildEventQrCode(event.id),
+                qrCodeUrl: event.qrCodeUrl || buildEventQrCode(event.id),
               }
             : event,
         ),
@@ -186,11 +195,6 @@ function eventsReducer(state: EventsState, action: EventsAction): EventsState {
         events: recalculateParticipants(state.events, nextApplications),
       };
     }
-    case "RESET":
-      return {
-        events: recalculateParticipants(action.payload, []),
-        applications: [],
-      };
     default:
       return state;
   }
@@ -198,42 +202,20 @@ function eventsReducer(state: EventsState, action: EventsAction): EventsState {
 
 function getDefaultEventsState(): EventsState {
   return {
-    events: recalculateParticipants(getMockEvents(), []),
+    events: [],
     applications: [],
   };
 }
 
 function getInitialEventsState(): EventsState {
-  if (typeof window === "undefined") {
-    return getDefaultEventsState();
-  }
-
-  try {
-    const raw = localStorage.getItem(EVENTS_STORE_STORAGE_KEY);
-    if (!raw) {
-      return getDefaultEventsState();
-    }
-
-    const parsed = JSON.parse(raw) as Partial<EventsState>;
-    const events = Array.isArray(parsed.events)
-      ? (parsed.events as Event[])
-      : getMockEvents();
-    const applications = Array.isArray(parsed.applications)
-      ? (parsed.applications as EventApplication[])
-      : [];
-
-    return {
-      events: recalculateParticipants(events, applications),
-      applications,
-    };
-  } catch {
-    return getDefaultEventsState();
-  }
+  return getDefaultEventsState();
 }
 
 interface EventsStoreContextValue {
   events: Event[];
   applications: EventApplication[];
+  setEvents: (items: Event[]) => void;
+  setApplications: (items: EventApplication[]) => void;
   createEvent: (data: EventFormPayload, organizerId: string) => Event;
   updateEvent: (eventId: string, data: EventFormPayload) => void;
   deleteEvent: (eventId: string) => void;
@@ -253,7 +235,6 @@ interface EventsStoreContextValue {
     studentId: string,
     studentName: string,
   ) => void;
-  resetEvents: () => void;
 }
 
 const EventsStoreContext = createContext<EventsStoreContextValue | null>(null);
@@ -265,9 +246,13 @@ export function EventsStoreProvider({ children }: { children: ReactNode }) {
     getInitialEventsState,
   );
 
-  useEffect(() => {
-    localStorage.setItem(EVENTS_STORE_STORAGE_KEY, JSON.stringify(state));
-  }, [state]);
+  const setEvents = useCallback((items: Event[]) => {
+    dispatch({ type: "SET_EVENTS", payload: items });
+  }, []);
+
+  const setApplications = useCallback((items: EventApplication[]) => {
+    dispatch({ type: "SET_APPLICATIONS", payload: items });
+  }, []);
 
   const createEvent = useCallback(
     (data: EventFormPayload, organizerId: string) => {
@@ -333,14 +318,12 @@ export function EventsStoreProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  const resetEvents = useCallback(() => {
-    dispatch({ type: "RESET", payload: getMockEvents() });
-  }, []);
-
   const value = useMemo(
     () => ({
       events: state.events,
       applications: state.applications,
+      setEvents,
+      setApplications,
       createEvent,
       updateEvent,
       deleteEvent,
@@ -348,11 +331,12 @@ export function EventsStoreProvider({ children }: { children: ReactNode }) {
       applyResults,
       toggleApplication,
       ensureApplication,
-      resetEvents,
     }),
     [
       state.events,
       state.applications,
+      setEvents,
+      setApplications,
       createEvent,
       updateEvent,
       deleteEvent,
@@ -360,7 +344,6 @@ export function EventsStoreProvider({ children }: { children: ReactNode }) {
       applyResults,
       toggleApplication,
       ensureApplication,
-      resetEvents,
     ],
   );
 
