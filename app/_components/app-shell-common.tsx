@@ -56,21 +56,51 @@ import {
   normalizeStudentViewFromPath,
   parsePathParts,
 } from "@/app/shared/routing/view-mappers";
+import { resetOrganizerEventsBootstrapCache } from "@/hooks/use-organizer-events-bootstrap";
+import { resetOrganizerNotificationsBootstrapCache } from "@/hooks/use-organizer-notifications-bootstrap";
+import { resetOrganizerVerificationRequestsCache } from "@/hooks/use-organizer-verification-requests-page";
+import { resetOrganizerEventDetailsCache } from "@/hooks/use-organizer-event-details-page";
+import { Spinner } from "@/components/ui/spinner";
 
-let cachedAuthUser: AuthUser | null = null;
-let cachedAuthResolved = false;
-let cachedNavigationState: {
+type NavigationState = {
   studentView: StudentView;
   organizerView: OrganizerView;
   hrView: HrView;
   studentEventsTab: StudentEventsTab;
-} = {
+};
+
+type AppShellRuntimeCache = {
+  authUser: AuthUser | null;
+  authResolved: boolean;
+  navigationState: NavigationState;
+  navigationResolved: boolean;
+};
+
+const DEFAULT_NAVIGATION_STATE: NavigationState = {
   studentView: "home",
   organizerView: "events",
   hrView: "home",
   studentEventsTab: "table",
 };
-let cachedNavigationResolved = false;
+
+const APP_SHELL_RUNTIME_CACHE_KEY = "__horizon_app_shell_runtime_cache__";
+
+function getAppShellRuntimeCache(): AppShellRuntimeCache {
+  const runtime = globalThis as typeof globalThis & {
+    [APP_SHELL_RUNTIME_CACHE_KEY]?: AppShellRuntimeCache;
+  };
+
+  if (!runtime[APP_SHELL_RUNTIME_CACHE_KEY]) {
+    runtime[APP_SHELL_RUNTIME_CACHE_KEY] = {
+      authUser: null,
+      authResolved: false,
+      navigationState: DEFAULT_NAVIGATION_STATE,
+      navigationResolved: false,
+    };
+  }
+
+  return runtime[APP_SHELL_RUNTIME_CACHE_KEY];
+}
 
 function resolveInitialNavigationFromPathname(pathname?: string): {
   studentView: StudentView;
@@ -113,22 +143,24 @@ function resolveInitialNavigationFromPathname(pathname?: string): {
 }
 
 function AppContent() {
+  const runtimeCache = getAppShellRuntimeCache();
+
   // Shared state — both roles read/write these
   const { setEvents, setApplications } = useEventsStore();
   const { setAchievements } = useAchievementsStore();
   const { notifications, setNotifications } =
     useNotificationsStore();
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(
-    () => cachedAuthUser,
+    () => runtimeCache.authUser,
   );
   const [isAuthResolved, setIsAuthResolved] = useState<boolean>(
-    () => cachedAuthResolved,
+    () => runtimeCache.authResolved,
   );
 
   // Role & navigation state
   const initialNavigationStateRef = useRef(
-    cachedNavigationResolved
-      ? cachedNavigationState
+    runtimeCache.navigationResolved
+      ? runtimeCache.navigationState
       : resolveInitialNavigationFromPathname(
           typeof window !== "undefined" ? window.location.pathname : undefined,
         ),
@@ -169,8 +201,8 @@ function AppContent() {
 
     const resolveSession = async () => {
       if (!hasBackendToken()) {
-        cachedAuthUser = null;
-        cachedAuthResolved = true;
+        runtimeCache.authUser = null;
+        runtimeCache.authResolved = true;
         if (!cancelled) {
           setCurrentUser(null);
           setIsAuthResolved(true);
@@ -180,16 +212,16 @@ function AppContent() {
 
       try {
         const profile = await backendGetProfile();
-        cachedAuthUser = profile;
-        cachedAuthResolved = true;
+        runtimeCache.authUser = profile;
+        runtimeCache.authResolved = true;
         if (!cancelled) {
           setCurrentUser(profile);
           setIsAuthResolved(true);
         }
       } catch (error) {
         clearBackendToken();
-        cachedAuthUser = null;
-        cachedAuthResolved = true;
+        runtimeCache.authUser = null;
+        runtimeCache.authResolved = true;
         if (!cancelled) {
           setCurrentUser(null);
           setIsAuthResolved(true);
@@ -197,13 +229,10 @@ function AppContent() {
       }
     };
 
-    if (cachedAuthResolved) {
+    if (runtimeCache.authResolved) {
       if (!cancelled) {
-        setCurrentUser(cachedAuthUser);
+        setCurrentUser(runtimeCache.authUser);
         setIsAuthResolved(true);
-      }
-      if (hasBackendToken()) {
-        resolveSession();
       }
     } else {
       resolveSession();
@@ -216,19 +245,19 @@ function AppContent() {
 
   useEffect(() => {
     if (!isAuthResolved) return;
-    cachedAuthUser = currentUser;
-    cachedAuthResolved = true;
-  }, [currentUser, isAuthResolved]);
+    runtimeCache.authUser = currentUser;
+    runtimeCache.authResolved = true;
+  }, [currentUser, isAuthResolved, runtimeCache]);
 
   useEffect(() => {
-    cachedNavigationState = {
+    runtimeCache.navigationState = {
       studentView,
       organizerView,
       hrView,
       studentEventsTab,
     };
-    cachedNavigationResolved = true;
-  }, [studentView, organizerView, hrView, studentEventsTab]);
+    runtimeCache.navigationResolved = true;
+  }, [studentView, organizerView, hrView, studentEventsTab, runtimeCache]);
 
 
   const navigateAfterAuth = (user: AuthUser) => {
@@ -247,8 +276,8 @@ function AppContent() {
     try {
       const createdUser = await backendRegister(payload);
       setCurrentUser(createdUser);
-      cachedAuthUser = createdUser;
-      cachedAuthResolved = true;
+      runtimeCache.authUser = createdUser;
+      runtimeCache.authResolved = true;
       navigateAfterAuth(createdUser);
       return null;
     } catch (error) {
@@ -265,8 +294,8 @@ function AppContent() {
     try {
       const user = await backendLogin(payload);
       setCurrentUser(user);
-      cachedAuthUser = user;
-      cachedAuthResolved = true;
+      runtimeCache.authUser = user;
+      runtimeCache.authResolved = true;
       navigateAfterAuth(user);
       return null;
     } catch (error) {
@@ -304,48 +333,46 @@ function AppContent() {
     }
 
     clearBackendToken();
+    resetOrganizerEventsBootstrapCache();
+    resetOrganizerNotificationsBootstrapCache();
+    resetOrganizerVerificationRequestsCache();
+    resetOrganizerEventDetailsCache();
     setEvents([]);
     setAchievements([]);
     setNotifications([]);
     setApplications([]);
 
     setCurrentUser(null);
-    cachedAuthUser = null;
-    cachedAuthResolved = true;
+    runtimeCache.authUser = null;
+    runtimeCache.authResolved = true;
     setStudentView("home");
     setOrganizerView("events");
     setHrView("home");
     setStudentEventsTab("table");
-    cachedNavigationState = {
-      studentView: "home",
-      organizerView: "events",
-      hrView: "home",
-      studentEventsTab: "table",
-    };
-    cachedNavigationResolved = true;
+    runtimeCache.navigationState = DEFAULT_NAVIGATION_STATE;
+    runtimeCache.navigationResolved = true;
     return null;
   };
 
   const handleLogout = () => {
     clearBackendToken();
+    resetOrganizerEventsBootstrapCache();
+    resetOrganizerNotificationsBootstrapCache();
+    resetOrganizerVerificationRequestsCache();
+    resetOrganizerEventDetailsCache();
     setEvents([]);
     setAchievements([]);
     setNotifications([]);
     setApplications([]);
     setCurrentUser(null);
-    cachedAuthUser = null;
-    cachedAuthResolved = true;
+    runtimeCache.authUser = null;
+    runtimeCache.authResolved = true;
     setStudentView("home");
     setOrganizerView("events");
     setHrView("home");
     setStudentEventsTab("table");
-    cachedNavigationState = {
-      studentView: "home",
-      organizerView: "events",
-      hrView: "home",
-      studentEventsTab: "table",
-    };
-    cachedNavigationResolved = true;
+    runtimeCache.navigationState = DEFAULT_NAVIGATION_STATE;
+    runtimeCache.navigationResolved = true;
   };
 
   const currentUserNotifications: AppNotification[] = currentUser
@@ -381,7 +408,11 @@ function AppContent() {
     run();
   }, [currentUser, setNotifications]);
   if (!isAuthResolved) {
-    return <div className="min-h-screen bg-background" />;
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Spinner className="size-8" />
+      </div>
+    );
   }
 
   if (!currentUser) {

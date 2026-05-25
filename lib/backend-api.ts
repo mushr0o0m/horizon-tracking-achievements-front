@@ -212,6 +212,12 @@ interface EventParticipantDto {
   studentName?: string | null;
   fullName?: string | null;
   appliedAt?: string | null;
+  email?: string | null;
+  university?: string | null;
+  status?: string | null;
+  updatedAt?: string | null;
+  decisionComment?: string | null;
+  registrationAnswers?: Record<string, unknown> | null;
 }
 
 interface StudentInvitationDto {
@@ -1134,7 +1140,16 @@ function mapBackendEventParticipant(
     eventId,
     studentId,
     studentName: name,
+    email: dto.email ?? undefined,
+    university: dto.university ?? undefined,
+    status:
+      dto.status === "APPROVED" || dto.status === "REJECTED"
+        ? dto.status
+        : "PENDING",
     appliedAt: dto.appliedAt ?? new Date().toISOString(),
+    updatedAt: dto.updatedAt ?? undefined,
+    decisionComment: dto.decisionComment ?? undefined,
+    registrationAnswers: dto.registrationAnswers ?? undefined,
   };
 }
 
@@ -2012,11 +2027,57 @@ export async function fetchOrganizerEventParticipants(
     : [];
 }
 
+export async function fetchOrganizerEventApplications(
+  eventId: string,
+): Promise<EventApplication[]> {
+  const data = await request<EventParticipantDto[]>(
+    `/organizers/me/events/${eventId}/applications`,
+  );
+  return Array.isArray(data)
+    ? data.map((item) => mapBackendEventParticipant(item, eventId))
+    : [];
+}
+
+export async function approveOrganizerEventApplication(
+  eventId: string,
+  applicationId: string,
+  comment?: string,
+): Promise<EventApplication> {
+  const data = await request<EventParticipantDto>(
+    `/organizers/me/events/${eventId}/applications/${applicationId}/approve`,
+    {
+      method: "POST",
+      body: JSON.stringify({ comment: comment ?? "" }),
+    },
+  );
+  return mapBackendEventParticipant(data, eventId);
+}
+
+export async function rejectOrganizerEventApplication(
+  eventId: string,
+  applicationId: string,
+  comment?: string,
+): Promise<EventApplication> {
+  const data = await request<EventParticipantDto>(
+    `/organizers/me/events/${eventId}/applications/${applicationId}/reject`,
+    {
+      method: "POST",
+      body: JSON.stringify({ comment: comment ?? "" }),
+    },
+  );
+  return mapBackendEventParticipant(data, eventId);
+}
+
 export async function publishOrganizerResults(
   eventId: string,
   participants: Participant[],
-): Promise<void> {
-  await request<void>(`/organizers/me/events/${eventId}/results/publish`, {
+): Promise<{ imported: number; updatedExisting: number; skipped: number; messages: string[] }> {
+  const data = await request<{
+    imported?: number;
+    updatedExisting?: number;
+    skipped?: number;
+    messages?: string[];
+  }>(`/organizers/me/events/${eventId}/results/publish`, {
     method: "POST",
     body: JSON.stringify({
       participants: participants.map((item) => ({
@@ -2026,6 +2087,13 @@ export async function publishOrganizerResults(
       })),
     }),
   });
+
+  return {
+    imported: data.imported ?? 0,
+    updatedExisting: data.updatedExisting ?? 0,
+    skipped: data.skipped ?? 0,
+    messages: Array.isArray(data.messages) ? data.messages : [],
+  };
 }
 
 export async function fetchOrganizerVerificationRequests(params?: {

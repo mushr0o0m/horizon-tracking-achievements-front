@@ -58,11 +58,11 @@ export function buildPathForCurrentView(args: {
       case "create-event":
         return "/organizer/create-event/form";
       case "edit-event":
-        return "/organizer/edit-event/form";
+        return "/organizer/edit-event/[eventId]/form";
       case "upload-results":
-        return "/organizer/upload-results/form";
+        return "/organizer/upload-results/[eventId]/form";
       case "event-details":
-        return "/organizer/event-details/view";
+        return "/organizer/event-details/[eventId]/view";
       case "events":
       default:
         return "/organizer/events/main";

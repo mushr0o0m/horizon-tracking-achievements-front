@@ -232,7 +232,13 @@ export interface EventApplication {
   eventId: string;
   studentId: string;
   studentName: string;
+  email?: string;
+  university?: string;
+  status?: "PENDING" | "APPROVED" | "REJECTED";
   appliedAt: string;
+  updatedAt?: string;
+  decisionComment?: string | null;
+  registrationAnswers?: Record<string, unknown>;
 }
 
 export interface Participant {

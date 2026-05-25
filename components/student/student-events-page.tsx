@@ -192,6 +192,16 @@ export function StudentEventsPage({
     );
   };
 
+  const renderSortableHeader = (label: string, field: SortField) => (
+    <button
+      type="button"
+      onClick={() => handleSort(field)}
+      className="inline-flex items-center gap-1 hover:text-foreground/80 transition-colors">
+      {label}
+      <SortIcon field={field} />
+    </button>
+  );
+
   return (
     <div className="flex flex-col gap-6">
       <section className="rounded-2xl border border-white/55 bg-white/60 p-5 shadow-[0_22px_44px_-34px_rgba(53,89,152,0.95)] backdrop-blur-xl md:p-6">
@@ -275,21 +285,17 @@ export function StudentEventsPage({
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-border bg-secondary">
-                    <th
-                      className="px-5 py-3 text-left text-sm font-semibold text-foreground cursor-pointer"
-                      onClick={() => handleSort("title")}>
-                      Название <SortIcon field="title" />
+                    <th className="px-5 py-3 text-left text-sm font-semibold text-foreground">
+                      {renderSortableHeader("Название", "title")}
                     </th>
                     <th className="px-5 py-3 text-left text-sm font-semibold text-foreground">
                       Тип
                     </th>
                     <th className="px-5 py-3 text-left text-sm font-semibold text-foreground">
-                      Уровень
+                      {renderSortableHeader("Уровень", "level")}
                     </th>
-                    <th
-                      className="px-5 py-3 text-left text-sm font-semibold text-foreground cursor-pointer"
-                      onClick={() => handleSort("date")}>
-                      Дата начала <SortIcon field="date" />
+                    <th className="px-5 py-3 text-left text-sm font-semibold text-foreground">
+                      {renderSortableHeader("Дата начала", "date")}
                     </th>
                     <th className="px-5 py-3 text-left text-sm font-semibold text-foreground">
                       Регистрация до

@@ -22,6 +22,7 @@ const RESULT_OPTIONS = [
 interface UploadResultsProps {
   event: Event;
   applications?: EventApplication[];
+  loading?: boolean;
   onBack: () => void;
   onPublish: (eventId: string, participants: Participant[]) => void;
 }
@@ -29,6 +30,7 @@ interface UploadResultsProps {
 export function UploadResults({
   event,
   applications = [],
+  loading = false,
   onBack,
   onPublish,
 }: UploadResultsProps) {
@@ -104,7 +106,13 @@ export function UploadResults({
             Таблица участников
           </p>
         </div>
-        {participantsSource.length === 0 ? (
+        {loading ? (
+          <div className="px-5 py-6 space-y-3">
+            <div className="h-4 w-48 rounded bg-muted animate-pulse" />
+            <div className="h-4 w-full rounded bg-muted animate-pulse" />
+            <div className="h-4 w-3/4 rounded bg-muted animate-pulse" />
+          </div>
+        ) : participantsSource.length === 0 ? (
           <div className="px-5 py-6 text-sm text-muted-foreground">
             Нет заявок на участие. Отображаются только пользователи, подавшие
             заявку.

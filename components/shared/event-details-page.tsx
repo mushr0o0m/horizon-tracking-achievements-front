@@ -6,6 +6,7 @@ import {
   OrganizationType,
   UserRole,
 } from "@/lib/types";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   EVENT_FORMAT_OPTIONS,
   EVENT_LEVEL_LABELS,
@@ -30,7 +31,10 @@ interface EventDetailsPageProps {
   applications: EventApplication[];
   isApplied?: boolean;
   onToggleApplication?: () => void;
+  onApproveApplication?: (applicationId: string) => void;
+  onRejectApplication?: (applicationId: string) => void;
   onOpenUploadResults?: (eventId: string) => void;
+  applicationsLoading?: boolean;
   onBack: () => void;
 }
 
@@ -45,7 +49,10 @@ export function EventDetailsPage({
   applications,
   isApplied = false,
   onToggleApplication,
+  onApproveApplication,
+  onRejectApplication,
   onOpenUploadResults,
+  applicationsLoading = false,
   onBack,
 }: EventDetailsPageProps) {
   const ORGANIZATION_TYPE_LABELS: Record<OrganizationType, string> = {
@@ -59,7 +66,12 @@ export function EventDetailsPage({
   };
 
   return (
-    <div className="max-w-5xl mx-auto flex flex-col gap-6">
+    <div
+      className={
+        role === "organizer"
+          ? "w-full flex flex-col gap-6"
+          : "max-w-5xl mx-auto flex flex-col gap-6"
+      }>
       <div className="flex items-center gap-3">
         <button
           onClick={onBack}
@@ -115,7 +127,9 @@ export function EventDetailsPage({
               Участников: {event.participantsCount}
             </div>
             <div className="text-xs text-muted-foreground mt-2">
-              Заявок на участие: {applications.length}
+              {applicationsLoading
+                ? "Заявки загружаются..."
+                : `Заявок на участие: ${applications.length}`}
             </div>
           </div>
 
@@ -234,7 +248,13 @@ export function EventDetailsPage({
               </button>
             </div>
 
-            {applications.length === 0 ? (
+            {applicationsLoading && applications.length === 0 ? (
+              <div className="border border-border rounded-lg p-4 space-y-3">
+                <Skeleton className="h-4 w-52" />
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="h-4 w-44" />
+              </div>
+            ) : applications.length === 0 ? (
               <div className="border border-border rounded-lg p-4 text-sm text-muted-foreground">
                 Пока нет заявок на участие.
               </div>
@@ -249,6 +269,11 @@ export function EventDetailsPage({
                       <th className="px-4 py-3 text-left text-xs font-semibold text-foreground">
                         Дата заявки
                       </th>
+                      {(onApproveApplication || onRejectApplication) && (
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-foreground">
+                          Действие
+                        </th>
+                      )}
                     </tr>
                   </thead>
                   <tbody>
@@ -264,6 +289,42 @@ export function EventDetailsPage({
                             "ru-RU",
                           )}
                         </td>
+                        {(onApproveApplication || onRejectApplication) && (
+                          <td className="px-4 py-3 text-right">
+                            {application.status === "APPROVED" ? (
+                              <span className="text-xs text-muted-foreground">
+                                Подтверждено
+                              </span>
+                            ) : application.status === "REJECTED" ? (
+                              <span className="text-xs text-muted-foreground">
+                                Отклонено
+                              </span>
+                            ) : (
+                              <div className="inline-flex items-center gap-2">
+                                {onApproveApplication && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      onApproveApplication(application.id)
+                                    }
+                                    className="px-3 py-1.5 rounded-lg bg-[var(--verified)] text-white text-xs hover:opacity-90">
+                                    Принять
+                                  </button>
+                                )}
+                                {onRejectApplication && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      onRejectApplication(application.id)
+                                    }
+                                    className="px-3 py-1.5 rounded-lg border border-border text-xs hover:bg-secondary">
+                                    Отклонить
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
@@ -296,7 +357,7 @@ export function EventDetailsPage({
           </div>
         )}
 
-        {role !== "hr" && event.qrCodeUrl && (
+        {role !== "hr" && role !== "organizer" && event.qrCodeUrl && (
           <div className="space-y-2">
             <h3 className="text-sm font-semibold text-foreground">
               QR для регистрации

@@ -400,7 +400,7 @@ export function ProfilePage({
   };
 
   return (
-    <div className="max-w-4xl mx-auto flex flex-col gap-6">
+    <div className="w-full flex flex-col gap-6">
       <section>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>

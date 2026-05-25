@@ -1,5 +1,5 @@
-import AppShellCommon from "@/app/_components/app-shell-common";
+import OrganizerEventsPage from "@/app/organizer/events/page";
 
 export default function Page() {
-  return <AppShellCommon />;
+  return <OrganizerEventsPage />;
 }

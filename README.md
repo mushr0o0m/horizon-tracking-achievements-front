@@ -52,7 +52,7 @@ pnpm install
 pnpm dev
 ```
 
-Откройте `http://localhost:3000`.
+Откройте `http://localhost:3001`.
 
 ## Скрипты
 

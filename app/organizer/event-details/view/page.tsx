@@ -1,5 +1,7 @@
-import AppShellCommon from "@/app/_components/app-shell-common";
+"use client";
+
+import { redirect } from "next/navigation";
 
 export default function Page() {
-  return <AppShellCommon />;
+  redirect("/organizer/events/main");
 }

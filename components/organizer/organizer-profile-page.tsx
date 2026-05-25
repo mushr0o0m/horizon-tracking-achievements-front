@@ -498,7 +498,7 @@ export function OrganizerProfilePage({
   };
 
   return (
-    <div className="max-w-4xl mx-auto flex flex-col gap-6">
+    <div className="w-full flex flex-col gap-6">
       <section>
         <div>
           <h2 className="text-3xl font-bold text-foreground">Личный кабинет</h2>
