@@ -8,17 +8,14 @@ import type {
   AuthUser,
   HrView,
   OrganizerView,
-  StudentView,
   UserRole,
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 interface AppShellWrapperProps {
   role: UserRole;
-  studentView: StudentView;
   organizerView: OrganizerView;
   hrView: HrView;
-  onStudentViewChange: (view: StudentView) => void;
   onOrganizerViewChange: (view: OrganizerView) => void;
   onHrViewChange: (view: HrView) => void;
   user: AuthUser;
@@ -31,10 +28,8 @@ interface AppShellWrapperProps {
 
 export function AppShellWrapper({
   role,
-  studentView,
   organizerView,
   hrView,
-  onStudentViewChange,
   onOrganizerViewChange,
   onHrViewChange,
   user,
@@ -64,10 +59,8 @@ export function AppShellWrapper({
 
       <Sidebar
         role={role}
-        studentView={studentView}
         organizerView={organizerView}
         hrView={hrView}
-        onStudentViewChange={onStudentViewChange}
         onOrganizerViewChange={onOrganizerViewChange}
         onHrViewChange={onHrViewChange}
       />

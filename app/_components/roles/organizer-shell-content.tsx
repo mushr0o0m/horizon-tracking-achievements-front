@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import { useRouter, usePathname, useParams } from "next/navigation";
 import { OrganizerCreateEventPageContent } from "@/app/organizer/create-event/form/page";
 import { OrganizerEditEventPageContent } from "@/app/organizer/edit-event/[eventId]/form/page";
@@ -14,10 +20,7 @@ import { useOrganizerEventsBootstrap } from "@/hooks/use-organizer-events-bootst
 import { useOrganizerNotificationsBootstrap } from "@/hooks/use-organizer-notifications-bootstrap";
 import { useEventsStore } from "@/stores/events-store";
 import { useAchievementsStore } from "@/stores/achievements-store";
-import type {
-  AuthUser,
-  OrganizerView,
-} from "@/lib/types";
+import type { AuthUser, OrganizerView } from "@/lib/types";
 import { buildPathForCurrentView } from "@/app/shared/routing/app-shell-routes";
 import { Spinner } from "@/components/ui/spinner";
 
@@ -26,7 +29,10 @@ interface OrganizerShellContentProps {
   organizerView: OrganizerView;
   setOrganizerView: (view: OrganizerView) => void;
   setCurrentUser: Dispatch<SetStateAction<AuthUser | null>>;
-  handleChangePassword: (currentPassword: string, newPassword: string) => Promise<string | null>;
+  handleChangePassword: (
+    currentPassword: string,
+    newPassword: string,
+  ) => Promise<string | null>;
   handleDeleteAccount: (confirmationText: string) => string | null;
 }
 
@@ -92,21 +98,18 @@ export function OrganizerShellContent({
   const visibleEvents =
     organizerVisibleEvents.length > 0 || events.length > 0
       ? organizerVisibleEvents
-      : cachedEvents ?? organizerVisibleEvents;
+      : (cachedEvents ?? organizerVisibleEvents);
 
   const eventIdFromPath = params?.eventId ?? null;
   const resolvedSelectedEventId = selectedEventId ?? eventIdFromPath;
-  const selectedEvent = useMemo(
-    () => {
-      if (!resolvedSelectedEventId) return null;
-      return (
-        events.find((item) => item.id === resolvedSelectedEventId) ??
-        cachedEvents?.find((item) => item.id === resolvedSelectedEventId) ??
-        null
-      );
-    },
-    [events, resolvedSelectedEventId, cachedEvents],
-  );
+  const selectedEvent = useMemo(() => {
+    if (!resolvedSelectedEventId) return null;
+    return (
+      events.find((item) => item.id === resolvedSelectedEventId) ??
+      cachedEvents?.find((item) => item.id === resolvedSelectedEventId) ??
+      null
+    );
+  }, [events, resolvedSelectedEventId, cachedEvents]);
 
   if (isEventsLoading && events.length === 0 && !cachedEvents) {
     return (
@@ -115,7 +118,7 @@ export function OrganizerShellContent({
       </div>
     );
   }
-
+  console.log(events);
   return (
     <>
       {organizerView === "events" && (

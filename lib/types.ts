@@ -223,6 +223,7 @@ export interface Event {
   qrCodeUrl: string;
   status: OrganizerEventStatus;
   participantsCount: number;
+  applicationsCount: number;
   customFields: EventCustomField[];
   createdAt: string;
 }
@@ -234,7 +235,7 @@ export interface EventApplication {
   studentName: string;
   email?: string;
   university?: string;
-  status?: "PENDING" | "APPROVED" | "REJECTED";
+  status?: "PENDING" | "APPROVED" | "REJECTED" | "WITHDRAWN";
   appliedAt: string;
   updatedAt?: string;
   decisionComment?: string | null;
@@ -249,17 +250,6 @@ export interface Participant {
 }
 
 export type UserRole = "student" | "organizer" | "hr";
-export type StudentView =
-  | "home"
-  | "events"
-  | "dashboards"
-  | "achievements"
-  | "invitations"
-  | "subscribers"
-  | "hr-profile"
-  | "create-achievement"
-  | "profile"
-  | "event-details";
 export type OrganizerView =
   | "events"
   | "verification-requests"

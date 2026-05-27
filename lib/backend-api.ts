@@ -170,6 +170,7 @@ interface EventDto {
   bannerUrl?: string | null;
   status?: string | null;
   participantsCount?: number | null;
+  applicationsCount?: number | null;
   customFields?: EventCustomFieldDto[] | null;
   createdAt?: string | null;
   qrCodeUrl?: string | null;
@@ -956,9 +957,7 @@ function mapBackendAchievementType(value?: string | null): AchievementTypeCode {
   }
 }
 
-function mapBackendAchievementTypeLabel(
-  value: AchievementTypeCode,
-): EventType {
+function mapBackendAchievementTypeLabel(value: AchievementTypeCode): EventType {
   switch (value) {
     case "OLYMPIAD":
       return "Олимпиада";
@@ -1078,6 +1077,7 @@ function mapBackendEvent(dto: EventDto): Event {
     qrCodeUrl: dto.qrCodeUrl ?? (id ? buildEventQrCode(id) : ""),
     status: mapBackendEventStatus(dto.status),
     participantsCount: dto.participantsCount ?? 0,
+    applicationsCount: dto.applicationsCount ?? dto.participantsCount ?? 0,
     customFields,
     createdAt: dto.createdAt ?? new Date().toISOString(),
   };
@@ -1143,7 +1143,9 @@ function mapBackendEventParticipant(
     email: dto.email ?? undefined,
     university: dto.university ?? undefined,
     status:
-      dto.status === "APPROVED" || dto.status === "REJECTED"
+      dto.status === "APPROVED" ||
+      dto.status === "REJECTED" ||
+      dto.status === "WITHDRAWN"
         ? dto.status
         : "PENDING",
     appliedAt: dto.appliedAt ?? new Date().toISOString(),
@@ -1274,6 +1276,7 @@ function toBackendEventStatus(value: OrganizerEventStatus): string {
   }
 }
 
+// 1. Auth
 export async function backendLogin(payload: LoginPayload): Promise<AuthUser> {
   const auth = await request<AuthResponseDto>("/auth/login", {
     method: "POST",
@@ -1312,6 +1315,49 @@ export async function backendRegister(
   return mapMyProfile(profile);
 }
 
+// 4. Student
+export async function fetchStudentProfile(): Promise<AuthUser> {
+  const profile = await request<StudentProfileDto>("/students/me");
+  return mapStudentProfile(profile);
+}
+
+export async function updateStudentProfile(
+  payload: StudentProfileUpdatePayload,
+): Promise<AuthUser> {
+  const profile = await request<StudentProfileDto>("/students/me", {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+  return mapStudentProfile(profile);
+}
+
+// 6. HR
+export async function fetchHrProfile(): Promise<AuthUser> {
+  const profile = await request<HrProfileDto>("/hr/me");
+  return mapHrProfile(profile);
+}
+
+export async function updateHrProfile(
+  payload: OrganizerProfileUpdatePayload,
+): Promise<AuthUser> {
+  const profile = await request<HrProfileDto>("/hr/me", {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+  return mapHrProfile(profile);
+}
+
+export async function updateOrganizerProfile(
+  payload: OrganizerProfileUpdatePayload,
+): Promise<AuthUser> {
+  await request<void>("/organizers/me", {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+  return backendGetProfile();
+}
+
+// 2. Users
 export async function backendGetProfile(): Promise<AuthUser> {
   const profile = await request<MyProfileResponseDto>("/users/me");
   return mapMyProfile(profile);
@@ -1326,26 +1372,7 @@ export async function backendChangePassword(
   });
 }
 
-export async function updateStudentProfile(
-  payload: StudentProfileUpdatePayload,
-): Promise<AuthUser> {
-  await request<void>("/students/me", {
-    method: "PATCH",
-    body: JSON.stringify(payload),
-  });
-  return backendGetProfile();
-}
-
-export async function updateOrganizerProfile(
-  payload: OrganizerProfileUpdatePayload,
-): Promise<AuthUser> {
-  await request<void>("/organizers/me", {
-    method: "PATCH",
-    body: JSON.stringify(payload),
-  });
-  return backendGetProfile();
-}
-
+// 3. Public
 export async function fetchPublicEvents(params?: {
   query?: string;
   type?: string;
@@ -1397,6 +1424,20 @@ export async function fetchStudentAchievements(
     : [];
 }
 
+export async function updateStudentAchievement(
+  achievementId: string,
+  payload: Partial<StudentAchievementPayload>,
+): Promise<Achievement> {
+  const updated = await request<AchievementDto>(
+    `/students/me/achievements/${achievementId}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    },
+  );
+  return mapBackendAchievement(updated);
+}
+
 export async function createStudentAchievement(
   payload: StudentAchievementPayload,
 ): Promise<Achievement> {
@@ -1427,6 +1468,14 @@ export async function createStudentAchievement(
   return mapBackendAchievement(created);
 }
 
+export async function deleteStudentAchievement(
+  achievementId: string,
+): Promise<void> {
+  await request<void>(`/students/me/achievements/${achievementId}`, {
+    method: "DELETE",
+  });
+}
+
 export async function registerStudentForEvent(eventId: string): Promise<void> {
   await request<void>(`/students/me/events/${eventId}/register`, {
     method: "POST",
@@ -1454,14 +1503,19 @@ export async function fetchStudentInvitations(
 
 export async function respondToStudentInvitation(
   invitationId: string,
-  response: "accepted" | "rejected",
+  response: "accepted" | "rejected" | "ACCEPTED" | "REJECTED",
   candidateId?: string,
 ): Promise<HrCandidateInvitation> {
   const updated = await request<StudentInvitationDto>(
     `/students/me/invitations/${invitationId}/respond`,
     {
       method: "POST",
-      body: JSON.stringify({ response }),
+      body: JSON.stringify({
+        response:
+          response === "accepted" || response === "ACCEPTED"
+            ? "ACCEPTED"
+            : "REJECTED",
+      }),
     },
   );
   return mapBackendInvitation(updated, candidateId);
@@ -1929,6 +1983,7 @@ export async function fetchPublicHrProfile(
   };
 }
 
+// 5. Organizer
 export async function fetchOrganizerEvents(
   status?: OrganizerEventStatus,
 ): Promise<Event[]> {
@@ -2071,7 +2126,12 @@ export async function rejectOrganizerEventApplication(
 export async function publishOrganizerResults(
   eventId: string,
   participants: Participant[],
-): Promise<{ imported: number; updatedExisting: number; skipped: number; messages: string[] }> {
+): Promise<{
+  imported: number;
+  updatedExisting: number;
+  skipped: number;
+  messages: string[];
+}> {
   const data = await request<{
     imported?: number;
     updatedExisting?: number;
@@ -2138,6 +2198,7 @@ export async function rejectAchievementRequest(
   );
 }
 
+// 7. Notifications
 export async function fetchNotifications(
   userId: string,
 ): Promise<AppNotification[]> {
@@ -2145,6 +2206,17 @@ export async function fetchNotifications(
   return Array.isArray(data)
     ? data.map((item) => mapBackendNotification(item, userId))
     : [];
+}
+
+// 8. Files
+export async function fetchFile(fileId: string): Promise<Response> {
+  return fetch(`${API_BASE}/files/${fileId}`, {
+    headers: getToken()
+      ? {
+          Authorization: `Bearer ${getToken()}`,
+        }
+      : undefined,
+  });
 }
 
 export async function markNotificationRead(
@@ -2194,6 +2266,61 @@ function mapMyProfile(profile: MyProfileResponseDto): AuthUser {
       role === "organizer" || role === "hr"
         ? { ...DEFAULT_ORGANIZER_NOTIFICATIONS }
         : undefined,
+  };
+}
+
+function mapStudentProfile(profile: StudentProfileDto): AuthUser {
+  const firstName = profile.firstName ?? "";
+  const lastName = profile.lastName ?? "";
+  const middleName = profile.middleName ?? "";
+  const name =
+    [firstName, lastName, middleName].filter(Boolean).join(" ").trim() ||
+    profile.email;
+
+  return {
+    id: profile.userId,
+    name,
+    email: profile.email,
+    role: "student",
+    phone: profile.phone ?? undefined,
+    notifications: { ...DEFAULT_NOTIFICATIONS },
+    publicProfile: mapPublicProfile(profile, firstName, lastName, middleName),
+  };
+}
+
+function mapHrProfile(profile: HrProfileDto): AuthUser {
+  const firstName = profile.firstName ?? "";
+  const lastName = profile.lastName ?? "";
+  const middleName = profile.middleName ?? "";
+  const name =
+    [firstName, lastName, middleName].filter(Boolean).join(" ").trim() ||
+    profile.companyName ||
+    profile.email;
+
+  return {
+    id: profile.userId,
+    name,
+    email: profile.email,
+    role: "hr",
+    phone: profile.phone ?? undefined,
+    notifications: { ...DEFAULT_NOTIFICATIONS },
+    publicProfile: {
+      avatarUrl: undefined,
+      firstName,
+      lastName,
+      middleName: middleName || undefined,
+      university: "",
+      faculty: "",
+      course: "1",
+      city: "",
+      bio: "",
+      socialLinks: { ...DEFAULT_SOCIAL_LINKS },
+      profileViews30d: 0,
+      visibleAchievementIds: [],
+      visibleBadgeIds: [],
+    },
+    organizerProfile: mapHrAsOrganizerProfile(profile, name, profile.email),
+    organizerNotifications: { ...DEFAULT_ORGANIZER_NOTIFICATIONS },
   };
 }
 

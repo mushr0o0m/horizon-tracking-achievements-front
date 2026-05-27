@@ -127,9 +127,7 @@ export function EventDetailsPage({
               Участников: {event.participantsCount}
             </div>
             <div className="text-xs text-muted-foreground mt-2">
-              {applicationsLoading
-                ? "Заявки загружаются..."
-                : `Заявок на участие: ${applications.length}`}
+              {`Заявок на участие: ${event.applicationsCount}`}
             </div>
           </div>
 

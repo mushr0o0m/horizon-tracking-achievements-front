@@ -3,6 +3,7 @@
 import {
   createContext,
   ReactNode,
+  useEffect,
   useCallback,
   useContext,
   useMemo,
@@ -12,6 +13,31 @@ import { AppNotification, AppNotificationType } from "@/lib/types";
 
 interface NotificationsState {
   notifications: AppNotification[];
+}
+
+type NotificationsRuntimeCache = {
+  notifications: AppNotification[];
+};
+
+const NOTIFICATIONS_RUNTIME_CACHE_KEY =
+  "__horizon_notifications_runtime_cache__";
+
+function getNotificationsRuntimeCache(): NotificationsRuntimeCache {
+  const runtime = globalThis as typeof globalThis & {
+    [NOTIFICATIONS_RUNTIME_CACHE_KEY]?: NotificationsRuntimeCache;
+  };
+
+  if (!runtime[NOTIFICATIONS_RUNTIME_CACHE_KEY]) {
+    runtime[NOTIFICATIONS_RUNTIME_CACHE_KEY] = {
+      notifications: [],
+    };
+  }
+
+  return runtime[NOTIFICATIONS_RUNTIME_CACHE_KEY];
+}
+
+export function resetNotificationsStoreCache() {
+  getNotificationsRuntimeCache().notifications = [];
 }
 
 type NotificationsAction =
@@ -85,6 +111,12 @@ function notificationsReducer(
   }
 }
 
+function getInitialNotificationsState(): NotificationsState {
+  return {
+    notifications: [...getNotificationsRuntimeCache().notifications],
+  };
+}
+
 interface NotificationsStoreContextValue {
   notifications: AppNotification[];
   setNotifications: (items: AppNotification[]) => void;
@@ -107,9 +139,16 @@ export function NotificationsStoreProvider({
 }: {
   children: ReactNode;
 }) {
-  const [state, dispatch] = useReducer(notificationsReducer, {
-    notifications: [],
-  });
+  const [state, dispatch] = useReducer(
+    notificationsReducer,
+    undefined,
+    getInitialNotificationsState,
+  );
+  const runtimeCache = getNotificationsRuntimeCache();
+
+  useEffect(() => {
+    runtimeCache.notifications = state.notifications;
+  }, [runtimeCache, state.notifications]);
 
   const setNotifications = useCallback((items: AppNotification[]) => {
     dispatch({ type: "SET_ALL", payload: items });

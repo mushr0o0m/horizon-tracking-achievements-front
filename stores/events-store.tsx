@@ -13,7 +13,12 @@ import { buildEventQrCode } from "@/lib/event-meta";
 
 export type EventFormPayload = Omit<
   Event,
-  "id" | "organizerId" | "participantsCount" | "qrCodeUrl" | "createdAt"
+  | "id"
+  | "organizerId"
+  | "participantsCount"
+  | "applicationsCount"
+  | "qrCodeUrl"
+  | "createdAt"
 >;
 
 interface EventsState {
@@ -59,29 +64,17 @@ type EventsAction =
     }
   | { type: "RESET"; payload: Event[] };
 
-function recalculateParticipants(
-  events: Event[],
-  applications: EventApplication[],
-): Event[] {
-  return events.map((event) => ({
-    ...event,
-    participantsCount: applications.filter((item) => item.eventId === event.id)
-      .length,
-  }));
-}
-
 function eventsReducer(state: EventsState, action: EventsAction): EventsState {
   switch (action.type) {
     case "SET_EVENTS":
       return {
         ...state,
-        events: recalculateParticipants(action.payload, state.applications),
+        events: action.payload,
       };
     case "SET_APPLICATIONS":
       return {
         ...state,
         applications: action.payload,
-        events: recalculateParticipants(state.events, action.payload),
       };
     case "CREATE":
       return { ...state, events: [action.payload, ...state.events] };
@@ -165,7 +158,6 @@ function eventsReducer(state: EventsState, action: EventsAction): EventsState {
       return {
         ...state,
         applications: nextApplications,
-        events: recalculateParticipants(state.events, nextApplications),
       };
     case "ENSURE_APPLICATION": {
       const exists = state.applications.some(
@@ -192,7 +184,6 @@ function eventsReducer(state: EventsState, action: EventsAction): EventsState {
       return {
         ...state,
         applications: nextApplications,
-        events: recalculateParticipants(state.events, nextApplications),
       };
     }
     default:
@@ -262,6 +253,7 @@ export function EventsStoreProvider({ children }: { children: ReactNode }) {
         id,
         organizerId,
         participantsCount: 0,
+        applicationsCount: 0,
         qrCodeUrl: buildEventQrCode(id),
         createdAt: new Date().toISOString(),
       };

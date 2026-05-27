@@ -10,26 +10,29 @@ import {
   Search,
   MailOpen,
 } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { UserRole, StudentView, OrganizerView, HrView } from "@/lib/types";
+import { UserRole, OrganizerView, HrView } from "@/lib/types";
+import {
+  STUDENT_ROUTES,
+  buildStudentEventsPath,
+} from "@/app/shared/routing/app-shell-routes";
 
 interface SidebarProps {
   role: UserRole;
-  studentView: StudentView;
   organizerView: OrganizerView;
   hrView: HrView;
-  onStudentViewChange: (view: StudentView) => void;
   onOrganizerViewChange: (view: OrganizerView) => void;
   onHrViewChange: (view: HrView) => void;
 }
 
 const STUDENT_ITEMS = [
-  { id: "home" as StudentView, label: "Главная", icon: Home },
-  { id: "events" as StudentView, label: "Мероприятия", icon: CalendarDays },
-  { id: "dashboards" as StudentView, label: "Дашборды", icon: BarChart3 },
-  { id: "achievements" as StudentView, label: "Достижения", icon: Award },
-  { id: "invitations" as StudentView, label: "Приглашения", icon: MailOpen },
-  { id: "profile" as StudentView, label: "Личный кабинет", icon: UserRoundCog },
+  { id: "home", label: "Главная", icon: Home },
+  { id: "events", label: "Мероприятия", icon: CalendarDays },
+  { id: "dashboards", label: "Дашборды", icon: BarChart3 },
+  { id: "achievements", label: "Достижения", icon: Award },
+  { id: "invitations", label: "Приглашения", icon: MailOpen },
+  { id: "profile", label: "Личный кабинет", icon: UserRoundCog },
 ];
 
 const ORGANIZER_ITEMS = [
@@ -63,26 +66,30 @@ const HR_ITEMS = [
 
 export function Sidebar({
   role,
-  studentView,
   organizerView,
   hrView,
-  onStudentViewChange,
   onOrganizerViewChange,
   onHrViewChange,
 }: SidebarProps) {
+  const pathname = usePathname();
+  const router = useRouter();
   const items =
     role === "student"
       ? STUDENT_ITEMS
       : role === "organizer"
         ? ORGANIZER_ITEMS
         : HR_ITEMS;
-  const activeView =
-    role === "student"
-      ? studentView
-      : role === "organizer"
-        ? organizerView
-        : hrView;
   const isStudent = role === "student";
+
+  const isStudentActive = (id: string) => {
+    if (id === "home") return pathname === STUDENT_ROUTES.home;
+    if (id === "events") return pathname.startsWith("/student/events/");
+    if (id === "dashboards") return pathname === STUDENT_ROUTES.dashboards;
+    if (id === "achievements") return pathname === STUDENT_ROUTES.achievements;
+    if (id === "invitations") return pathname === STUDENT_ROUTES.invitations;
+    if (id === "profile") return pathname === STUDENT_ROUTES.profile;
+    return false;
+  };
 
   return (
     <aside
@@ -123,20 +130,30 @@ export function Sidebar({
           <button
             key={id}
             onClick={() => {
-              if (role === "student") onStudentViewChange(id as StudentView);
-              else if (role === "organizer")
+              if (role === "student") {
+                if (id === "home") router.push(STUDENT_ROUTES.home);
+                else if (id === "events") router.push(buildStudentEventsPath("table"));
+                else if (id === "dashboards") router.push(STUDENT_ROUTES.dashboards);
+                else if (id === "achievements") router.push(STUDENT_ROUTES.achievements);
+                else if (id === "invitations") router.push(STUDENT_ROUTES.invitations);
+                else if (id === "profile") router.push(STUDENT_ROUTES.profile);
+                return;
+              }
+              if (role === "organizer") {
                 onOrganizerViewChange(id as OrganizerView);
-              else onHrViewChange(id as HrView);
+                return;
+              }
+              onHrViewChange(id as HrView);
             }}
             className={cn(
               "w-full rounded-xl px-4 py-3 text-left transition-all",
               "flex items-center gap-3",
               isStudent && "border",
               isStudent
-                ? activeView === id
+                ? isStudentActive(id)
                   ? "border-white/75 bg-white/72 font-semibold text-slate-900 shadow-[0_16px_30px_-22px_rgba(48,80,145,0.95)]"
                   : "border-transparent text-slate-700 hover:border-white/55 hover:bg-white/58 hover:text-slate-900"
-                : activeView === id
+                : (role === "organizer" ? organizerView : hrView) === id
                   ? "bg-sidebar-accent font-semibold text-sidebar-accent-foreground"
                   : "text-sidebar-foreground hover:bg-secondary",
             )}>

@@ -1,28 +1,20 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import {
   AppNotification,
   AuthUser,
   UserRole,
-  StudentView,
   OrganizerView,
   HrView,
 } from "@/lib/types";
-import {
-  type StudentEventsFiltersState,
-  type StudentEventsTab,
-} from "@/components/student/student-events-page";
 import { HrCandidatesSearchFiltersState } from "@/components/hr/hr-candidates-search-page";
 import {
   LoginPayload,
   RegisterForm,
   RegistrationPayload,
 } from "@/components/shared/register-form";
-import {
-  EVENT_LEVEL_TO_ACHIEVEMENT_LEVEL,
-  EVENT_TYPE_TO_ACHIEVEMENT_TYPE,
-} from "@/lib/event-meta";
 import {
   EventsStoreProvider,
   useEventsStore,
@@ -33,6 +25,7 @@ import {
 } from "@/stores/achievements-store";
 import {
   NotificationsStoreProvider,
+  resetNotificationsStoreCache,
   useNotificationsStore,
 } from "@/stores/notifications-store";
 import { AppShellWrapper } from "@/app/_components/app-shell-wrapper";
@@ -40,10 +33,10 @@ import { StudentShellContent } from "@/app/_components/roles/student-shell-conte
 import { OrganizerShellContent } from "@/app/_components/roles/organizer-shell-content";
 import { HrShellContent } from "@/app/_components/roles/hr-shell-content";
 import {
+  backendChangePassword,
+  backendGetProfile,
   backendLogin,
   backendRegister,
-  backendGetProfile,
-  backendChangePassword,
   clearBackendToken,
   fetchNotifications,
   hasBackendToken,
@@ -53,20 +46,26 @@ import {
 import {
   normalizeHrViewFromPath,
   normalizeOrganizerViewFromPath,
-  normalizeStudentViewFromPath,
   parsePathParts,
 } from "@/app/shared/routing/view-mappers";
+import {
+  buildHrPath,
+  buildOrganizerPath,
+  STUDENT_ROUTES,
+} from "@/app/shared/routing/app-shell-routes";
 import { resetOrganizerEventsBootstrapCache } from "@/hooks/use-organizer-events-bootstrap";
 import { resetOrganizerNotificationsBootstrapCache } from "@/hooks/use-organizer-notifications-bootstrap";
 import { resetOrganizerVerificationRequestsCache } from "@/hooks/use-organizer-verification-requests-page";
 import { resetOrganizerEventDetailsCache } from "@/hooks/use-organizer-event-details-page";
+import { resetStudentEventsBootstrapCache } from "@/hooks/use-student-events-bootstrap";
+import { resetStudentAchievementsBootstrapCache } from "@/hooks/use-student-achievements-bootstrap";
+import { resetStudentSubscribersBootstrapCache } from "@/hooks/use-student-subscribers-bootstrap";
+import { resetStudentNotificationsBootstrapCache } from "@/hooks/use-student-notifications-bootstrap";
 import { Spinner } from "@/components/ui/spinner";
 
 type NavigationState = {
-  studentView: StudentView;
   organizerView: OrganizerView;
   hrView: HrView;
-  studentEventsTab: StudentEventsTab;
 };
 
 type AppShellRuntimeCache = {
@@ -77,10 +76,8 @@ type AppShellRuntimeCache = {
 };
 
 const DEFAULT_NAVIGATION_STATE: NavigationState = {
-  studentView: "home",
   organizerView: "events",
   hrView: "home",
-  studentEventsTab: "table",
 };
 
 const APP_SHELL_RUNTIME_CACHE_KEY = "__horizon_app_shell_runtime_cache__";
@@ -102,39 +99,21 @@ function getAppShellRuntimeCache(): AppShellRuntimeCache {
   return runtime[APP_SHELL_RUNTIME_CACHE_KEY];
 }
 
-function resolveInitialNavigationFromPathname(pathname?: string): {
-  studentView: StudentView;
-  organizerView: OrganizerView;
-  hrView: HrView;
-  studentEventsTab: StudentEventsTab;
-} {
-  const fallback = {
-    studentView: "home" as StudentView,
-    organizerView: "events" as OrganizerView,
-    hrView: "home" as HrView,
-    studentEventsTab: "table" as StudentEventsTab,
-  };
+function resolveInitialNavigationFromPathname(pathname?: string): NavigationState {
+  const fallback = DEFAULT_NAVIGATION_STATE;
   if (!pathname) return fallback;
 
   const { role, section, tab } = parsePathParts(pathname);
 
-  if (role === "student") {
-    const mapped = normalizeStudentViewFromPath(section, tab);
-    return {
-      ...fallback,
-      studentView: mapped.view,
-      studentEventsTab: mapped.eventsTab ?? "table",
-    };
-  }
   if (role === "organizer") {
     return {
-      ...fallback,
       organizerView: normalizeOrganizerViewFromPath(section, tab),
+      hrView: "home",
     };
   }
   if (role === "hr") {
     return {
-      ...fallback,
+      organizerView: "events",
       hrView: normalizeHrViewFromPath(section, tab),
     };
   }
@@ -144,12 +123,12 @@ function resolveInitialNavigationFromPathname(pathname?: string): {
 
 function AppContent() {
   const runtimeCache = getAppShellRuntimeCache();
+  const router = useRouter();
+  const pathname = usePathname();
 
-  // Shared state — both roles read/write these
   const { setEvents, setApplications } = useEventsStore();
   const { setAchievements } = useAchievementsStore();
-  const { notifications, setNotifications } =
-    useNotificationsStore();
+  const { notifications, setNotifications } = useNotificationsStore();
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(
     () => runtimeCache.authUser,
   );
@@ -157,7 +136,6 @@ function AppContent() {
     () => runtimeCache.authResolved,
   );
 
-  // Role & navigation state
   const initialNavigationStateRef = useRef(
     runtimeCache.navigationResolved
       ? runtimeCache.navigationState
@@ -165,26 +143,12 @@ function AppContent() {
           typeof window !== "undefined" ? window.location.pathname : undefined,
         ),
   );
-  const [studentView, setStudentView] = useState<StudentView>(
-    () => initialNavigationStateRef.current.studentView,
-  );
   const [organizerView, setOrganizerView] = useState<OrganizerView>(
     () => initialNavigationStateRef.current.organizerView,
   );
   const [hrView, setHrView] = useState<HrView>(
     () => initialNavigationStateRef.current.hrView,
   );
-  const [studentEventsTab, setStudentEventsTab] = useState<StudentEventsTab>(
-    () => initialNavigationStateRef.current.studentEventsTab,
-  );
-  const [studentEventsFilters, setStudentEventsFilters] =
-    useState<StudentEventsFiltersState>({
-      searchQuery: "",
-      selectedType: "",
-      selectedLevel: "",
-      sortField: "date",
-      sortOrder: "asc",
-    });
   const [hrCandidatesSearchFilters, setHrCandidatesSearchFilters] =
     useState<HrCandidatesSearchFiltersState>({
       query: "",
@@ -241,7 +205,7 @@ function AppContent() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [runtimeCache]);
 
   useEffect(() => {
     if (!isAuthResolved) return;
@@ -251,23 +215,44 @@ function AppContent() {
 
   useEffect(() => {
     runtimeCache.navigationState = {
-      studentView,
       organizerView,
       hrView,
-      studentEventsTab,
     };
     runtimeCache.navigationResolved = true;
-  }, [studentView, organizerView, hrView, studentEventsTab, runtimeCache]);
+  }, [organizerView, hrView, runtimeCache]);
 
+  useEffect(() => {
+    if (!currentUser) return;
+    const expectedPrefix =
+      currentUser.role === "student"
+        ? "/student"
+        : currentUser.role === "organizer"
+          ? "/organizer"
+          : "/hr";
+    if (pathname.startsWith(expectedPrefix)) return;
+
+    router.replace(
+      currentUser.role === "student"
+        ? STUDENT_ROUTES.home
+        : currentUser.role === "organizer"
+          ? buildOrganizerPath("events")
+          : buildHrPath("home"),
+      { scroll: false },
+    );
+  }, [currentUser, pathname, router]);
 
   const navigateAfterAuth = (user: AuthUser) => {
     if (user.role === "student") {
-      setStudentView("home");
-    } else if (user.role === "organizer") {
-      setOrganizerView("events");
-    } else {
-      setHrView("home");
+      router.replace(STUDENT_ROUTES.home, { scroll: false });
+      return;
     }
+    if (user.role === "organizer") {
+      setOrganizerView("events");
+      router.replace(buildOrganizerPath("events"), { scroll: false });
+      return;
+    }
+    setHrView("home");
+    router.replace(buildHrPath("home"), { scroll: false });
   };
 
   const handleRegister = async (
@@ -326,6 +311,15 @@ function AppContent() {
     }
   };
 
+  const resetToDefaultState = () => {
+    runtimeCache.authUser = null;
+    runtimeCache.authResolved = true;
+    runtimeCache.navigationState = DEFAULT_NAVIGATION_STATE;
+    runtimeCache.navigationResolved = true;
+    setOrganizerView("events");
+    setHrView("home");
+  };
+
   const handleDeleteAccount = (confirmationText: string): string | null => {
     if (!currentUser) return "Пользователь не найден.";
     if (confirmationText !== "УДАЛИТЬ") {
@@ -337,20 +331,18 @@ function AppContent() {
     resetOrganizerNotificationsBootstrapCache();
     resetOrganizerVerificationRequestsCache();
     resetOrganizerEventDetailsCache();
+    resetStudentEventsBootstrapCache();
+    resetStudentAchievementsBootstrapCache();
+    resetStudentSubscribersBootstrapCache();
+    resetStudentNotificationsBootstrapCache();
+    resetNotificationsStoreCache();
     setEvents([]);
     setAchievements([]);
     setNotifications([]);
     setApplications([]);
-
     setCurrentUser(null);
-    runtimeCache.authUser = null;
-    runtimeCache.authResolved = true;
-    setStudentView("home");
-    setOrganizerView("events");
-    setHrView("home");
-    setStudentEventsTab("table");
-    runtimeCache.navigationState = DEFAULT_NAVIGATION_STATE;
-    runtimeCache.navigationResolved = true;
+    resetToDefaultState();
+    router.replace("/", { scroll: false });
     return null;
   };
 
@@ -360,24 +352,24 @@ function AppContent() {
     resetOrganizerNotificationsBootstrapCache();
     resetOrganizerVerificationRequestsCache();
     resetOrganizerEventDetailsCache();
+    resetStudentEventsBootstrapCache();
+    resetStudentAchievementsBootstrapCache();
+    resetStudentSubscribersBootstrapCache();
+    resetStudentNotificationsBootstrapCache();
+    resetNotificationsStoreCache();
     setEvents([]);
     setAchievements([]);
     setNotifications([]);
     setApplications([]);
     setCurrentUser(null);
-    runtimeCache.authUser = null;
-    runtimeCache.authResolved = true;
-    setStudentView("home");
-    setOrganizerView("events");
-    setHrView("home");
-    setStudentEventsTab("table");
-    runtimeCache.navigationState = DEFAULT_NAVIGATION_STATE;
-    runtimeCache.navigationResolved = true;
+    resetToDefaultState();
+    router.replace("/", { scroll: false });
   };
 
   const currentUserNotifications: AppNotification[] = currentUser
     ? notifications.filter((item) => item.userId === currentUser.id)
     : [];
+
   const handleMarkNotificationRead = useCallback(
     async (notificationId: string) => {
       if (!currentUser) return;
@@ -392,6 +384,7 @@ function AppContent() {
     },
     [currentUser, setNotifications],
   );
+
   const handleMarkAllNotificationsRead = useCallback(() => {
     if (!currentUser) return;
 
@@ -407,6 +400,7 @@ function AppContent() {
 
     run();
   }, [currentUser, setNotifications]);
+
   if (!isAuthResolved) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -420,65 +414,50 @@ function AppContent() {
   }
 
   return (
-    <>
-      <AppShellWrapper
-        role={role}
-        studentView={studentView}
-        organizerView={organizerView}
-        hrView={hrView}
-        onStudentViewChange={(view) => {
-          if (view === "events") {
-            setStudentEventsTab("table");
-          }
-          setStudentView(view);
-        }}
-        onOrganizerViewChange={setOrganizerView}
-        onHrViewChange={setHrView}
-        user={currentUser}
-        notifications={currentUserNotifications}
-        onMarkNotificationRead={handleMarkNotificationRead}
-        onMarkAllNotificationsRead={handleMarkAllNotificationsRead}
-        onLogout={handleLogout}>
-        {role === "student" && (
-          <StudentShellContent
-            currentUser={currentUser}
-            studentView={studentView}
-            setStudentView={setStudentView}
-            setCurrentUser={setCurrentUser}
-            studentEventsTab={studentEventsTab}
-            setStudentEventsTab={setStudentEventsTab}
-            studentEventsFilters={studentEventsFilters}
-            setStudentEventsFilters={setStudentEventsFilters}
-            handleChangePassword={handleChangePassword}
-            handleDeleteAccount={handleDeleteAccount}
-          />
-        )}
-        {role === "organizer" && (
-          <OrganizerShellContent
-            currentUser={currentUser}
-            organizerView={organizerView}
-            setOrganizerView={setOrganizerView}
-            setCurrentUser={setCurrentUser}
-            handleChangePassword={handleChangePassword}
-            handleDeleteAccount={handleDeleteAccount}
-          />
-        )}
-        {role === "hr" && (
-          <HrShellContent
-            currentUser={currentUser}
-            hrView={hrView}
-            setHrView={setHrView}
-            setCurrentUser={setCurrentUser}
-            handleMarkNotificationRead={handleMarkNotificationRead}
-            handleMarkAllNotificationsRead={handleMarkAllNotificationsRead}
-            hrCandidatesSearchFilters={hrCandidatesSearchFilters}
-            setHrCandidatesSearchFilters={setHrCandidatesSearchFilters}
-            handleChangePassword={handleChangePassword}
-            handleDeleteAccount={handleDeleteAccount}
-          />
-        )}
-      </AppShellWrapper>
-    </>
+    <AppShellWrapper
+      role={role}
+      organizerView={organizerView}
+      hrView={hrView}
+      onOrganizerViewChange={setOrganizerView}
+      onHrViewChange={setHrView}
+      user={currentUser}
+      notifications={currentUserNotifications}
+      onMarkNotificationRead={handleMarkNotificationRead}
+      onMarkAllNotificationsRead={handleMarkAllNotificationsRead}
+      onLogout={handleLogout}>
+      {role === "student" && (
+        <StudentShellContent
+          currentUser={currentUser}
+          setCurrentUser={setCurrentUser}
+          handleChangePassword={handleChangePassword}
+          handleDeleteAccount={handleDeleteAccount}
+        />
+      )}
+      {role === "organizer" && (
+        <OrganizerShellContent
+          currentUser={currentUser}
+          organizerView={organizerView}
+          setOrganizerView={setOrganizerView}
+          setCurrentUser={setCurrentUser}
+          handleChangePassword={handleChangePassword}
+          handleDeleteAccount={handleDeleteAccount}
+        />
+      )}
+      {role === "hr" && (
+        <HrShellContent
+          currentUser={currentUser}
+          hrView={hrView}
+          setHrView={setHrView}
+          setCurrentUser={setCurrentUser}
+          handleMarkNotificationRead={handleMarkNotificationRead}
+          handleMarkAllNotificationsRead={handleMarkAllNotificationsRead}
+          hrCandidatesSearchFilters={hrCandidatesSearchFilters}
+          setHrCandidatesSearchFilters={setHrCandidatesSearchFilters}
+          handleChangePassword={handleChangePassword}
+          handleDeleteAccount={handleDeleteAccount}
+        />
+      )}
+    </AppShellWrapper>
   );
 }
 

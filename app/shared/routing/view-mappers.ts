@@ -1,5 +1,4 @@
-import type { HrView, OrganizerView, StudentView } from "@/lib/types";
-import type { StudentEventsTab } from "@/components/student/student-events-page";
+import type { HrView, OrganizerView } from "@/lib/types";
 
 export function parsePathParts(pathname: string): {
   role?: string;
@@ -14,28 +13,6 @@ export function parsePathParts(pathname: string): {
     section: parts[1],
     tab: parts[2],
   };
-}
-
-export function normalizeStudentViewFromPath(
-  section?: string,
-  tab?: string,
-): { view: StudentView; eventsTab?: StudentEventsTab } {
-  if (section === "events") {
-    const eventsTab: StudentEventsTab =
-      tab === "recommended" ? "recommended" : "table";
-    return { view: "events", eventsTab };
-  }
-
-  if (section === "dashboards") return { view: "dashboards" };
-  if (section === "achievements") return { view: "achievements" };
-  if (section === "invitations") return { view: "invitations" };
-  if (section === "subscribers") return { view: "subscribers" };
-  if (section === "hr-profile") return { view: "hr-profile" };
-  if (section === "create-achievement") return { view: "create-achievement" };
-  if (section === "profile") return { view: "profile" };
-  if (section === "event-details") return { view: "event-details" };
-
-  return { view: "home" };
 }
 
 export function normalizeOrganizerViewFromPath(
