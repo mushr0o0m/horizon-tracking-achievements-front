@@ -8,6 +8,8 @@ import {
   OrganizerEventType,
 } from "@/lib/types";
 
+const DEFAULT_API_BASE = "http://37.230.169.107/api";
+
 export const EVENT_LEVEL_TO_ACHIEVEMENT_LEVEL: Record<
   OrganizerEventLevel,
   AchievementLevel
@@ -112,9 +114,77 @@ export const EVENT_STATUS_OPTIONS: Array<{
   { value: "cancelled", label: "Отменено" },
 ];
 
+export function buildPublicEventPath(eventId: string): string {
+  return `/public/event/${encodeURIComponent(eventId)}`;
+}
+
+export function buildPublicEventUrl(eventId: string, origin?: string): string {
+  const path = buildPublicEventPath(eventId);
+  if (!origin) return path;
+  return `${origin.replace(/\/$/, "")}${path}`;
+}
+
 export function buildEventQrCode(eventId: string): string {
-  const publicEventUrl = `https://example.org/events/${eventId}`;
+  const appOrigin = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
+  const publicEventUrl = buildPublicEventUrl(eventId, appOrigin);
   return `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(publicEventUrl)}`;
+}
+
+export function resolveEventQrCodeUrl(
+  qrCodeUrl: string,
+  options?: { baseUrl?: string },
+): string {
+  if (!qrCodeUrl) return "";
+  const requestedBaseUrl = options?.baseUrl?.trim();
+  const fallbackBackendBaseUrl = (() => {
+    const apiBase = (process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_BASE).trim();
+    if (!apiBase) return "";
+    try {
+      return new URL(apiBase).origin;
+    } catch {
+      return "";
+    }
+  })();
+  const baseUrlForQuery = requestedBaseUrl || fallbackBackendBaseUrl;
+
+  const withBaseUrl = (value: string): string => {
+    if (!baseUrlForQuery) return value;
+    try {
+      const parsed = new URL(value);
+      if (!parsed.searchParams.has("baseUrl")) {
+        parsed.searchParams.set("baseUrl", baseUrlForQuery);
+      }
+      return parsed.toString();
+    } catch {
+      const separator = value.includes("?") ? "&" : "?";
+      return `${value}${separator}baseUrl=${encodeURIComponent(baseUrlForQuery)}`;
+    }
+  };
+
+  if (
+    qrCodeUrl.startsWith("http://") ||
+    qrCodeUrl.startsWith("https://") ||
+    qrCodeUrl.startsWith("data:")
+  ) {
+    return withBaseUrl(qrCodeUrl);
+  }
+
+  const apiBase = (process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_BASE).replace(
+    /\/$/,
+    "",
+  );
+  if (!apiBase) return withBaseUrl(qrCodeUrl);
+
+  if (qrCodeUrl.startsWith("/")) {
+    try {
+      const origin = new URL(apiBase).origin;
+      return withBaseUrl(`${origin}${qrCodeUrl}`);
+    } catch {
+      return withBaseUrl(qrCodeUrl);
+    }
+  }
+
+  return withBaseUrl(`${apiBase}/${qrCodeUrl.replace(/^\//, "")}`);
 }
 
 export function formatEventPeriod(event: Event): string {

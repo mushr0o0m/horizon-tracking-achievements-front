@@ -15,7 +15,9 @@ import { cn } from "@/lib/utils";
 import { UserRole, OrganizerView, HrView } from "@/lib/types";
 import {
   STUDENT_ROUTES,
+  buildStudentAchievementsPath,
   buildStudentEventsPath,
+  buildStudentProfilePath,
 } from "@/app/shared/routing/app-shell-routes";
 
 interface SidebarProps {
@@ -85,9 +87,10 @@ export function Sidebar({
     if (id === "home") return pathname === STUDENT_ROUTES.home;
     if (id === "events") return pathname.startsWith("/student/events/");
     if (id === "dashboards") return pathname === STUDENT_ROUTES.dashboards;
-    if (id === "achievements") return pathname === STUDENT_ROUTES.achievements;
+    if (id === "achievements")
+      return pathname.startsWith(`${STUDENT_ROUTES.achievements}/`);
     if (id === "invitations") return pathname === STUDENT_ROUTES.invitations;
-    if (id === "profile") return pathname === STUDENT_ROUTES.profile;
+    if (id === "profile") return pathname.startsWith(`${STUDENT_ROUTES.profile}/`);
     return false;
   };
 
@@ -134,9 +137,11 @@ export function Sidebar({
                 if (id === "home") router.push(STUDENT_ROUTES.home);
                 else if (id === "events") router.push(buildStudentEventsPath("table"));
                 else if (id === "dashboards") router.push(STUDENT_ROUTES.dashboards);
-                else if (id === "achievements") router.push(STUDENT_ROUTES.achievements);
+                else if (id === "achievements")
+                  router.push(buildStudentAchievementsPath("badges"));
                 else if (id === "invitations") router.push(STUDENT_ROUTES.invitations);
-                else if (id === "profile") router.push(STUDENT_ROUTES.profile);
+                else if (id === "profile")
+                  router.push(buildStudentProfilePath("personal"));
                 return;
               }
               if (role === "organizer") {

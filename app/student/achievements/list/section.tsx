@@ -2,6 +2,7 @@
 
 import { AchievementsPage } from "@/components/student/achievements-page";
 import type { Achievement, AppNotification, Event } from "@/lib/types";
+import type { StudentAchievementsTab } from "@/components/student/achievements-page";
 
 interface StudentAchievementsSectionProps {
   achievements: Achievement[];
@@ -12,6 +13,8 @@ interface StudentAchievementsSectionProps {
   onOpenAchievement: (achievementId: string) => void;
   onCreateAchievement: () => void;
   onToggleBadgeVisibility: (badgeId: string) => void;
+  activeTab: StudentAchievementsTab;
+  onTabChange: (tab: StudentAchievementsTab) => void;
 }
 
 export function StudentAchievementsSection({
@@ -23,6 +26,8 @@ export function StudentAchievementsSection({
   onOpenAchievement,
   onCreateAchievement,
   onToggleBadgeVisibility,
+  activeTab,
+  onTabChange,
 }: StudentAchievementsSectionProps) {
   return (
     <AchievementsPage
@@ -34,6 +39,8 @@ export function StudentAchievementsSection({
       achievementNotifications={achievementNotifications}
       visibleBadgeIds={visibleBadgeIds}
       onToggleBadgeVisibility={onToggleBadgeVisibility}
+      activeTab={activeTab}
+      onTabChange={onTabChange}
     />
   );
 }

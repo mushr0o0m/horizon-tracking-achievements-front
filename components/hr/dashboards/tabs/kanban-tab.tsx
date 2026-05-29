@@ -1,6 +1,7 @@
 import { ArrowLeft, ArrowRight, ArrowUpRight, NotebookPen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Tooltip,
   TooltipContent,
@@ -27,6 +28,7 @@ interface HrKanbanTabProps {
   onPrevColumn: () => void;
   onNextColumn: () => void;
   funnelData: FunnelData;
+  isLoading: boolean;
   onOpenCandidateModal: (
     candidate: FunnelCandidate,
     status: KanbanStatus,
@@ -43,6 +45,7 @@ export function HrKanbanTab({
   onPrevColumn,
   onNextColumn,
   funnelData,
+  isLoading,
   onOpenCandidateModal,
   onOpenCandidateProfile,
 }: HrKanbanTabProps) {
@@ -77,7 +80,7 @@ export function HrKanbanTab({
         {visibleColumns.map((status) => (
           <Card
             key={status}
-            className={`min-h-0 overflow-hidden border ${COLUMN_THEME[status].border} ${COLUMN_THEME[status].gradient}`}>
+            className={`relative flex h-full min-h-0 flex-col overflow-hidden border ${COLUMN_THEME[status].border} ${COLUMN_THEME[status].gradient}`}>
             <CardHeader
               className={`rounded-t-xl px-4 py-3 ${COLUMN_THEME[status].header}`}>
               <div className="flex items-start justify-between gap-2">
@@ -99,66 +102,75 @@ export function HrKanbanTab({
               </div>
             </CardHeader>
 
-            <CardContent className="h-[calc(100%-5.25rem)] overflow-y-auto p-3">
-              <div className="space-y-3">
-                {funnelData[status].map((candidate) => (
-                  <article
-                    key={candidate.id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => onOpenCandidateModal(candidate, status)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        onOpenCandidateModal(candidate, status);
-                      }
-                    }}
-                    className={`cursor-pointer rounded-xl border bg-background px-3.5 py-3 shadow-sm transition hover:border-primary/50 hover:shadow-md ${candidate.hasNewAchievement ? "border-blue-400 shadow-md ring-1 ring-blue-200" : "border-border"}`}>
-                    <div className="space-y-2.5">
-                      <div>
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            onOpenCandidateProfile(candidate.id);
-                          }}
-                          className="inline-flex cursor-pointer items-center gap-1.5 text-left text-lg font-semibold leading-snug text-foreground hover:text-primary">
-                          {candidate.hasNewAchievement && (
-                            <span
-                              aria-hidden
-                              className="h-2.5 w-2.5 rounded-full bg-blue-500"
-                            />
-                          )}
-                          {candidate.name}
-                          <ArrowUpRight className="w-4 h-4" />
-                        </button>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          {candidate.university}, {candidate.faculty},{" "}
-                          {candidate.course}
-                        </p>
-                      </div>
-
-                      <p className="text-sm text-muted-foreground">
-                        Достижения: {candidate.totalAchievements} / подтверждено{" "}
-                        {candidate.confirmedAchievements}
-                      </p>
-
-                      {candidate.note.trim() && (
-                        <div className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground">
-                          <NotebookPen className="w-3.5 h-3.5" />
-                          Заметка
+            <CardContent className="relative min-h-0 flex-1 overflow-y-auto p-3">
+              {isLoading ? (
+                <div className="flex h-full min-h-[24rem] flex-col gap-3">
+                  <Skeleton className={`min-h-24 flex-1 rounded-xl opacity-80 ${COLUMN_THEME[status].surface}`} />
+                  <Skeleton className={`min-h-24 flex-1 rounded-xl opacity-80 ${COLUMN_THEME[status].surface}`} />
+                  <Skeleton className={`min-h-24 flex-1 rounded-xl opacity-80 ${COLUMN_THEME[status].surface}`} />
+                  <Skeleton className={`min-h-24 flex-1 rounded-xl opacity-80 ${COLUMN_THEME[status].surface}`} />
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {funnelData[status].map((candidate) => (
+                    <article
+                      key={candidate.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => onOpenCandidateModal(candidate, status)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          onOpenCandidateModal(candidate, status);
+                        }
+                      }}
+                      className={`cursor-pointer rounded-xl border bg-background px-3.5 py-3 shadow-sm transition hover:border-primary/50 hover:shadow-md ${candidate.hasNewAchievement ? "border-blue-400 shadow-md ring-1 ring-blue-200" : "border-border"}`}>
+                      <div className="space-y-2.5">
+                        <div>
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              onOpenCandidateProfile(candidate.id);
+                            }}
+                            className="inline-flex cursor-pointer items-center gap-1.5 text-left text-lg font-semibold leading-snug text-foreground hover:text-primary">
+                            {candidate.hasNewAchievement && (
+                              <span
+                                aria-hidden
+                                className="h-2.5 w-2.5 rounded-full bg-blue-500"
+                              />
+                            )}
+                            {candidate.name}
+                            <ArrowUpRight className="w-4 h-4" />
+                          </button>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            {candidate.university}, {candidate.faculty},{" "}
+                            {candidate.course}
+                          </p>
                         </div>
-                      )}
-                    </div>
-                  </article>
-                ))}
 
-                {funnelData[status].length === 0 && (
-                  <div className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
-                    В колонке пока нет кандидатов
-                  </div>
-                )}
-              </div>
+                        <p className="text-sm text-muted-foreground">
+                          Достижения: {candidate.totalAchievements} / подтверждено{" "}
+                          {candidate.confirmedAchievements}
+                        </p>
+
+                        {candidate.note.trim() && (
+                          <div className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground">
+                            <NotebookPen className="w-3.5 h-3.5" />
+                            Заметка
+                          </div>
+                        )}
+                      </div>
+                    </article>
+                  ))}
+
+                  {funnelData[status].length === 0 && (
+                    <div className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
+                      В колонке пока нет кандидатов
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         ))}

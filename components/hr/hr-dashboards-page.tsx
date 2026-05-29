@@ -35,6 +35,7 @@ import { useHrDashboardData } from "@/hooks/use-hr-dashboard-data";
 import { useHrQuickSearch } from "@/hooks/use-hr-quick-search";
 import { useHrRecentActionsFilter } from "@/hooks/use-hr-recent-actions-filter";
 import { HrActionConfirmSettings } from "@/lib/hr-network";
+import type { HrDashboardTab } from "@/app/shared/routing/app-shell-routes";
 
 interface HrDashboardsPageProps {
   hrId: string;
@@ -45,7 +46,7 @@ interface HrDashboardsPageProps {
   onChangeCandidateStatus: (
     candidateId: string,
     toStatus: Exclude<HrFunnelStatus, "Не отслеживается">,
-  ) => string | null;
+  ) => string | null | Promise<string | null>;
   onInviteCandidate: (
     candidateId: string,
     payload: {
@@ -54,9 +55,11 @@ interface HrDashboardsPageProps {
       sendNow: boolean;
       scheduledAt?: string;
     },
-  ) => string | null;
-  onArchiveCandidate: (candidateId: string) => string | null;
+  ) => string | null | Promise<string | null>;
+  onArchiveCandidate: (candidateId: string) => string | null | Promise<string | null>;
   actionConfirmSettings: HrActionConfirmSettings;
+  activeTab?: HrDashboardTab;
+  onTabChange?: (tab: HrDashboardTab) => void;
 }
 
 export function HrDashboardsPage({
@@ -69,7 +72,12 @@ export function HrDashboardsPage({
   onInviteCandidate,
   onArchiveCandidate,
   actionConfirmSettings,
+  activeTab = "kanban",
+  onTabChange,
 }: HrDashboardsPageProps) {
+  const [uncontrolledTab, setUncontrolledTab] =
+    useState<HrDashboardTab>("kanban");
+  const selectedTab = onTabChange ? activeTab : uncontrolledTab;
   const [statusUpdateWindowDays, setStatusUpdateWindowDays] =
     useState<StatusUpdateWindow>(30);
   const [message, setMessage] = useState<string | null>(null);
@@ -80,6 +88,7 @@ export function HrDashboardsPage({
     archiveCandidates,
     recentActions,
     metrics,
+    isLoading,
     syncDashboardData,
   } = useHrDashboardData(statusUpdateWindowDays);
 
@@ -169,8 +178,13 @@ export function HrDashboardsPage({
     setPendingWarningAction(null);
   };
 
-  const handleMoveCandidate = (candidateId: string, toStatus: KanbanStatus) => {
-    const error = onChangeCandidateStatus(candidateId, toStatus);
+  const handleMoveCandidate = async (
+    candidateId: string,
+    toStatus: KanbanStatus,
+  ) => {
+    const error = await Promise.resolve(
+      onChangeCandidateStatus(candidateId, toStatus),
+    );
     if (error) {
       setMessage(error);
       return;
@@ -204,10 +218,12 @@ export function HrDashboardsPage({
     }
   };
 
-  const archiveCandidateFromModal = () => {
+  const archiveCandidateFromModal = async () => {
     if (!modalCandidate) return;
 
-    const error = onArchiveCandidate(modalCandidate.candidate.id);
+    const error = await Promise.resolve(
+      onArchiveCandidate(modalCandidate.candidate.id),
+    );
     if (error) {
       setMessage(error);
       return;
@@ -236,7 +252,7 @@ export function HrDashboardsPage({
       return;
     }
 
-    handleMoveCandidate(modalCandidate.candidate.id, nextStatus);
+    void handleMoveCandidate(modalCandidate.candidate.id, nextStatus);
   };
 
   const handleModalArchive = () => {
@@ -251,22 +267,22 @@ export function HrDashboardsPage({
       return;
     }
 
-    archiveCandidateFromModal();
+    void archiveCandidateFromModal();
   };
 
   const confirmPendingWarningAction = () => {
     if (!pendingWarningAction) return;
 
     if (pendingWarningAction.type === "archive") {
-      archiveCandidateFromModal();
+      void archiveCandidateFromModal();
       return;
     }
 
-    handleMoveCandidate(pendingWarningAction.candidateId, "Отклонён");
+    void handleMoveCandidate(pendingWarningAction.candidateId, "Отклонён");
     setPendingWarningAction(null);
   };
 
-  const handleModalInviteSubmit = () => {
+  const handleModalInviteSubmit = async () => {
     if (!modalCandidate) return;
 
     if (!invitePosition.trim()) {
@@ -284,12 +300,14 @@ export function HrDashboardsPage({
       return;
     }
 
-    const error = onInviteCandidate(modalCandidate.candidate.id, {
-      position: invitePosition.trim(),
-      message: inviteComment.trim(),
-      sendNow: inviteSendNow,
-      scheduledAt: inviteSendNow ? undefined : inviteScheduledAt,
-    });
+    const error = await Promise.resolve(
+      onInviteCandidate(modalCandidate.candidate.id, {
+        position: invitePosition.trim(),
+        message: inviteComment.trim(),
+        sendNow: inviteSendNow,
+        scheduledAt: inviteSendNow ? undefined : inviteScheduledAt,
+      }),
+    );
 
     if (error) {
       setInviteFormMessage(error);
@@ -310,7 +328,15 @@ export function HrDashboardsPage({
       )}
 
       <Tabs
-        defaultValue="kanban"
+        value={selectedTab}
+        onValueChange={(next) => {
+          const tab = next as HrDashboardTab;
+          if (onTabChange) {
+            onTabChange(tab);
+            return;
+          }
+          setUncontrolledTab(tab);
+        }}
         className="flex min-h-0 flex-1 flex-col gap-4">
         <section className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
@@ -351,6 +377,7 @@ export function HrDashboardsPage({
               setColumnStart((prev) => Math.min(maxColumnStart, prev + 1))
             }
             funnelData={funnelData}
+            isLoading={isLoading}
             onOpenCandidateModal={openCandidateModal}
             onOpenCandidateProfile={onOpenCandidate}
           />

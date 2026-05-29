@@ -1,8 +1,8 @@
 "use client";
 
-import AppShellCommon from "@/app/_components/app-shell-common";
 import { StudentSubscribersSection } from "@/app/student/subscribers/list/section";
 import type { SubscriberPreviewItem } from "@/components/shared/subscribers-preview-card";
+import { useStudentPageRuntime } from "@/app/_components/student/use-student-page-runtime";
 
 interface StudentSubscribersPageContentProps {
   subscribers: SubscriberPreviewItem[];
@@ -25,5 +25,12 @@ export function StudentSubscribersPageContent({
 }
 
 export default function Page() {
-  return <AppShellCommon />;
+  const runtime = useStudentPageRuntime();
+  return (
+    <StudentSubscribersPageContent
+      subscribers={runtime.studentSubscribers}
+      onBack={runtime.backFromSubscribers}
+      onOpenSubscriber={runtime.openSubscriberProfile}
+    />
+  );
 }

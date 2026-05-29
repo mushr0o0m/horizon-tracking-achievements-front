@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { HR_FUNNEL_STATUSES, HrFunnelStatus } from "@/lib/hr-funnel";
+import { Spinner } from "@/components/ui/spinner";
 
 export interface HrCandidateSummary {
   id: string;
@@ -27,10 +28,11 @@ export interface HrCandidateSummary {
 
 interface HrCandidatesSearchPageProps {
   candidates: HrCandidateSummary[];
-  onAddToFunnel: (candidateId: string) => string | null;
+  onAddToFunnel: (candidateId: string) => string | null | Promise<string | null>;
   onOpenCandidate: (candidateId: string) => void;
   filtersState?: HrCandidatesSearchFiltersState;
   onFiltersStateChange?: (nextState: HrCandidatesSearchFiltersState) => void;
+  isLoading?: boolean;
 }
 
 type SortColumn = "candidate" | "study" | "achievements";
@@ -62,6 +64,19 @@ function isSameSortState(left: SortState | null, right: SortState | null): boole
   if (left === right) return true;
   if (!left || !right) return false;
   return left.column === right.column && left.direction === right.direction;
+}
+
+function isSameFiltersState(
+  left: HrCandidatesSearchFiltersState,
+  right: HrCandidatesSearchFiltersState,
+): boolean {
+  return (
+    left.query === right.query &&
+    left.selectedUniversity === right.selectedUniversity &&
+    isSameStatuses(left.selectedStatuses, right.selectedStatuses) &&
+    isSameSortState(left.sortState, right.sortState) &&
+    left.page === right.page
+  );
 }
 
 function formatCourseLabel(rawCourse: string): string {
@@ -102,6 +117,7 @@ export function HrCandidatesSearchPage({
   onOpenCandidate,
   filtersState,
   onFiltersStateChange,
+  isLoading = false,
 }: HrCandidatesSearchPageProps) {
   const [query, setQuery] = useState("");
   const [selectedUniversity, setSelectedUniversity] = useState("all");
@@ -115,22 +131,12 @@ export function HrCandidatesSearchPage({
 
   useEffect(() => {
     if (!filtersState) return;
-    if (query !== filtersState.query) {
-      setQuery(filtersState.query);
-    }
-    if (selectedUniversity !== filtersState.selectedUniversity) {
-      setSelectedUniversity(filtersState.selectedUniversity);
-    }
-    if (!isSameStatuses(selectedStatuses, filtersState.selectedStatuses)) {
-      setSelectedStatuses(filtersState.selectedStatuses);
-    }
-    if (!isSameSortState(sortState, filtersState.sortState)) {
-      setSortState(filtersState.sortState);
-    }
-    if (page !== filtersState.page) {
-      setPage(filtersState.page);
-    }
-  }, [filtersState, page, query, selectedStatuses, selectedUniversity, sortState]);
+    setQuery(filtersState.query);
+    setSelectedUniversity(filtersState.selectedUniversity);
+    setSelectedStatuses(filtersState.selectedStatuses);
+    setSortState(filtersState.sortState);
+    setPage(filtersState.page);
+  }, [filtersState]);
 
   useEffect(() => {
     const nextState: HrCandidatesSearchFiltersState = {
@@ -140,17 +146,17 @@ export function HrCandidatesSearchPage({
       sortState,
       page,
     };
-    if (
-      filtersState &&
-      filtersState.query === nextState.query &&
-      filtersState.selectedUniversity === nextState.selectedUniversity &&
-      isSameStatuses(filtersState.selectedStatuses, nextState.selectedStatuses) &&
-      isSameSortState(filtersState.sortState, nextState.sortState) &&
-      filtersState.page === nextState.page
-    ) {
+    if (filtersState && isSameFiltersState(filtersState, nextState)) {
       return;
     }
-    onFiltersStateChange?.(nextState);
+
+    const timeoutId = window.setTimeout(() => {
+      onFiltersStateChange?.(nextState);
+    }, 350);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
   }, [
     filtersState,
     onFiltersStateChange,
@@ -272,8 +278,8 @@ export function HrCandidatesSearchPage({
     return sortState.direction === "asc" ? "↑" : "↓";
   };
 
-  const handleAddToFunnel = (candidateId: string) => {
-    const result = onAddToFunnel(candidateId);
+  const handleAddToFunnel = async (candidateId: string) => {
+    const result = await Promise.resolve(onAddToFunnel(candidateId));
     setFeedback(result ?? "Кандидат добавлен в колонку «На рассмотрении». ");
   };
 
@@ -372,7 +378,14 @@ export function HrCandidatesSearchPage({
       </section>
 
       <section className="flex-1 overflow-hidden rounded-xl border border-border bg-card">
-        {filteredCandidates.length > 0 ? (
+        {isLoading ? (
+          <div className="h-full grid place-items-center px-6 text-center">
+            <div className="flex flex-col items-center gap-3 text-muted-foreground">
+              <Spinner className="size-8" />
+              <span className="text-sm">Загружаем кандидатов...</span>
+            </div>
+          </div>
+        ) : filteredCandidates.length > 0 ? (
           <div className="h-full overflow-auto">
             <table className="w-full min-w-[900px] text-sm">
               <thead className="sticky top-0 z-10 bg-card/95 backdrop-blur border-b border-border">
@@ -483,7 +496,9 @@ export function HrCandidatesSearchPage({
 
       <section className="flex items-center justify-between border border-border rounded-xl bg-card px-4 py-3">
         <p className="text-sm text-muted-foreground">
-          Показано {paginatedCandidates.length} из {sortedCandidates.length}
+          {isLoading
+            ? "Загрузка списка кандидатов"
+            : `Показано ${paginatedCandidates.length} из ${sortedCandidates.length}`}
         </p>
         <div className="flex items-center gap-2">
           <Button
@@ -491,18 +506,18 @@ export function HrCandidatesSearchPage({
             variant="outline"
             size="sm"
             onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-            disabled={safePage <= 1}>
+            disabled={isLoading || safePage <= 1}>
             Назад
           </Button>
           <span className="text-sm text-muted-foreground">
-            Страница {safePage} из {pageCount}
+            {isLoading ? "Страница ..." : `Страница ${safePage} из ${pageCount}`}
           </span>
           <Button
             type="button"
             variant="outline"
             size="sm"
             onClick={() => setPage((prev) => Math.min(pageCount, prev + 1))}
-            disabled={safePage >= pageCount}>
+            disabled={isLoading || safePage >= pageCount}>
             Вперед
           </Button>
         </div>

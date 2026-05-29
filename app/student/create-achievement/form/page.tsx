@@ -1,9 +1,9 @@
 "use client";
 
-import AppShellCommon from "@/app/_components/app-shell-common";
 import { StudentCreateAchievementSection } from "@/app/student/create-achievement/form/section";
 import { AchievementRequestForm } from "@/components/student/achievement-request-form";
 import type { ComponentProps } from "react";
+import { useStudentPageRuntime } from "@/app/_components/student/use-student-page-runtime";
 
 interface StudentCreateAchievementPageContentProps {
   organizerOptions: ComponentProps<typeof AchievementRequestForm>["organizerOptions"];
@@ -29,5 +29,13 @@ export function StudentCreateAchievementPageContent({
 }
 
 export default function Page() {
-  return <AppShellCommon />;
+  const runtime = useStudentPageRuntime();
+  return (
+    <StudentCreateAchievementPageContent
+      organizerOptions={runtime.organizerOptions}
+      events={runtime.events}
+      onBack={runtime.backFromCreateAchievement}
+      onSubmit={runtime.createStudentAchievementSubmit}
+    />
+  );
 }

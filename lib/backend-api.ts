@@ -1387,6 +1387,11 @@ export async function fetchPublicEvents(params?: {
   return Array.isArray(data) ? data.map(mapBackendEvent) : [];
 }
 
+export async function fetchPublicEventById(eventId: string): Promise<Event> {
+  const data = await request<EventDto>(`/public/events/${eventId}`);
+  return mapBackendEvent(data);
+}
+
 export async function fetchPublicOrganizerProfile(
   organizerId: string,
 ): Promise<OrganizerOrganizationProfile | null> {

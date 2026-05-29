@@ -2,7 +2,13 @@
 
 import { Event } from "@/lib/types";
 import { useMemo, useState } from "react";
-import { Plus, Pencil, Trash2, Upload, AlertTriangle } from "lucide-react";
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  Upload,
+  AlertTriangle,
+} from "lucide-react";
 import {
   EVENT_LEVEL_OPTIONS,
   EVENT_LEVEL_COLORS,

@@ -1,12 +1,12 @@
 "use client";
 
-import AppShellCommon from "@/app/_components/app-shell-common";
 import { StudentEventsSection } from "@/app/student/events/table/section";
 import type {
   StudentEventsFiltersState,
   StudentEventsTab,
 } from "@/components/student/student-events-page";
 import type { Event } from "@/lib/types";
+import { useStudentPageRuntime } from "@/app/_components/student/use-student-page-runtime";
 
 interface StudentRecommendedEventsPageContentProps {
   events: Event[];
@@ -41,5 +41,17 @@ export function StudentRecommendedEventsPageContent({
 }
 
 export default function Page() {
-  return <AppShellCommon />;
+  const runtime = useStudentPageRuntime();
+
+  return (
+    <StudentRecommendedEventsPageContent
+      events={runtime.availableStudentEvents}
+      recommendedEvents={runtime.recommendedStudentEvents}
+      activeTab={runtime.studentEventsTab}
+      onTabChange={runtime.onEventsTabChange}
+      filtersState={runtime.studentEventsFilters}
+      onFiltersStateChange={runtime.onEventsFiltersChange}
+      onOpenEvent={runtime.openEventFromEvents}
+    />
+  );
 }

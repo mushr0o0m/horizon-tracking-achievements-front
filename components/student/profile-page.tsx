@@ -50,6 +50,8 @@ interface ProfilePageProps {
   onDeleteAccount: (
     confirmationText: string,
   ) => string | null | Promise<string | null>;
+  activeTab: StudentProfileTab;
+  onTabChange: (tab: StudentProfileTab) => void;
 }
 
 const PHONE_REGEX = /^\+?[0-9]{10,15}$/;
@@ -71,7 +73,7 @@ const COURSE_OPTIONS: Array<{ value: CourseOption; label: string }> = [
   { value: "postgraduate", label: "Аспирант" },
 ];
 
-type ProfileTab = "personal" | "public" | "settings";
+export type StudentProfileTab = "personal" | "public" | "settings";
 
 function buildFallbackPublicProfile(fullName: string): PublicProfile {
   const parts = fullName.trim().split(/\s+/).filter(Boolean);
@@ -195,8 +197,9 @@ export function ProfilePage({
   setCurrentUser,
   onChangePassword,
   onDeleteAccount,
+  activeTab,
+  onTabChange,
 }: ProfilePageProps) {
-  const [activeTab, setActiveTab] = useState<ProfileTab>("personal");
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const safeNotifications = user.notifications ?? DEFAULT_NOTIFICATIONS;
   const safePublicProfile =
@@ -431,7 +434,7 @@ export function ProfilePage({
 
       <div className="inline-flex w-full sm:w-fit rounded-xl bg-secondary p-1.5 gap-1">
         <button
-          onClick={() => setActiveTab("personal")}
+          onClick={() => onTabChange("personal")}
           className={`min-h-10 flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
             activeTab === "personal"
               ? "bg-card text-foreground shadow-sm"
@@ -440,7 +443,7 @@ export function ProfilePage({
           Личная информация
         </button>
         <button
-          onClick={() => setActiveTab("public")}
+          onClick={() => onTabChange("public")}
           className={`min-h-10 flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
             activeTab === "public"
               ? "bg-card text-foreground shadow-sm"
@@ -449,7 +452,7 @@ export function ProfilePage({
           Публичная визитка
         </button>
         <button
-          onClick={() => setActiveTab("settings")}
+          onClick={() => onTabChange("settings")}
           className={`min-h-10 flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
             activeTab === "settings"
               ? "bg-card text-foreground shadow-sm"

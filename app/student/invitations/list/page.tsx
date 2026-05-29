@@ -1,8 +1,8 @@
 "use client";
 
-import AppShellCommon from "@/app/_components/app-shell-common";
 import { StudentInvitationsSection } from "@/app/student/invitations/list/section";
 import type { HrCandidateInvitation } from "@/lib/hr-network";
+import { useStudentPageRuntime } from "@/app/_components/student/use-student-page-runtime";
 
 interface StudentInvitationsPageContentProps {
   invitations: HrCandidateInvitation[];
@@ -25,5 +25,11 @@ export function StudentInvitationsPageContent({
 }
 
 export default function Page() {
-  return <AppShellCommon />;
+  const runtime = useStudentPageRuntime({ loadInvitations: true });
+  return (
+    <StudentInvitationsPageContent
+      invitations={runtime.studentInvitations}
+      onRespond={runtime.respondToInvitation}
+    />
+  );
 }

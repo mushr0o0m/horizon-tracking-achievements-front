@@ -39,6 +39,7 @@ export function useHrDashboardData(statusUpdateWindowDays: StatusUpdateWindow) {
     ArchiveCandidate[]
   >([]);
   const [recentActions, setRecentActions] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [metrics, setMetrics] = useState<DashboardMetrics>({
     inFunnelCount: 0,
     activeCount: 0,
@@ -47,6 +48,7 @@ export function useHrDashboardData(statusUpdateWindowDays: StatusUpdateWindow) {
   });
 
   const syncDashboardData = useCallback(async () => {
+    setIsLoading(true);
     try {
       const [dashboard, archive, recent] = await Promise.all([
         fetchHrDashboard(statusUpdateWindowDays),
@@ -68,6 +70,8 @@ export function useHrDashboardData(statusUpdateWindowDays: StatusUpdateWindow) {
         confirmedAchievementsCount: 0,
         byStatus: buildEmptyStatusCounts(),
       });
+    } finally {
+      setIsLoading(false);
     }
   }, [statusUpdateWindowDays]);
 
@@ -80,6 +84,7 @@ export function useHrDashboardData(statusUpdateWindowDays: StatusUpdateWindow) {
     archiveCandidates,
     recentActions,
     metrics,
+    isLoading,
     syncDashboardData,
   };
 }

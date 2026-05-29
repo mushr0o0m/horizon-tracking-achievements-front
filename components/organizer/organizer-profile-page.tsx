@@ -44,6 +44,8 @@ interface OrganizerProfilePageProps {
   onUpdateHrDefaultInviteComment?: (comment: string) => void;
   hrActionConfirmSettings?: HrActionConfirmSettings;
   onUpdateHrActionConfirmSettings?: (settings: HrActionConfirmSettings) => void;
+  activeTab?: ProfileTab;
+  onTabChange?: (tab: ProfileTab) => void;
 }
 
 const PHONE_REGEX = /^\+?[0-9]{10,15}$/;
@@ -205,6 +207,8 @@ export function OrganizerProfilePage({
   onUpdateHrDefaultInviteComment,
   hrActionConfirmSettings,
   onUpdateHrActionConfirmSettings,
+  activeTab: controlledActiveTab,
+  onTabChange,
 }: OrganizerProfilePageProps) {
   const {
     handleUpdateEmail,
@@ -215,7 +219,15 @@ export function OrganizerProfilePage({
   const showHrSettingsTab =
     typeof onUpdateHrDefaultInviteComment === "function";
 
-  const [activeTab, setActiveTab] = useState<ProfileTab>("personal");
+  const [uncontrolledActiveTab, setUncontrolledActiveTab] =
+    useState<ProfileTab>("personal");
+  const activeTab = controlledActiveTab ?? uncontrolledActiveTab;
+  const handleTabChange = (tab: ProfileTab) => {
+    if (!controlledActiveTab) {
+      setUncontrolledActiveTab(tab);
+    }
+    onTabChange?.(tab);
+  };
 
   const safeNotifications =
     user.organizerNotifications ?? DEFAULT_ORGANIZER_NOTIFICATIONS;
@@ -510,7 +522,7 @@ export function OrganizerProfilePage({
 
       <div className="inline-flex w-full sm:w-fit rounded-xl bg-secondary p-1.5 gap-1">
         <button
-          onClick={() => setActiveTab("personal")}
+          onClick={() => handleTabChange("personal")}
           className={`min-h-10 flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
             activeTab === "personal"
               ? "bg-card text-foreground shadow-sm"
@@ -519,7 +531,7 @@ export function OrganizerProfilePage({
           Личные данные
         </button>
         <button
-          onClick={() => setActiveTab("organization")}
+          onClick={() => handleTabChange("organization")}
           className={`min-h-10 flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
             activeTab === "organization"
               ? "bg-card text-foreground shadow-sm"
@@ -528,7 +540,7 @@ export function OrganizerProfilePage({
           Информация об организации
         </button>
         <button
-          onClick={() => setActiveTab("settings")}
+          onClick={() => handleTabChange("settings")}
           className={`min-h-10 flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
             activeTab === "settings"
               ? "bg-card text-foreground shadow-sm"

@@ -1,11 +1,12 @@
 "use client";
 
-import AppShellCommon from "@/app/_components/app-shell-common";
 import { StudentProfileSection } from "@/app/student/profile/main/section";
 import type { BadgeViewModel } from "@/lib/badges";
 import type { Dispatch, SetStateAction } from "react";
 import type { Achievement, AuthUser } from "@/lib/types";
 import type { SubscriberPreviewItem } from "@/components/shared/subscribers-preview-card";
+import { useStudentPageRuntime } from "@/app/_components/student/use-student-page-runtime";
+import type { StudentProfileTab } from "@/components/student/profile-page";
 
 interface StudentProfilePageContentProps {
   user: AuthUser;
@@ -24,6 +25,8 @@ interface StudentProfilePageContentProps {
     newPassword: string,
   ) => Promise<string | null>;
   onDeleteAccount: (confirmationText: string) => string | null;
+  activeTab: StudentProfileTab;
+  onTabChange: (tab: StudentProfileTab) => void;
 }
 
 export function StudentProfilePageContent({
@@ -36,6 +39,8 @@ export function StudentProfilePageContent({
   setCurrentUser,
   onChangePassword,
   onDeleteAccount,
+  activeTab,
+  onTabChange,
 }: StudentProfilePageContentProps) {
   return (
     <StudentProfileSection
@@ -48,10 +53,27 @@ export function StudentProfilePageContent({
       setCurrentUser={setCurrentUser}
       onChangePassword={onChangePassword}
       onDeleteAccount={onDeleteAccount}
+      activeTab={activeTab}
+      onTabChange={onTabChange}
     />
   );
 }
 
 export default function Page() {
-  return <AppShellCommon />;
+  const runtime = useStudentPageRuntime();
+  return (
+    <StudentProfilePageContent
+      user={runtime.currentUser}
+      achievements={runtime.studentAchievements}
+      badges={runtime.studentBadges}
+      subscribers={runtime.studentSubscribers}
+      publicStats={runtime.publicStats}
+      onOpenSubscribers={runtime.openSubscribersFromProfile}
+      setCurrentUser={runtime.setCurrentUser}
+      onChangePassword={runtime.handleChangePassword}
+      onDeleteAccount={runtime.handleDeleteAccount}
+      activeTab={runtime.studentProfileTab}
+      onTabChange={runtime.onProfileTabChange}
+    />
+  );
 }

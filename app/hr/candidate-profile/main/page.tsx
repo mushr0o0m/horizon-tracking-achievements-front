@@ -1,5 +1,6 @@
-import AppShellCommon from "@/app/_components/app-shell-common";
+"use client";
 
-export default function Page() {
-  return <AppShellCommon />;
-}
+export {
+  HrCandidateProfileMainPageContent,
+  default,
+} from "@/app/hr/candidate-profile/[candidateId]/main/page";

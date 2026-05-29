@@ -4,6 +4,7 @@ export function parsePathParts(pathname: string): {
   role?: string;
   section?: string;
   tab?: string;
+  slug?: string;
 } {
   const parts = pathname.split("/").filter(Boolean);
   if (parts.length < 3) return {};
@@ -11,7 +12,8 @@ export function parsePathParts(pathname: string): {
   return {
     role: parts[0],
     section: parts[1],
-    tab: parts[2],
+    slug: parts[2],
+    tab: parts[3],
   };
 }
 
@@ -29,7 +31,12 @@ export function normalizeOrganizerViewFromPath(
   return "events";
 }
 
-export function normalizeHrViewFromPath(section?: string, tab?: string): HrView {
+export function normalizeHrViewFromPath(
+  section?: string,
+  slug?: string,
+  tab?: string,
+): HrView {
+  void slug;
   void tab;
   if (section === "dashboards") return "dashboards";
   if (section === "candidates-search") return "candidates-search";

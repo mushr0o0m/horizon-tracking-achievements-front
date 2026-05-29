@@ -1,8 +1,8 @@
 "use client";
 
-import AppShellCommon from "@/app/_components/app-shell-common";
 import { StudentEventDetailsSection } from "@/app/student/event-details/view/section";
 import { type ComponentProps } from "react";
+import { useStudentPageRuntime } from "@/app/_components/student/use-student-page-runtime";
 
 interface StudentEventDetailsPageContentProps {
   event: ComponentProps<typeof StudentEventDetailsSection>["event"];
@@ -34,5 +34,20 @@ export function StudentEventDetailsPageContent({
 }
 
 export default function Page() {
-  return <AppShellCommon />;
+  const runtime = useStudentPageRuntime();
+
+  if (!runtime.displayedEvent) {
+    return null;
+  }
+
+  return (
+    <StudentEventDetailsPageContent
+      event={runtime.displayedEvent}
+      organizerInfo={runtime.eventOrganizerInfo}
+      applications={runtime.selectedEventApplications}
+      isApplied={runtime.isCurrentStudentApplied}
+      onToggleApplication={() => runtime.toggleApplication(runtime.displayedEvent!.id)}
+      onBack={runtime.backFromEvent}
+    />
+  );
 }

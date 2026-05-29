@@ -40,13 +40,17 @@ import {
   STUDENT_EVENT_SORT_ORDERS,
 } from "@/app/shared/student/events";
 import {
+  buildStudentAchievementsPath,
   buildStudentCreateAchievementPath,
   buildStudentEventDetailsPath,
   buildStudentHrProfilePath,
+  buildStudentProfilePath,
   buildStudentSubscribersPath,
   buildStudentEventsPath,
+  resolveStudentAchievementsTab,
+  resolveStudentProfileTab,
   STUDENT_ROUTES,
-  resolveStudentRoute,
+  type StudentRouteOverride,
 } from "@/app/shared/routing/app-shell-routes";
 import { useStudentEventsBootstrap } from "@/hooks/use-student-events-bootstrap";
 import { useStudentAchievementsBootstrap } from "@/hooks/use-student-achievements-bootstrap";
@@ -66,6 +70,7 @@ import { StudentHrProfilePageContent } from "@/app/student/hr-profile/view/page"
 
 interface StudentShellContentProps {
   currentUser: AuthUser;
+  routeOverride?: StudentRouteOverride;
   setCurrentUser: Dispatch<SetStateAction<AuthUser | null>>;
   handleChangePassword: (currentPassword: string, newPassword: string) => Promise<string | null>;
   handleDeleteAccount: (confirmationText: string) => string | null;
@@ -79,6 +84,7 @@ interface StudentOrganizerOption {
 
 export function StudentShellContent({
   currentUser,
+  routeOverride,
   setCurrentUser,
   handleChangePassword,
   handleDeleteAccount,
@@ -102,8 +108,20 @@ export function StudentShellContent({
   useStudentAchievementsBootstrap(currentUser.id, true);
   useStudentNotificationsBootstrap(currentUser.id, true);
 
-  const routeState = useMemo(() => resolveStudentRoute(pathname), [pathname]);
-  const studentEventsTab = routeState.eventsTab ?? "table";
+  const routeState = useMemo<StudentRouteOverride>(
+    () => routeOverride ?? { section: "home" },
+    [routeOverride],
+  );
+  const studentEventsTab =
+    routeState.section === "events" ? routeState.eventsTab : "table";
+  const studentAchievementsTab =
+    routeState.section === "achievements"
+      ? routeState.achievementsTab
+      : resolveStudentAchievementsTab(pathname);
+  const studentProfileTab =
+    routeState.section === "profile"
+      ? routeState.profileTab
+      : resolveStudentProfileTab(pathname);
   const studentEventsFilters = useMemo<StudentEventsFiltersState>(() => ({
     searchQuery: searchParams.get("search") ?? "",
     selectedType: (searchParams.get("type") as Event["type"] | "") ?? "",
@@ -116,10 +134,11 @@ export function StudentShellContent({
       : "asc",
   }), [searchParams]);
 
+  const searchParamsString = searchParams.toString();
   const selectedEventId = searchParams.get("eventId") ?? null;
   const selectedHrProfileId = searchParams.get("hrId") ?? null;
   const returnTo = searchParams.get("returnTo") ?? "";
-  const currentUrl = `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
+  const currentUrl = `${pathname}${searchParamsString ? `?${searchParamsString}` : ""}`;
 
   useEffect(() => {
     if (routeState.section !== "event-details") return;
@@ -428,7 +447,9 @@ export function StudentShellContent({
           setCurrentUser(updated);
         }
 
-        router.push(STUDENT_ROUTES.achievements, { scroll: false });
+        router.push(buildStudentAchievementsPath(studentAchievementsTab), {
+          scroll: false,
+        });
       } catch (error) {
         console.warn("Failed to create achievement.", error);
         addNotification(currentUser.id, "Ошибка запроса", "Не удалось отправить запрос на достижение.", "system");
@@ -436,17 +457,94 @@ export function StudentShellContent({
     };
 
     run();
-  }, [addNotification, currentUser, organizerOptions, router, setAchievements, setCurrentUser]);
+  }, [addNotification, currentUser, organizerOptions, router, setAchievements, setCurrentUser, studentAchievementsTab]);
 
   const handleBackFromEvent = useCallback(() => {
     router.replace(returnTo || STUDENT_ROUTES.home, { scroll: false });
   }, [returnTo, router]);
 
   const handleBackFromSubscribers = useCallback(() => {
-    router.replace(returnTo || STUDENT_ROUTES.profile, { scroll: false });
-  }, [returnTo, router]);
+    router.replace(returnTo || buildStudentProfilePath(studentProfileTab), {
+      scroll: false,
+    });
+  }, [returnTo, router, studentProfileTab]);
+
+  const handleStudentEventsTabChange = useCallback(
+    (tab: "table" | "recommended") => {
+      router.push(buildStudentEventsPath(tab), { scroll: false });
+    },
+    [router],
+  );
+
+  const handleStudentAchievementsTabChange = useCallback(
+    (tab: "table" | "badges") => {
+      const basePath = buildStudentAchievementsPath(tab);
+      router.push(
+        `${basePath}${searchParamsString ? `?${searchParamsString}` : ""}`,
+        { scroll: false },
+      );
+    },
+    [router, searchParamsString],
+  );
+
+  const handleStudentProfileTabChange = useCallback(
+    (tab: "personal" | "public" | "settings") => {
+      const basePath = buildStudentProfilePath(tab);
+      router.push(
+        `${basePath}${searchParamsString ? `?${searchParamsString}` : ""}`,
+        { scroll: false },
+      );
+    },
+    [router, searchParamsString],
+  );
+
+  const handleStudentEventsFiltersChange = useCallback(
+    (next: StudentEventsFiltersState) => {
+      const params = new URLSearchParams();
+      if (next.searchQuery.trim()) {
+        params.set("search", next.searchQuery.trim());
+      }
+      if (next.selectedType) params.set("type", next.selectedType);
+      if (next.selectedLevel) params.set("level", next.selectedLevel);
+      if (next.sortField !== "date") params.set("sortField", next.sortField);
+      if (next.sortOrder !== "asc") params.set("sortOrder", next.sortOrder);
+
+      router.replace(
+        `${buildStudentEventsPath(studentEventsTab)}${
+          params.toString() ? `?${params}` : ""
+        }`,
+        { scroll: false },
+      );
+    },
+    [router, studentEventsTab],
+  );
+
+  const studentEventsReturnTo = useMemo(
+    () =>
+      `${buildStudentEventsPath(studentEventsTab)}${
+        searchParamsString ? `?${searchParamsString}` : ""
+      }`,
+    [searchParamsString, studentEventsTab],
+  );
+
+  const handleOpenStudentEventFromEvents = useCallback(
+    (eventId: string) => {
+      handleOpenStudentEvent(eventId, studentEventsReturnTo);
+    },
+    [handleOpenStudentEvent, studentEventsReturnTo],
+  );
 
   const visibleBadgeIds = useMemo(() => currentUser.publicProfile.visibleBadgeIds.filter((id) => unlockedBadgeIds.has(id)), [currentUser.publicProfile.visibleBadgeIds, unlockedBadgeIds]);
+
+  const eventsPageProps = {
+    events: availableStudentEvents,
+    recommendedEvents: recommendedStudentEvents,
+    activeTab: studentEventsTab,
+    onTabChange: handleStudentEventsTabChange,
+    filtersState: studentEventsFilters,
+    onFiltersStateChange: handleStudentEventsFiltersChange,
+    onOpenEvent: handleOpenStudentEventFromEvents,
+  } as const;
 
   return (
     <>
@@ -473,73 +571,9 @@ export function StudentShellContent({
       {routeState.section === "events" && (
         <>
           {studentEventsTab === "recommended" ? (
-            <StudentRecommendedEventsPageContent
-              events={availableStudentEvents}
-              recommendedEvents={recommendedStudentEvents}
-              activeTab={studentEventsTab}
-              onTabChange={(tab) =>
-                router.push(buildStudentEventsPath(tab), { scroll: false })
-              }
-              filtersState={studentEventsFilters}
-              onFiltersStateChange={(next) => {
-                const params = new URLSearchParams();
-                if (next.searchQuery.trim()) {
-                  params.set("search", next.searchQuery.trim());
-                }
-                if (next.selectedType) params.set("type", next.selectedType);
-                if (next.selectedLevel) params.set("level", next.selectedLevel);
-                if (next.sortField !== "date") params.set("sortField", next.sortField);
-                if (next.sortOrder !== "asc") params.set("sortOrder", next.sortOrder);
-                router.replace(
-                  `${buildStudentEventsPath(studentEventsTab)}${
-                    params.toString() ? `?${params}` : ""
-                  }`,
-                  { scroll: false },
-                );
-              }}
-              onOpenEvent={(eventId) =>
-                handleOpenStudentEvent(
-                  eventId,
-                  `${buildStudentEventsPath(studentEventsTab)}${
-                    searchParams.toString() ? `?${searchParams.toString()}` : ""
-                  }`,
-                )
-              }
-            />
+            <StudentRecommendedEventsPageContent {...eventsPageProps} />
           ) : (
-            <StudentEventsPageContent
-              events={availableStudentEvents}
-              recommendedEvents={recommendedStudentEvents}
-              activeTab={studentEventsTab}
-              onTabChange={(tab) =>
-                router.push(buildStudentEventsPath(tab), { scroll: false })
-              }
-              filtersState={studentEventsFilters}
-              onFiltersStateChange={(next) => {
-                const params = new URLSearchParams();
-                if (next.searchQuery.trim()) {
-                  params.set("search", next.searchQuery.trim());
-                }
-                if (next.selectedType) params.set("type", next.selectedType);
-                if (next.selectedLevel) params.set("level", next.selectedLevel);
-                if (next.sortField !== "date") params.set("sortField", next.sortField);
-                if (next.sortOrder !== "asc") params.set("sortOrder", next.sortOrder);
-                router.replace(
-                  `${buildStudentEventsPath(studentEventsTab)}${
-                    params.toString() ? `?${params}` : ""
-                  }`,
-                  { scroll: false },
-                );
-              }}
-              onOpenEvent={(eventId) =>
-                handleOpenStudentEvent(
-                  eventId,
-                  `${buildStudentEventsPath(studentEventsTab)}${
-                    searchParams.toString() ? `?${searchParams.toString()}` : ""
-                  }`,
-                )
-              }
-            />
+            <StudentEventsPageContent {...eventsPageProps} />
           )}
         </>
       )}
@@ -556,13 +590,17 @@ export function StudentShellContent({
           onOpenAchievement={handleOpenAchievement}
           onCreateAchievement={() =>
             router.push(
-              buildStudentCreateAchievementPath(STUDENT_ROUTES.achievements),
+              buildStudentCreateAchievementPath(
+                buildStudentAchievementsPath(studentAchievementsTab),
+              ),
               { scroll: false },
             )
           }
           achievementNotifications={studentAchievementNotifications}
           visibleBadgeIds={visibleBadgeIds}
           onToggleBadgeVisibility={handleToggleBadgeVisibility}
+          activeTab={studentAchievementsTab}
+          onTabChange={handleStudentAchievementsTabChange}
         />
       )}
       {routeState.section === "invitations" && (
@@ -576,9 +614,12 @@ export function StudentShellContent({
           organizerOptions={organizerOptions}
           events={events}
           onBack={() =>
-            router.replace(returnTo || STUDENT_ROUTES.achievements, {
-              scroll: false,
-            })
+            router.replace(
+              returnTo || buildStudentAchievementsPath(studentAchievementsTab),
+              {
+                scroll: false,
+              },
+            )
           }
           onSubmit={createStudentAchievementSubmit}
         />
@@ -601,7 +642,7 @@ export function StudentShellContent({
           subscribers={studentSubscribers}
           onOpenSubscribers={() =>
             router.push(
-              buildStudentSubscribersPath(STUDENT_ROUTES.profile),
+              buildStudentSubscribersPath(buildStudentProfilePath(studentProfileTab)),
               { scroll: false },
             )
           }
@@ -609,6 +650,8 @@ export function StudentShellContent({
           publicStats={publicStats}
           onChangePassword={handleChangePassword}
           onDeleteAccount={handleDeleteAccount}
+          activeTab={studentProfileTab}
+          onTabChange={handleStudentProfileTabChange}
         />
       )}
       {routeState.section === "subscribers" && (
@@ -642,7 +685,10 @@ export function StudentShellContent({
         }}
         onClose={() => setSelectedAchievementId(null)}
         onOpenEvent={(eventId) => {
-          handleOpenStudentEvent(eventId, STUDENT_ROUTES.achievements);
+          handleOpenStudentEvent(
+            eventId,
+            buildStudentAchievementsPath(studentAchievementsTab),
+          );
           setSelectedAchievementId(null);
         }}
       />

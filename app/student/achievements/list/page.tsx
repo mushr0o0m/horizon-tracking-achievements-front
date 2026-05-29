@@ -1,8 +1,11 @@
 "use client";
 
-import AppShellCommon from "@/app/_components/app-shell-common";
 import { StudentAchievementsSection } from "@/app/student/achievements/list/section";
 import type { Achievement, AppNotification, Event } from "@/lib/types";
+import { useStudentPageRuntime } from "@/app/_components/student/use-student-page-runtime";
+import { StudentAchievementModal } from "@/app/_components/student/use-student-page-runtime";
+import { STUDENT_ROUTES } from "@/app/shared/routing/app-shell-routes";
+import type { StudentAchievementsTab } from "@/components/student/achievements-page";
 
 interface StudentAchievementsPageContentProps {
   achievements: Achievement[];
@@ -13,6 +16,8 @@ interface StudentAchievementsPageContentProps {
   onOpenAchievement: (achievementId: string) => void;
   onCreateAchievement: () => void;
   onToggleBadgeVisibility: (badgeId: string) => void;
+  activeTab: StudentAchievementsTab;
+  onTabChange: (tab: StudentAchievementsTab) => void;
 }
 
 export function StudentAchievementsPageContent({
@@ -24,6 +29,8 @@ export function StudentAchievementsPageContent({
   onOpenAchievement,
   onCreateAchievement,
   onToggleBadgeVisibility,
+  activeTab,
+  onTabChange,
 }: StudentAchievementsPageContentProps) {
   return (
     <StudentAchievementsSection
@@ -35,10 +42,52 @@ export function StudentAchievementsPageContent({
       onOpenAchievement={onOpenAchievement}
       onCreateAchievement={onCreateAchievement}
       onToggleBadgeVisibility={onToggleBadgeVisibility}
+      activeTab={activeTab}
+      onTabChange={onTabChange}
     />
   );
 }
 
 export default function Page() {
-  return <AppShellCommon />;
+  const runtime = useStudentPageRuntime();
+
+  return (
+    <>
+      <StudentAchievementsPageContent
+        achievements={runtime.studentAchievements}
+        events={runtime.events}
+        achievementNotifications={runtime.studentAchievementNotifications}
+        visibleBadgeIds={runtime.visibleBadgeIds}
+        onOpenEvent={runtime.openEventFromCurrent}
+        onOpenAchievement={runtime.openAchievement}
+        onCreateAchievement={runtime.openCreateAchievement}
+        onToggleBadgeVisibility={runtime.toggleBadgeVisibility}
+        activeTab={runtime.studentAchievementsTab}
+        onTabChange={runtime.onAchievementsTabChange}
+      />
+      <StudentAchievementModal
+        achievement={runtime.selectedAchievement}
+        event={runtime.selectedAchievementEvent}
+        isVisibleInPublic={
+          runtime.selectedAchievement
+            ? runtime.currentUser.publicProfile.visibleAchievementIds.includes(
+                runtime.selectedAchievement.id,
+              )
+            : false
+        }
+        onToggleVisible={(nextValue) => {
+          if (!runtime.selectedAchievement) return;
+          runtime.toggleAchievementVisibility(
+            runtime.selectedAchievement.id,
+            nextValue,
+          );
+        }}
+        onClose={runtime.closeAchievement}
+        onOpenEvent={(eventId) => {
+          runtime.openEventFromCurrent(eventId);
+          runtime.closeAchievement();
+        }}
+      />
+    </>
+  );
 }

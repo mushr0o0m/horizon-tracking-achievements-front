@@ -8,13 +8,16 @@ import {
 } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  buildPublicEventUrl,
   EVENT_FORMAT_OPTIONS,
   EVENT_LEVEL_LABELS,
   EVENT_TYPE_LABELS,
   formatEventPeriod,
+  resolveEventQrCodeUrl,
 } from "@/lib/event-meta";
 import { EventStatusBadge } from "@/components/events/event-status-badge";
-import { ArrowLeft, CalendarDays, Mail, MapPin, Users } from "lucide-react";
+import { ArrowLeft, CalendarDays, Link2, Mail, MapPin, Users } from "lucide-react";
+import { useState } from "react";
 
 interface EventDetailsPageProps {
   event: Event;
@@ -55,6 +58,8 @@ export function EventDetailsPage({
   applicationsLoading = false,
   onBack,
 }: EventDetailsPageProps) {
+  const [shareMessage, setShareMessage] = useState<string | null>(null);
+
   const ORGANIZATION_TYPE_LABELS: Record<OrganizationType, string> = {
     university: "Вуз",
     scientific: "Научная организация",
@@ -65,13 +70,21 @@ export function EventDetailsPage({
     other: "Другое",
   };
 
+  const handleCopyPublicLink = async () => {
+    try {
+      const origin = typeof window !== "undefined" ? window.location.origin : undefined;
+      const link = buildPublicEventUrl(event.id, origin);
+      await navigator.clipboard.writeText(link);
+      setShareMessage("Ссылка на публичную страницу скопирована.");
+    } catch {
+      setShareMessage("Не удалось скопировать ссылку.");
+    }
+  };
+
+  const resolvedQrCodeUrl = resolveEventQrCodeUrl(event.qrCodeUrl);
+
   return (
-    <div
-      className={
-        role === "organizer"
-          ? "w-full flex flex-col gap-6"
-          : "max-w-5xl mx-auto flex flex-col gap-6"
-      }>
+    <div className="w-full flex flex-col gap-6">
       <div className="flex items-center gap-3">
         <button
           onClick={onBack}
@@ -206,6 +219,27 @@ export function EventDetailsPage({
             )}
           </div>
         </div>
+
+        <div className="border border-border rounded-lg p-4 bg-secondary/20 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-foreground">
+              Публичная страница мероприятия
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Поделитесь ссылкой для регистрации участников
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleCopyPublicLink}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 text-sm">
+            <Link2 className="w-4 h-4" />
+            Скопировать ссылку
+          </button>
+        </div>
+        {shareMessage && (
+          <p className="text-xs text-muted-foreground">{shareMessage}</p>
+        )}
 
         {role === "student" && (
           <div className="border border-border rounded-lg p-4 bg-secondary/30 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -355,13 +389,13 @@ export function EventDetailsPage({
           </div>
         )}
 
-        {role !== "hr" && role !== "organizer" && event.qrCodeUrl && (
+        {role !== "hr" && role !== "organizer" && resolvedQrCodeUrl && (
           <div className="space-y-2">
             <h3 className="text-sm font-semibold text-foreground">
               QR для регистрации
             </h3>
             <img
-              src={event.qrCodeUrl}
+              src={resolvedQrCodeUrl}
               alt="QR-код мероприятия"
               className="w-40 h-40 rounded-lg border border-border bg-white p-2"
             />

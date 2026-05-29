@@ -1,8 +1,8 @@
 "use client";
 
-import AppShellCommon from "@/app/_components/app-shell-common";
 import { StudentDashboardsSection } from "@/app/student/dashboards/main/section";
 import type { Achievement } from "@/lib/types";
+import { useStudentPageRuntime } from "@/app/_components/student/use-student-page-runtime";
 
 interface StudentDashboardsPageContentProps {
   achievements: Achievement[];
@@ -15,5 +15,6 @@ export function StudentDashboardsPageContent({
 }
 
 export default function Page() {
-  return <AppShellCommon />;
+  const runtime = useStudentPageRuntime();
+  return <StudentDashboardsPageContent achievements={runtime.studentAchievements} />;
 }

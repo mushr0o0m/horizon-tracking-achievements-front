@@ -23,11 +23,13 @@ interface AchievementsPageProps {
   achievementNotifications: AppNotification[];
   visibleBadgeIds: string[];
   onToggleBadgeVisibility: (badgeId: string) => void;
+  activeTab: StudentAchievementsTab;
+  onTabChange: (tab: StudentAchievementsTab) => void;
 }
 
 type SortField = "title" | "date" | "level";
 type SortOrder = "asc" | "desc";
-type Tab = "table" | "badges";
+export type StudentAchievementsTab = "table" | "badges";
 
 const EVENT_TYPES: EventType[] = [
   "Олимпиада",
@@ -47,8 +49,9 @@ export function AchievementsPage({
   achievementNotifications,
   visibleBadgeIds,
   onToggleBadgeVisibility,
+  activeTab,
+  onTabChange,
 }: AchievementsPageProps) {
-  const [tab, setTab] = useState<Tab>("badges");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedYear, setSelectedYear] = useState<string>("");
   const [selectedEventType, setSelectedEventType] = useState<EventType | "">(
@@ -174,13 +177,13 @@ export function AchievementsPage({
 
       {/* Tabs */}
       <div className="inline-flex w-full gap-1 rounded-xl border border-white/55 bg-white/56 p-1.5 backdrop-blur sm:w-fit">
-        {(["table", "badges"] as Tab[]).map((t) => (
+        {(["table", "badges"] as StudentAchievementsTab[]).map((t) => (
           <button
             key={t}
-            onClick={() => setTab(t)}
+            onClick={() => onTabChange(t)}
             className={cn(
               "min-h-10 flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors",
-              tab === t
+              activeTab === t
                 ? "bg-white text-slate-900 shadow-[0_14px_24px_-18px_rgba(44,74,136,0.95)]"
                 : "text-slate-600 hover:text-slate-900",
             )}>
@@ -189,7 +192,7 @@ export function AchievementsPage({
         ))}
       </div>
 
-      {tab === "table" && (
+      {activeTab === "table" && (
         <>
           {/* Filters */}
           <div className="bg-card border border-border rounded-lg p-5">
@@ -316,7 +319,7 @@ export function AchievementsPage({
         </>
       )}
 
-      {tab === "badges" && (
+      {activeTab === "badges" && (
         <section className="space-y-4">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>

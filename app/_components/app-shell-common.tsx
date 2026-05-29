@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   AppNotification,
@@ -29,6 +35,7 @@ import {
   useNotificationsStore,
 } from "@/stores/notifications-store";
 import { AppShellWrapper } from "@/app/_components/app-shell-wrapper";
+import { StudentRouteProvider } from "@/app/_components/student/student-route-context";
 import { StudentShellContent } from "@/app/_components/roles/student-shell-content";
 import { OrganizerShellContent } from "@/app/_components/roles/organizer-shell-content";
 import { HrShellContent } from "@/app/_components/roles/hr-shell-content";
@@ -51,6 +58,7 @@ import {
 import {
   buildHrPath,
   buildOrganizerPath,
+  type StudentRouteOverride,
   STUDENT_ROUTES,
 } from "@/app/shared/routing/app-shell-routes";
 import { resetOrganizerEventsBootstrapCache } from "@/hooks/use-organizer-events-bootstrap";
@@ -103,7 +111,7 @@ function resolveInitialNavigationFromPathname(pathname?: string): NavigationStat
   const fallback = DEFAULT_NAVIGATION_STATE;
   if (!pathname) return fallback;
 
-  const { role, section, tab } = parsePathParts(pathname);
+  const { role, section, slug, tab } = parsePathParts(pathname);
 
   if (role === "organizer") {
     return {
@@ -114,14 +122,19 @@ function resolveInitialNavigationFromPathname(pathname?: string): NavigationStat
   if (role === "hr") {
     return {
       organizerView: "events",
-      hrView: normalizeHrViewFromPath(section, tab),
+      hrView: normalizeHrViewFromPath(section, slug, tab),
     };
   }
 
   return fallback;
 }
 
-function AppContent() {
+interface AppShellCommonProps {
+  studentRouteOverride?: StudentRouteOverride;
+  children?: ReactNode;
+}
+
+function AppContent({ studentRouteOverride, children }: AppShellCommonProps) {
   const runtimeCache = getAppShellRuntimeCache();
   const router = useRouter();
   const pathname = usePathname();
@@ -426,12 +439,25 @@ function AppContent() {
       onMarkAllNotificationsRead={handleMarkAllNotificationsRead}
       onLogout={handleLogout}>
       {role === "student" && (
-        <StudentShellContent
-          currentUser={currentUser}
-          setCurrentUser={setCurrentUser}
-          handleChangePassword={handleChangePassword}
-          handleDeleteAccount={handleDeleteAccount}
-        />
+        children ? (
+          <StudentRouteProvider
+            value={{
+              currentUser,
+              setCurrentUser,
+              handleChangePassword,
+              handleDeleteAccount,
+            }}>
+            {children}
+          </StudentRouteProvider>
+        ) : (
+          <StudentShellContent
+            currentUser={currentUser}
+            routeOverride={studentRouteOverride}
+            setCurrentUser={setCurrentUser}
+            handleChangePassword={handleChangePassword}
+            handleDeleteAccount={handleDeleteAccount}
+          />
+        )
       )}
       {role === "organizer" && (
         <OrganizerShellContent
@@ -461,12 +487,18 @@ function AppContent() {
   );
 }
 
-export default function App() {
+export default function App({
+  studentRouteOverride,
+  children,
+}: AppShellCommonProps) {
   return (
     <EventsStoreProvider>
       <AchievementsStoreProvider>
         <NotificationsStoreProvider>
-          <AppContent />
+          <AppContent
+            studentRouteOverride={studentRouteOverride}
+            children={children}
+          />
         </NotificationsStoreProvider>
       </AchievementsStoreProvider>
     </EventsStoreProvider>

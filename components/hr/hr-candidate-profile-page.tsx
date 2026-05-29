@@ -65,10 +65,10 @@ interface HrCandidateProfilePageProps {
   onBackToPreviousPage: () => void;
   onOpenEvent: (eventId: string) => void;
   onSaveNote: (note: string) => void;
-  onInvite: (payload: HrInvitationPayload) => string | null;
+  onInvite: (payload: HrInvitationPayload) => string | null | Promise<string | null>;
   onToggleSubscription: () => void;
   onOpenSubscribers: () => void;
-  onAddToFunnel: () => string | null;
+  onAddToFunnel: () => string | null | Promise<string | null>;
 }
 
 type GrowthTrend = "up" | "down" | "stable";
@@ -457,7 +457,7 @@ export function HrCandidateProfilePage({
     setIsNoteOpen(false);
   };
 
-  const handleInviteSubmit = () => {
+  const handleInviteSubmit = async () => {
     if (!position.trim()) {
       setInviteMessage("Укажите должность для приглашения.");
       return;
@@ -473,12 +473,14 @@ export function HrCandidateProfilePage({
       return;
     }
 
-    const result = onInvite({
-      position: position.trim(),
-      message: message.trim(),
-      sendNow,
-      scheduledAt: sendNow ? undefined : scheduledAt,
-    });
+    const result = await Promise.resolve(
+      onInvite({
+        position: position.trim(),
+        message: message.trim(),
+        sendNow,
+        scheduledAt: sendNow ? undefined : scheduledAt,
+      }),
+    );
 
     setInviteMessage(result ?? "Приглашение отправлено");
 
@@ -554,8 +556,8 @@ export function HrCandidateProfilePage({
             {canAddToFunnel && (
               <button
                 type="button"
-                onClick={() => {
-                  const result = onAddToFunnel();
+                onClick={async () => {
+                  const result = await Promise.resolve(onAddToFunnel());
                   setStatusMessage(
                     result ?? "Кандидат добавлен в колонку «На рассмотрении».",
                   );

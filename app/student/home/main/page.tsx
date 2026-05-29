@@ -1,9 +1,12 @@
 "use client";
 
-import AppShellCommon from "@/app/_components/app-shell-common";
-import { Spinner } from "@/components/ui/spinner";
 import { StudentHomeSection } from "@/app/student/home/main/section";
+import { Spinner } from "@/components/ui/spinner";
 import { useStudentHomePage } from "@/hooks/use-student-home-page";
+import {
+  StudentAchievementModal,
+  useStudentPageRuntime,
+} from "@/app/_components/student/use-student-page-runtime";
 import type { AuthUser } from "@/lib/types";
 
 interface StudentHomePageContentProps {
@@ -47,5 +50,40 @@ export function StudentHomePageContent({
 }
 
 export default function Page() {
-  return <AppShellCommon />;
+  const runtime = useStudentPageRuntime();
+
+  return (
+    <>
+      <StudentHomePageContent
+        currentUser={runtime.currentUser}
+        onOpenEvent={runtime.openEventFromCurrent}
+        onOpenAchievement={runtime.openAchievement}
+        onOpenSubscribers={runtime.openSubscribersFromHome}
+        onOpenRecommendedEvents={runtime.openRecommendedEvents}
+      />
+      <StudentAchievementModal
+        achievement={runtime.selectedAchievement}
+        event={runtime.selectedAchievementEvent}
+        isVisibleInPublic={
+          runtime.selectedAchievement
+            ? runtime.currentUser.publicProfile.visibleAchievementIds.includes(
+                runtime.selectedAchievement.id,
+              )
+            : false
+        }
+        onToggleVisible={(nextValue) => {
+          if (!runtime.selectedAchievement) return;
+          runtime.toggleAchievementVisibility(
+            runtime.selectedAchievement.id,
+            nextValue,
+          );
+        }}
+        onClose={runtime.closeAchievement}
+        onOpenEvent={(eventId) => {
+          runtime.openEventFromCurrent(eventId);
+          runtime.closeAchievement();
+        }}
+      />
+    </>
+  );
 }

@@ -1,8 +1,8 @@
 "use client";
 
-import AppShellCommon from "@/app/_components/app-shell-common";
 import { StudentHrProfileSection } from "@/app/student/hr-profile/view/section";
 import type { AuthUser } from "@/lib/types";
+import { useStudentPageRuntime } from "@/app/_components/student/use-student-page-runtime";
 
 interface StudentHrProfilePageContentProps {
   hrUser: AuthUser | null;
@@ -17,5 +17,11 @@ export function StudentHrProfilePageContent({
 }
 
 export default function Page() {
-  return <AppShellCommon />;
+  const runtime = useStudentPageRuntime();
+  return (
+    <StudentHrProfilePageContent
+      hrUser={runtime.selectedHrProfileUser}
+      onBack={runtime.backFromHrProfile}
+    />
+  );
 }

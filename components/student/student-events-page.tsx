@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, ChevronDown, ChevronUp, Search } from "lucide-react";
+import {
+  CalendarDays,
+  ChevronDown,
+  ChevronUp,
+  Search,
+} from "lucide-react";
 import type {
   Event,
   OrganizerEventLevel,
