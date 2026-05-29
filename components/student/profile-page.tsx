@@ -40,7 +40,6 @@ interface ProfilePageProps {
   publicStats: {
     achievementsCount: number;
     activityIndex: number;
-    percentile: number;
   };
   setCurrentUser: Dispatch<SetStateAction<AuthUser | null>>;
   onChangePassword: (
@@ -1179,12 +1178,6 @@ export function ProfilePage({
                   <div className="text-muted-foreground">Индекс активности</div>
                   <div className="text-xl font-semibold text-foreground">
                     {publicStats.activityIndex}
-                  </div>
-                </div>
-                <div className="bg-card border border-border rounded-lg p-3">
-                  <div className="text-muted-foreground">Процентиль</div>
-                  <div className="text-xl font-semibold text-foreground">
-                    {publicStats.percentile}%
                   </div>
                 </div>
                 <div className="bg-card border border-border rounded-lg p-3">

@@ -179,7 +179,10 @@ export function StudentShellContent({
     () => new Set(studentBadges.filter((badge) => badge.unlocked).map((badge) => badge.id)),
     [studentBadges],
   );
-  const publicStats = useMemo(() => calculateStudentMetrics(studentAchievements), [studentAchievements]);
+  const publicStats = useMemo(
+    () => calculateStudentMetrics(studentAchievements),
+    [studentAchievements],
+  );
   const selectedEvent = useMemo(() => events.find((event) => event.id === selectedEventId), [events, selectedEventId]);
   const displayedEvent = selectedEvent ?? selectedEventSnapshot;
   const selectedEventApplications = useMemo(() => selectedEventId ? applications.filter((item) => item.eventId === selectedEventId) : [], [applications, selectedEventId]);

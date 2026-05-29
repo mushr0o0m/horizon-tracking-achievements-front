@@ -1,7 +1,6 @@
 "use client";
 
 import { Achievement, AchievementLevel } from "@/lib/types";
-import { CHART_DATA } from "@/lib/data";
 import { calculateStudentMetrics } from "@/lib/metrics";
 import {
   BarChart,
@@ -30,12 +29,13 @@ const LEVEL_COLORS: Record<AchievementLevel, string> = {
   Факультетский: "#ec4899",
 };
 
-export function DashboardsPage({ achievements }: DashboardsPageProps) {
+export function DashboardsPage({
+  achievements,
+}: DashboardsPageProps) {
   const {
     activityIndex,
-    highestLevel,
-    percentile,
-    verifiedCount,
+    highestAchievementLabel,
+    participationDynamics,
     levelDistribution,
   } = calculateStudentMetrics(achievements);
 
@@ -46,7 +46,7 @@ export function DashboardsPage({ achievements }: DashboardsPageProps) {
       <section>
         <h2 className="text-3xl font-bold text-foreground mb-2">Дашборды</h2>
         <p className="text-muted-foreground">
-          Метрики рассчитываются только на основе подтвержденных достижений
+          Метрики рассчитываются на основе всех достижений из профиля
         </p>
       </section>
 
@@ -64,40 +64,27 @@ export function DashboardsPage({ achievements }: DashboardsPageProps) {
           </div>
         </div>
 
-        <div className="bg-card border border-border rounded-lg p-6">
+        <div className="bg-card border border-border rounded-lg p-6 lg:col-span-2">
           <div className="text-sm text-muted-foreground mb-2">
             Уровень достижений
           </div>
           <div className="text-2xl md:text-3xl font-bold text-primary leading-tight break-words [overflow-wrap:anywhere]">
-            {highestLevel}
+            {highestAchievementLabel}
           </div>
           <div className="text-xs text-muted-foreground mt-2">
-            самый высокий уровень
-          </div>
-        </div>
-
-        <div className="bg-card border border-border rounded-lg p-6">
-          <div className="text-sm text-muted-foreground mb-2">Процентиль</div>
-          <div className="text-3xl font-bold text-foreground">
-            {percentile}%
-          </div>
-          <div className="w-full bg-secondary rounded-full h-2 mt-4">
-            <div
-              className="bg-primary h-2 rounded-full transition-all"
-              style={{ width: `${percentile}%` }}
-            />
+            максимальный результат за период
           </div>
         </div>
 
         <div className="bg-card border border-border rounded-lg p-6">
           <div className="text-sm text-muted-foreground mb-2">
-            Количество подтвержденных
+            Количество достижений
           </div>
           <div className="text-3xl font-bold text-verified">
-            {verifiedCount}
+            {achievements.length}
           </div>
           <div className="text-xs text-muted-foreground mt-2">
-            всего достижений
+            все достижения из профиля
           </div>
         </div>
       </div>
@@ -107,11 +94,11 @@ export function DashboardsPage({ achievements }: DashboardsPageProps) {
         {/* Bar Chart - Dynamics by year */}
         <div className="bg-card border border-border rounded-lg p-6">
           <h3 className="text-lg font-semibold text-foreground mb-4">
-            Динамика по годам
+            Динамика участия
           </h3>
           <div className="h-[280px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={CHART_DATA}>
+              <BarChart data={participationDynamics}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis dataKey="year" stroke="#6b7280" />
                 <YAxis stroke="#6b7280" />
@@ -121,6 +108,8 @@ export function DashboardsPage({ achievements }: DashboardsPageProps) {
                     border: "1px solid #e5e7eb",
                     borderRadius: "8px",
                   }}
+                  labelFormatter={(label) => `Год: ${label}`}
+                  formatter={(value) => [value, "Количество мероприятий"]}
                   cursor={{ fill: "#f3f4f6" }}
                 />
                 <Bar
@@ -131,6 +120,11 @@ export function DashboardsPage({ achievements }: DashboardsPageProps) {
               </BarChart>
             </ResponsiveContainer>
           </div>
+          {participationDynamics.length === 0 && (
+            <div className="text-sm text-muted-foreground mt-3">
+              Нет достижений для построения динамики
+            </div>
+          )}
         </div>
 
         {/* Pie Chart - Distribution by level */}

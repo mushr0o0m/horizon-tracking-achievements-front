@@ -15,7 +15,6 @@ interface StudentProfileSectionProps {
   publicStats: {
     achievementsCount: number;
     activityIndex: number;
-    percentile: number;
   };
   onOpenSubscribers: () => void;
   setCurrentUser: Dispatch<SetStateAction<AuthUser | null>>;

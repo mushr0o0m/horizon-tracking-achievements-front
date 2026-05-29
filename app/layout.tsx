@@ -14,6 +14,9 @@ export const metadata: Metadata = {
   title: "Учёт талантов — Система отслеживания достижений",
   description:
     "Управление достижениями студентов, результатами участия в мероприятиях и метриками успеваемости.",
+  icons: {
+    icon: "/favicon.ico",
+  },
 };
 
 export default function RootLayout({
