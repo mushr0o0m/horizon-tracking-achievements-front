@@ -3,13 +3,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppNotification } from "@/lib/types";
 import { HrFunnelStatus } from "@/lib/hr-funnel";
-import type { HrFeedNewsItem } from "@/lib/backend-api";
+import type {
+  HrFeedNewsItem,
+  HrFeedRecommendationsItem,
+  HrRecommendationsFilter,
+} from "@/lib/backend-api";
 import {
   ArrowUpRight,
   Bell,
   CalendarDays,
   GraduationCap,
+  Layers2,
   PlusCircle,
+  UserPlus,
+  UserRoundCheck,
   Star,
   Trophy,
   TrendingUp,
@@ -18,6 +25,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { toast } from "@/hooks/use-toast";
 import type { HrHomeTab } from "@/app/shared/routing/app-shell-routes";
 
 export interface HrHomeTopAchievementCandidate {
@@ -61,6 +69,22 @@ interface HrHomePageProps {
   onLoadMoreNewsFeed: () => void;
   onMarkNewsViewed: (newsIds: string[]) => void;
   onAddNewsCandidateToFunnel: (candidateId: string) => string | null | Promise<string | null>;
+  recommendationsItems: HrFeedRecommendationsItem[];
+  recommendationsEmptyMessage?: string | null;
+  recommendationsError?: string | null;
+  recommendationsHasMore: boolean;
+  isRecommendationsLoadingInitial: boolean;
+  isRecommendationsLoadingMore: boolean;
+  recommendationsFilter: HrRecommendationsFilter;
+  onRecommendationsFilterChange: (filter: HrRecommendationsFilter) => void;
+  onLoadMoreRecommendations: () => void;
+  onMarkRecommendationsViewed: (candidateIds: string[]) => void;
+  onToggleRecommendationSubscription: (
+    candidateId: string,
+  ) => string | null | Promise<string | null>;
+  onAddRecommendationCandidateToFunnel: (
+    candidateId: string,
+  ) => string | null | Promise<string | null>;
   onOpenCandidate: (candidateId: string) => void;
   onMarkNotificationRead: (notificationId: string) => void;
   onMarkAllNotificationsRead: () => void;
@@ -145,13 +169,23 @@ function HrNewsFeedCard({
   onOpenCandidate: (candidateId: string) => void;
   onAddToFunnel: (candidateId: string) => string | null | Promise<string | null>;
 }) {
-  const [feedback, setFeedback] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
 
   const handleAddToFunnel = async () => {
     setIsAdding(true);
     const result = await Promise.resolve(onAddToFunnel(item.student.id));
-    setFeedback(result ?? "Кандидат добавлен в колонку «На рассмотрении».");
+    if (result) {
+      toast({
+        variant: "destructive",
+        title: "Ошибка",
+        description: result,
+      });
+    } else {
+      toast({
+        title: "Готово",
+        description: "Кандидат добавлен в колонку «На рассмотрении».",
+      });
+    }
     setIsAdding(false);
   };
 
@@ -159,7 +193,7 @@ function HrNewsFeedCard({
     <article
       data-news-id={item.newsId}
       className="rounded-2xl border border-border bg-background p-4 shadow-sm transition-colors hover:border-blue-200">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch lg:justify-between">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2 py-1 font-medium text-blue-700">
@@ -215,7 +249,7 @@ function HrNewsFeedCard({
           </div>
         </div>
 
-        <div className="flex w-full flex-col gap-3 lg:w-64">
+        <div className="flex w-full flex-col gap-3 lg:w-64 lg:self-stretch">
           {item.activityDynamics.label && (
             <div
               className={`rounded-xl border px-3 py-2 text-sm font-medium ${getDynamicsClasses(
@@ -258,7 +292,220 @@ function HrNewsFeedCard({
               В воронку
             </Button>
           )}
-          {feedback && <p className="text-xs text-muted-foreground">{feedback}</p>}
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function HrRecommendationFeedCard({
+  item,
+  onOpenCandidate,
+  onAddToFunnel,
+  onToggleSubscription,
+}: {
+  item: HrFeedRecommendationsItem;
+  onOpenCandidate: (candidateId: string) => void;
+  onAddToFunnel: (candidateId: string) => string | null | Promise<string | null>;
+  onToggleSubscription: (
+    candidateId: string,
+  ) => string | null | Promise<string | null>;
+}) {
+  const [isAdding, setIsAdding] = useState(false);
+  const [isTogglingSubscription, setIsTogglingSubscription] = useState(false);
+
+  const handleAddToFunnel = async () => {
+    setIsAdding(true);
+    const result = await Promise.resolve(onAddToFunnel(item.student.id));
+    if (result) {
+      toast({
+        variant: "destructive",
+        title: "Ошибка",
+        description: result,
+      });
+    } else {
+      toast({
+        title: "Готово",
+        description: "Кандидат добавлен в колонку «На рассмотрении».",
+      });
+    }
+    setIsAdding(false);
+  };
+
+  const handleToggleSubscription = async () => {
+    setIsTogglingSubscription(true);
+    const result = await Promise.resolve(onToggleSubscription(item.student.id));
+    if (result) {
+      toast({
+        variant: "destructive",
+        title: "Ошибка",
+        description: result,
+      });
+    } else {
+      toast({
+        title: "Готово",
+        description: item.isSubscribed
+          ? "Вы отписались от кандидата."
+          : "Вы подписались на кандидата.",
+      });
+    }
+    setIsTogglingSubscription(false);
+  };
+
+  const showAddToFunnel = !item.isInFunnel && item.actions.canAddToFunnel;
+  const showSubscriptionButton = item.actions.canSubscribe || item.isSubscribed;
+
+  return (
+    <article
+      data-recommendation-id={item.recommendationId}
+      data-candidate-id={item.student.id}
+      className="rounded-2xl border border-border bg-background p-4 shadow-sm transition-colors hover:border-cyan-200">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1 rounded-full border border-cyan-200 bg-cyan-50 px-2 py-1 font-medium text-cyan-700">
+              <UserRoundCheck className="h-3.5 w-3.5" /> Рекомендация
+            </span>
+            <span
+              className={`inline-flex rounded-full border px-2 py-1 font-medium ${getCandidateStatusClasses(
+                item.currentHrStatus,
+              )}`}>
+              {item.currentHrStatus}
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => onOpenCandidate(item.student.id)}
+            className="mt-3 inline-flex cursor-pointer items-center gap-1.5 text-left text-lg font-semibold text-foreground hover:text-primary">
+            {item.student.fullName}
+            <ArrowUpRight className="h-4 w-4" />
+          </button>
+
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+            <span>{item.student.email || "Email не указан"}</span>
+            <span className="inline-flex items-center gap-1">
+              <GraduationCap className="h-3.5 w-3.5" />
+              {item.student.university || "Вуз не указан"}
+              {item.student.faculty ? `, ${item.student.faculty}` : ""}
+              {item.student.course ? `, ${item.student.course} курс` : ""}
+            </span>
+          </div>
+
+          {item.topAchievement ? (
+            <div className="mt-4 rounded-xl border border-secondary/70 bg-secondary/30 p-3">
+              <h3 className="text-base font-semibold text-foreground">
+                {item.topAchievement.title || "Топ-достижение без названия"}
+              </h3>
+              <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                {(item.topAchievement.levelLabel || item.topAchievement.level) && (
+                  <span className="rounded-full border border-border bg-background px-2 py-1 text-muted-foreground">
+                    {item.topAchievement.levelLabel || item.topAchievement.level}
+                  </span>
+                )}
+                {(item.topAchievement.resultLabel || item.topAchievement.result) && (
+                  <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-1 font-medium text-amber-700">
+                    {item.topAchievement.resultLabel || item.topAchievement.result}
+                  </span>
+                )}
+                <span className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-1 text-muted-foreground">
+                  <CalendarDays className="h-3.5 w-3.5" />
+                  {formatDate(item.topAchievement.date)}
+                </span>
+              </div>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {item.topAchievement.eventTitle || "Мероприятие не указано"}
+                {item.topAchievement.organizerName
+                  ? ` · ${item.topAchievement.organizerName}`
+                  : ""}
+              </p>
+            </div>
+          ) : (
+            <div className="mt-4 rounded-xl border border-dashed border-border bg-secondary/20 p-3 text-sm text-muted-foreground">
+              Нет данных по топ-достижению.
+            </div>
+          )}
+        </div>
+
+        <div className="flex w-full flex-col gap-3 lg:w-72">
+          {item.activityDynamics.label && (
+            <div
+              className={`rounded-xl border px-3 py-2 text-sm font-medium ${getDynamicsClasses(
+                item.activityDynamics.color,
+              )}`}>
+              <span className="inline-flex items-center gap-1.5">
+                <TrendingUp className="h-4 w-4" />
+                {item.activityDynamics.label}
+              </span>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+            <div className="rounded-lg border border-border bg-card px-3 py-2">
+              Подписч.
+              <p className="text-lg font-bold text-foreground">
+                {item.subscriptionsCount}
+              </p>
+            </div>
+            <div className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2">
+              <p className="text-indigo-700">Ценность</p>
+              <p className="inline-flex items-baseline gap-1 text-lg font-bold text-indigo-900">
+                <Layers2 className="h-4 w-4" />
+                {item.value}
+                <span className="text-xs font-medium text-indigo-700">/100</span>
+              </p>
+              <div className="mt-1 h-1.5 rounded-full bg-indigo-100">
+                <div
+                  className="h-full rounded-full bg-indigo-500"
+                  style={{
+                    width: `${Math.max(0, Math.min(100, item.value))}%`,
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-auto flex flex-col gap-2">
+            <div className="grid grid-cols-2 gap-2">
+              {showAddToFunnel ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleAddToFunnel}
+                  disabled={isAdding}
+                  className="w-full">
+                  {isAdding ? (
+                    <Spinner className="mr-1.5 size-4" />
+                  ) : (
+                    <PlusCircle className="mr-1.5 h-4 w-4" />
+                  )}
+                  В воронку
+                </Button>
+              ) : (
+                <div />
+              )}
+
+              {showSubscriptionButton ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={item.isSubscribed ? "outline" : "default"}
+                  onClick={handleToggleSubscription}
+                  disabled={isTogglingSubscription}
+                  className="w-full">
+                  {isTogglingSubscription ? (
+                    <Spinner className="mr-1.5 size-4" />
+                  ) : (
+                    <UserPlus className="mr-1.5 h-4 w-4" />
+                  )}
+                  {item.isSubscribed ? "Отписаться" : "Подписаться"}
+                </Button>
+              ) : (
+                <div />
+              )}
+            </div>
+
+          </div>
         </div>
       </div>
     </article>
@@ -281,6 +528,18 @@ export function HrHomePage({
   onLoadMoreNewsFeed,
   onMarkNewsViewed,
   onAddNewsCandidateToFunnel,
+  recommendationsItems,
+  recommendationsEmptyMessage,
+  recommendationsError,
+  recommendationsHasMore,
+  isRecommendationsLoadingInitial,
+  isRecommendationsLoadingMore,
+  recommendationsFilter,
+  onRecommendationsFilterChange,
+  onLoadMoreRecommendations,
+  onMarkRecommendationsViewed,
+  onToggleRecommendationSubscription,
+  onAddRecommendationCandidateToFunnel,
   onOpenCandidate,
   onMarkNotificationRead,
   onMarkAllNotificationsRead,
@@ -288,12 +547,19 @@ export function HrHomePage({
   const newsListRef = useRef<HTMLDivElement | null>(null);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const viewedNewsIdsRef = useRef<Set<string>>(new Set());
+  const recommendationsListRef = useRef<HTMLDivElement | null>(null);
+  const recommendationsLoadMoreRef = useRef<HTMLDivElement | null>(null);
+  const viewedRecommendationsIdsRef = useRef<Set<string>>(new Set());
   const unreadCount = notifications.filter((item) => !item.isRead).length;
   const headerCopy = HR_HOME_COPY[activeTab];
 
   const newsIds = useMemo(
     () => newsFeedItems.map((item) => item.newsId).join("|"),
     [newsFeedItems],
+  );
+  const recommendationIds = useMemo(
+    () => recommendationsItems.map((item) => item.recommendationId).join("|"),
+    [recommendationsItems],
   );
 
   const handleTabValueChange = (value: string) => {
@@ -312,6 +578,22 @@ export function HrHomePage({
     isNewsFeedLoadingMore,
     newsFeedHasMore,
     onLoadMoreNewsFeed,
+  ]);
+
+  const handleLoadMoreRecommendations = useCallback(() => {
+    if (
+      !recommendationsHasMore ||
+      isRecommendationsLoadingInitial ||
+      isRecommendationsLoadingMore
+    ) {
+      return;
+    }
+    onLoadMoreRecommendations();
+  }, [
+    isRecommendationsLoadingInitial,
+    isRecommendationsLoadingMore,
+    onLoadMoreRecommendations,
+    recommendationsHasMore,
   ]);
 
   useEffect(() => {
@@ -361,6 +643,61 @@ export function HrHomePage({
     cards.forEach((card) => observer.observe(card));
     return () => observer.disconnect();
   }, [activeTab, newsIds, onMarkNewsViewed]);
+
+  useEffect(() => {
+    if (activeTab !== "recommendations") return;
+    const root = recommendationsListRef.current;
+    const sentinel = recommendationsLoadMoreRef.current;
+    if (!root || !sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          handleLoadMoreRecommendations();
+        }
+      },
+      { root, rootMargin: "320px 0px", threshold: 0 },
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [activeTab, handleLoadMoreRecommendations, recommendationIds]);
+
+  useEffect(() => {
+    if (activeTab !== "recommendations") return;
+    const root = recommendationsListRef.current;
+    if (!root) return;
+    const cards = Array.from(
+      root.querySelectorAll<HTMLElement>("[data-recommendation-id][data-candidate-id]"),
+    );
+    if (cards.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const newlyViewed = entries.reduce<string[]>((acc, entry) => {
+          if (!entry.isIntersecting) return acc;
+          const candidateId = (entry.target as HTMLElement).dataset.candidateId;
+          if (
+            !candidateId ||
+            viewedRecommendationsIdsRef.current.has(candidateId)
+          ) {
+            return acc;
+          }
+          viewedRecommendationsIdsRef.current.add(candidateId);
+          acc.push(candidateId);
+          observer.unobserve(entry.target);
+          return acc;
+        }, []);
+        if (newlyViewed.length > 0) {
+          onMarkRecommendationsViewed(newlyViewed);
+        }
+      },
+      { root, threshold: 0.5 },
+    );
+
+    cards.forEach((card) => observer.observe(card));
+    return () => observer.disconnect();
+  }, [activeTab, recommendationIds, onMarkRecommendationsViewed]);
 
   return (
     <div className="flex h-[calc(100vh-8.5rem)] min-h-[680px] flex-col gap-4 overflow-hidden">
@@ -443,8 +780,79 @@ export function HrHomePage({
         <TabsContent
           value="recommendations"
           className="mt-4 min-h-0 h-[calc(100%-3rem)]">
-          <section className="grid h-full place-items-center rounded-2xl border border-dashed border-border bg-card p-6 text-center text-muted-foreground">
-            Раздел пока пуст.
+          <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+            <div className="border-b border-border px-4 py-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  variant={recommendationsFilter === "all" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => onRecommendationsFilterChange("all")}>
+                  Все рекомендации
+                </Button>
+                <Button
+                  type="button"
+                  variant={
+                    recommendationsFilter === "my-events" ? "default" : "outline"
+                  }
+                  size="sm"
+                  onClick={() => onRecommendationsFilterChange("my-events")}>
+                  По моим мероприятиям
+                </Button>
+              </div>
+            </div>
+
+            {isRecommendationsLoadingInitial ? (
+              <div className="grid h-full place-items-center px-6 text-center">
+                <div className="flex flex-col items-center gap-3 text-muted-foreground">
+                  <Spinner className="size-8" />
+                  <span className="text-sm">Загружаем рекомендации...</span>
+                </div>
+              </div>
+            ) : recommendationsItems.length === 0 ? (
+              <div className="grid h-full place-items-center px-6 text-center text-muted-foreground">
+                {recommendationsError ??
+                  recommendationsEmptyMessage ??
+                  "Нет новых рекомендаций. Проверьте позже или измените фильтр"}
+              </div>
+            ) : (
+              <div
+                ref={recommendationsListRef}
+                className="min-h-0 flex-1 overflow-auto p-4">
+                <div className="flex w-full flex-col gap-3">
+                  {recommendationsItems.map((item) => (
+                    <HrRecommendationFeedCard
+                      key={item.recommendationId}
+                      item={item}
+                      onOpenCandidate={onOpenCandidate}
+                      onAddToFunnel={onAddRecommendationCandidateToFunnel}
+                      onToggleSubscription={onToggleRecommendationSubscription}
+                    />
+                  ))}
+
+                  {recommendationsError && (
+                    <p className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
+                      {recommendationsError}
+                    </p>
+                  )}
+
+                  <div ref={recommendationsLoadMoreRef} className="min-h-8" />
+
+                  {isRecommendationsLoadingMore && (
+                    <div className="flex items-center justify-center gap-2 py-4 text-sm text-muted-foreground">
+                      <Spinner className="size-5" />
+                      Подгружаем рекомендации...
+                    </div>
+                  )}
+
+                  {!recommendationsHasMore && !isRecommendationsLoadingMore && (
+                    <p className="py-4 text-center text-sm text-muted-foreground">
+                      Больше рекомендаций пока нет.
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
           </section>
         </TabsContent>
 

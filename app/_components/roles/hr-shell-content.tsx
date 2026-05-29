@@ -35,6 +35,22 @@ export function HrShellContent(props: HrShellRuntimeProps) {
           onLoadMoreNewsFeed={runtime.loadMoreHrNewsFeed}
           onMarkNewsViewed={runtime.markViewedHrNews}
           onAddNewsCandidateToFunnel={runtime.addHrCandidateToFunnel}
+          recommendationsItems={runtime.hrRecommendationsItems}
+          recommendationsEmptyMessage={runtime.hrRecommendationsEmptyMessage}
+          recommendationsError={runtime.hrRecommendationsError}
+          recommendationsHasMore={runtime.hrRecommendationsHasMore}
+          isRecommendationsLoadingInitial={
+            runtime.hrRecommendationsIsLoadingInitial
+          }
+          isRecommendationsLoadingMore={runtime.hrRecommendationsIsLoadingMore}
+          recommendationsFilter={runtime.hrRecommendationsFilter}
+          onRecommendationsFilterChange={runtime.setHrRecommendationsFilter}
+          onLoadMoreRecommendations={runtime.loadMoreHrRecommendations}
+          onMarkRecommendationsViewed={runtime.markViewedHrRecommendations}
+          onToggleRecommendationSubscription={
+            runtime.toggleHrRecommendationSubscription
+          }
+          onAddRecommendationCandidateToFunnel={runtime.addHrCandidateToFunnel}
           onOpenCandidate={runtime.openHrCandidateFromHome}
           onMarkNotificationRead={runtime.handleMarkNotificationRead}
           onMarkAllNotificationsRead={runtime.handleMarkAllNotificationsRead}

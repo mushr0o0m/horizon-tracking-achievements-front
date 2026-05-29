@@ -37,13 +37,17 @@ import {
   fetchHrCandidateDetails,
   fetchHrCandidatesSearch,
   fetchHrFeedNews,
+  fetchHrFeedRecommendations,
   fetchHrHome,
   fetchHrSettings,
   fetchNotifications,
   fetchPublicEvents,
   fetchPublicHrProfile,
   markHrFeedNewsViewed,
+  markHrFeedRecommendationsViewed,
   type HrFeedNewsItem,
+  type HrFeedRecommendationsItem,
+  type HrRecommendationsFilter,
   toggleHrCandidateSubscriptionApi,
   updateHrCandidateNote,
   updateHrCandidateStatus,
@@ -81,6 +85,7 @@ let cachedSelectedHrCandidateData: SelectedHrCandidateData | null = null;
 let cachedSelectedHrCandidateId: string | null = null;
 let cachedHrCandidateBackView: HrCandidateBackView = "candidates-search";
 const HR_NEWS_FEED_PAGE_LIMIT = 20;
+const HR_RECOMMENDATIONS_PAGE_LIMIT = 20;
 
 export interface HrShellRuntimeProps {
   currentUser: AuthUser;
@@ -130,6 +135,25 @@ export function useHrShellRuntime({
   const [hrNewsFeedEmptyMessage, setHrNewsFeedEmptyMessage] = useState<
     string | null
   >(null);
+  const [hrRecommendationsItems, setHrRecommendationsItems] = useState<
+    HrFeedRecommendationsItem[]
+  >([]);
+  const [hrRecommendationsNextPage, setHrRecommendationsNextPage] = useState<
+    string | null
+  >(null);
+  const [
+    hrRecommendationsIsLoadingInitial,
+    setHrRecommendationsIsLoadingInitial,
+  ] = useState(false);
+  const [hrRecommendationsIsLoadingMore, setHrRecommendationsIsLoadingMore] =
+    useState(false);
+  const [hrRecommendationsError, setHrRecommendationsError] = useState<
+    string | null
+  >(null);
+  const [hrRecommendationsEmptyMessage, setHrRecommendationsEmptyMessage] =
+    useState<string | null>(null);
+  const [hrRecommendationsFilter, setHrRecommendationsFilter] =
+    useState<HrRecommendationsFilter>("all");
   const [hrCandidates, setHrCandidates] = useState<HrCandidateSummary[]>([]);
   const [selectedHrCandidateData, setSelectedHrCandidateData] =
     useState<SelectedHrCandidateData | null>(() => cachedSelectedHrCandidateData);
@@ -170,6 +194,11 @@ export function useHrShellRuntime({
   const hrNewsFeedViewedQueuedIdsRef = useRef<Set<string>>(new Set());
   const hrNewsFeedViewedInflightRef = useRef(false);
   const hrNewsFeedHasRequestedInitialRef = useRef(false);
+  const hrRecommendationsSeenIdsRef = useRef<Set<string>>(new Set());
+  const hrRecommendationsViewedQueuedIdsRef = useRef<Set<string>>(new Set());
+  const hrRecommendationsViewedInflightRef = useRef(false);
+  const hrRecommendationsHasRequestedInitialRef = useRef(false);
+  const hrRecommendationsInitialRequestIdRef = useRef(0);
 
   useEffect(() => {
     const pathParts = pathname.split("/").filter(Boolean);
@@ -388,10 +417,62 @@ export function useHrShellRuntime({
             : item,
         ),
       );
+      setHrRecommendationsItems((prev) =>
+        prev.map((item) =>
+          item.student.id === candidateId
+            ? {
+                ...item,
+                currentHrStatus: "На рассмотрении",
+                isInFunnel: true,
+                actions: { ...item.actions, canAddToFunnel: false },
+              }
+            : item,
+        ),
+      );
       return null;
     } catch (error) {
       console.warn("Failed to add candidate to funnel.", error);
       return "Не удалось добавить кандидата в воронку.";
+    }
+  };
+
+  const handleToggleRecommendationSubscription = async (
+    candidateId: string,
+  ): Promise<string | null> => {
+    const previousItem = hrRecommendationsItems.find(
+      (item) => item.student.id === candidateId,
+    );
+    if (!previousItem) {
+      return null;
+    }
+
+    setHrRecommendationsItems((prev) =>
+      prev.map((item) => {
+        if (item.student.id !== candidateId) return item;
+        return { ...item, isSubscribed: !item.isSubscribed };
+      }),
+    );
+
+    try {
+      const result = await toggleHrCandidateSubscriptionApi(candidateId);
+      setHrRecommendationsItems((prev) =>
+        prev.map((item) =>
+          item.student.id === candidateId
+            ? { ...item, isSubscribed: result.isSubscribed }
+            : item,
+        ),
+      );
+      return null;
+    } catch (error) {
+      console.warn("Failed to toggle recommendation subscription.", error);
+      setHrRecommendationsItems((prev) =>
+        prev.map((item) =>
+          item.student.id === candidateId
+            ? { ...item, isSubscribed: previousItem.isSubscribed }
+            : item,
+        ),
+      );
+      return "Не удалось обновить подписку.";
     }
   };
 
@@ -729,6 +810,128 @@ export function useHrShellRuntime({
     [flushViewedHrNews],
   );
 
+  const loadInitialHrRecommendations = useCallback(
+    async (filter: HrRecommendationsFilter) => {
+      const requestId = ++hrRecommendationsInitialRequestIdRef.current;
+      setHrRecommendationsIsLoadingInitial(true);
+      setHrRecommendationsIsLoadingMore(false);
+      setHrRecommendationsError(null);
+      setHrRecommendationsItems([]);
+      setHrRecommendationsNextPage(null);
+      setHrRecommendationsEmptyMessage(null);
+      hrRecommendationsSeenIdsRef.current = new Set();
+      try {
+        const page = await fetchHrFeedRecommendations({
+          filter,
+          limit: HR_RECOMMENDATIONS_PAGE_LIMIT,
+        });
+        if (requestId !== hrRecommendationsInitialRequestIdRef.current) return;
+        setHrRecommendationsItems(page.items);
+        setHrRecommendationsNextPage(page.nextPage);
+        setHrRecommendationsEmptyMessage(page.emptyMessage);
+        hrRecommendationsSeenIdsRef.current = new Set(
+          page.items.map((item) => item.recommendationId),
+        );
+      } catch (error) {
+        if (requestId !== hrRecommendationsInitialRequestIdRef.current) return;
+        console.warn("Failed to load HR recommendations feed.", error);
+        setHrRecommendationsItems([]);
+        setHrRecommendationsNextPage(null);
+        setHrRecommendationsEmptyMessage(null);
+        setHrRecommendationsError("Не удалось загрузить ленту рекомендаций.");
+      } finally {
+        if (requestId !== hrRecommendationsInitialRequestIdRef.current) return;
+        setHrRecommendationsIsLoadingInitial(false);
+      }
+    },
+    [],
+  );
+
+  const loadMoreHrRecommendations = useCallback(async () => {
+    if (
+      !hrRecommendationsNextPage ||
+      hrRecommendationsIsLoadingInitial ||
+      hrRecommendationsIsLoadingMore
+    ) {
+      return;
+    }
+    setHrRecommendationsIsLoadingMore(true);
+    setHrRecommendationsError(null);
+    try {
+      const page = await fetchHrFeedRecommendations({
+        filter: hrRecommendationsFilter,
+        limit: HR_RECOMMENDATIONS_PAGE_LIMIT,
+        pageToken: hrRecommendationsNextPage,
+      });
+      setHrRecommendationsItems((prev) => {
+        const seen = hrRecommendationsSeenIdsRef.current;
+        const uniqueItems = page.items.filter(
+          (item) => !seen.has(item.recommendationId),
+        );
+        uniqueItems.forEach((item) => seen.add(item.recommendationId));
+        return uniqueItems.length > 0 ? [...prev, ...uniqueItems] : prev;
+      });
+      setHrRecommendationsNextPage(page.nextPage);
+      setHrRecommendationsEmptyMessage((prev) => prev ?? page.emptyMessage);
+    } catch (error) {
+      console.warn("Failed to load more HR recommendations feed.", error);
+      setHrRecommendationsError("Не удалось подгрузить следующие рекомендации.");
+    } finally {
+      setHrRecommendationsIsLoadingMore(false);
+    }
+  }, [
+    hrRecommendationsFilter,
+    hrRecommendationsIsLoadingInitial,
+    hrRecommendationsIsLoadingMore,
+    hrRecommendationsNextPage,
+  ]);
+
+  const flushViewedHrRecommendations = useCallback(async () => {
+    if (hrRecommendationsViewedInflightRef.current) return;
+    const ids = Array.from(hrRecommendationsViewedQueuedIdsRef.current);
+    if (ids.length === 0) return;
+    hrRecommendationsViewedInflightRef.current = true;
+    hrRecommendationsViewedQueuedIdsRef.current.clear();
+    let hasFailed = false;
+    try {
+      await markHrFeedRecommendationsViewed(ids);
+    } catch (error) {
+      hasFailed = true;
+      console.warn("Failed to mark HR recommendations as viewed.", error);
+      ids.forEach((id) => hrRecommendationsViewedQueuedIdsRef.current.add(id));
+    } finally {
+      hrRecommendationsViewedInflightRef.current = false;
+      if (
+        !hasFailed &&
+        hrRecommendationsViewedQueuedIdsRef.current.size > 0
+      ) {
+        void flushViewedHrRecommendations();
+      }
+    }
+  }, []);
+
+  const markViewedHrRecommendations = useCallback(
+    (candidateIds: string[]) => {
+      const normalized = candidateIds.map((id) => id.trim()).filter(Boolean);
+      if (normalized.length === 0) return;
+      normalized.forEach((id) =>
+        hrRecommendationsViewedQueuedIdsRef.current.add(id),
+      );
+      void flushViewedHrRecommendations();
+    },
+    [flushViewedHrRecommendations],
+  );
+
+  const handleSetHrRecommendationsFilter = useCallback(
+    (nextFilter: HrRecommendationsFilter) => {
+      if (nextFilter === hrRecommendationsFilter) return;
+      setHrRecommendationsFilter(nextFilter);
+      hrRecommendationsHasRequestedInitialRef.current = true;
+      void loadInitialHrRecommendations(nextFilter);
+    },
+    [hrRecommendationsFilter, loadInitialHrRecommendations],
+  );
+
   useEffect(() => {
     if (
       hrView !== "home" ||
@@ -740,6 +943,23 @@ export function useHrShellRuntime({
     hrNewsFeedHasRequestedInitialRef.current = true;
     void loadInitialHrNewsFeed();
   }, [hrHomeTab, hrView, loadInitialHrNewsFeed]);
+
+  useEffect(() => {
+    if (
+      hrView !== "home" ||
+      hrHomeTab !== "recommendations" ||
+      hrRecommendationsHasRequestedInitialRef.current
+    ) {
+      return;
+    }
+    hrRecommendationsHasRequestedInitialRef.current = true;
+    void loadInitialHrRecommendations(hrRecommendationsFilter);
+  }, [
+    hrHomeTab,
+    hrRecommendationsFilter,
+    hrView,
+    loadInitialHrRecommendations,
+  ]);
 
   useEffect(() => {
     if (hrView !== "home" || hrHomeTab !== "summary" || hrHomeSummaryLoadedRef.current) {
@@ -965,6 +1185,19 @@ export function useHrShellRuntime({
     loadInitialHrNewsFeed,
     loadMoreHrNewsFeed,
     markViewedHrNews,
+    hrRecommendationsItems,
+    hrRecommendationsNextPage,
+    hrRecommendationsEmptyMessage,
+    hrRecommendationsError,
+    hrRecommendationsHasMore: Boolean(hrRecommendationsNextPage),
+    hrRecommendationsIsLoadingInitial,
+    hrRecommendationsIsLoadingMore,
+    hrRecommendationsFilter,
+    loadInitialHrRecommendations,
+    loadMoreHrRecommendations,
+    markViewedHrRecommendations,
+    setHrRecommendationsFilter: handleSetHrRecommendationsFilter,
+    toggleHrRecommendationSubscription: handleToggleRecommendationSubscription,
     hrHomeTab,
     openHrHomeTab: handleOpenHrHomeTab,
     hrPublishedEventsCount,

@@ -1,8 +1,17 @@
 "use client";
 
 import AppShellCommon from "@/app/_components/app-shell-common";
-import { HrHomePage, type HrHomeTopAchievementCandidate, type HrHomeTopSubscriberCandidate, type HrTalentFeedComparison } from "@/components/hr/hr-home-page";
-import type { HrFeedNewsItem } from "@/lib/backend-api";
+import {
+  HrHomePage,
+  type HrHomeTopAchievementCandidate,
+  type HrHomeTopSubscriberCandidate,
+  type HrTalentFeedComparison,
+} from "@/components/hr/hr-home-page";
+import type {
+  HrFeedNewsItem,
+  HrFeedRecommendationsItem,
+  HrRecommendationsFilter,
+} from "@/lib/backend-api";
 import type { HrHomeTab } from "@/app/shared/routing/app-shell-routes";
 import type { AppNotification } from "@/lib/types";
 
@@ -22,6 +31,22 @@ interface HrHomeMainPageProps {
   onLoadMoreNewsFeed?: () => void;
   onMarkNewsViewed?: (newsIds: string[]) => void;
   onAddNewsCandidateToFunnel?: (
+    candidateId: string,
+  ) => string | null | Promise<string | null>;
+  recommendationsItems?: HrFeedRecommendationsItem[];
+  recommendationsEmptyMessage?: string | null;
+  recommendationsError?: string | null;
+  recommendationsHasMore?: boolean;
+  isRecommendationsLoadingInitial?: boolean;
+  isRecommendationsLoadingMore?: boolean;
+  recommendationsFilter?: HrRecommendationsFilter;
+  onRecommendationsFilterChange?: (filter: HrRecommendationsFilter) => void;
+  onLoadMoreRecommendations?: () => void;
+  onMarkRecommendationsViewed?: (candidateIds: string[]) => void;
+  onToggleRecommendationSubscription?: (
+    candidateId: string,
+  ) => string | null | Promise<string | null>;
+  onAddRecommendationCandidateToFunnel?: (
     candidateId: string,
   ) => string | null | Promise<string | null>;
   onOpenCandidate?: (candidateId: string) => void;
@@ -45,6 +70,18 @@ export function HrHomePageContent({
   onLoadMoreNewsFeed,
   onMarkNewsViewed,
   onAddNewsCandidateToFunnel,
+  recommendationsItems,
+  recommendationsEmptyMessage,
+  recommendationsError,
+  recommendationsHasMore,
+  isRecommendationsLoadingInitial,
+  isRecommendationsLoadingMore,
+  recommendationsFilter,
+  onRecommendationsFilterChange,
+  onLoadMoreRecommendations,
+  onMarkRecommendationsViewed,
+  onToggleRecommendationSubscription,
+  onAddRecommendationCandidateToFunnel,
   onOpenCandidate,
   onMarkNotificationRead,
   onMarkAllNotificationsRead,
@@ -62,6 +99,16 @@ export function HrHomePageContent({
     !onLoadMoreNewsFeed ||
     !onMarkNewsViewed ||
     !onAddNewsCandidateToFunnel ||
+    !recommendationsItems ||
+    recommendationsHasMore === undefined ||
+    isRecommendationsLoadingInitial === undefined ||
+    isRecommendationsLoadingMore === undefined ||
+    !recommendationsFilter ||
+    !onRecommendationsFilterChange ||
+    !onLoadMoreRecommendations ||
+    !onMarkRecommendationsViewed ||
+    !onToggleRecommendationSubscription ||
+    !onAddRecommendationCandidateToFunnel ||
     !onOpenCandidate ||
     !onMarkNotificationRead ||
     !onMarkAllNotificationsRead
@@ -86,6 +133,18 @@ export function HrHomePageContent({
       onLoadMoreNewsFeed={onLoadMoreNewsFeed}
       onMarkNewsViewed={onMarkNewsViewed}
       onAddNewsCandidateToFunnel={onAddNewsCandidateToFunnel}
+      recommendationsItems={recommendationsItems}
+      recommendationsEmptyMessage={recommendationsEmptyMessage}
+      recommendationsError={recommendationsError}
+      recommendationsHasMore={recommendationsHasMore}
+      isRecommendationsLoadingInitial={isRecommendationsLoadingInitial}
+      isRecommendationsLoadingMore={isRecommendationsLoadingMore}
+      recommendationsFilter={recommendationsFilter}
+      onRecommendationsFilterChange={onRecommendationsFilterChange}
+      onLoadMoreRecommendations={onLoadMoreRecommendations}
+      onMarkRecommendationsViewed={onMarkRecommendationsViewed}
+      onToggleRecommendationSubscription={onToggleRecommendationSubscription}
+      onAddRecommendationCandidateToFunnel={onAddRecommendationCandidateToFunnel}
       onOpenCandidate={onOpenCandidate}
       onMarkNotificationRead={onMarkNotificationRead}
       onMarkAllNotificationsRead={onMarkAllNotificationsRead}

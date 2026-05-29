@@ -265,6 +265,14 @@ interface HrFeedNewsPageDto {
   emptyMessage?: string | null;
 }
 
+interface HrFeedRecommendationsPageDto {
+  items?: unknown;
+  prevPage?: string | null;
+  nextPage?: string | null;
+  totalCount?: number | null;
+  emptyMessage?: string | null;
+}
+
 interface HrCandidateDetailsDto {
   student?: StudentProfileDto | null;
   profile?: StudentProfileDto | null;
@@ -376,6 +384,43 @@ export interface HrFeedNewsItem {
 
 export interface HrFeedNewsPage {
   items: HrFeedNewsItem[];
+  prevPage: string | null;
+  nextPage: string | null;
+  totalCount: number;
+  emptyMessage: string | null;
+}
+
+export type HrRecommendationsFilter = "all" | "my-events";
+
+export interface HrFeedRecommendationsActions {
+  canSubscribe: boolean;
+  canAddToFunnel: boolean;
+  canInvite: boolean;
+}
+
+export interface HrFeedRecommendationsValueDetails {
+  popularityCoefficient: number;
+  dynamicsCoefficient: number;
+  topAchievementCoefficient: number;
+  formula: string;
+}
+
+export interface HrFeedRecommendationsItem {
+  recommendationId: string;
+  student: HrFeedNewsStudent;
+  topAchievement: HrFeedNewsAchievement | null;
+  subscriptionsCount: number;
+  activityDynamics: HrFeedNewsActivityDynamics;
+  value: number;
+  valueDetails: HrFeedRecommendationsValueDetails;
+  currentHrStatus: HrFunnelStatus;
+  isSubscribed: boolean;
+  isInFunnel: boolean;
+  actions: HrFeedRecommendationsActions;
+}
+
+export interface HrFeedRecommendationsPage {
+  items: HrFeedRecommendationsItem[];
   prevPage: string | null;
   nextPage: string | null;
   totalCount: number;
@@ -814,6 +859,75 @@ function mapHrFeedNewsPage(raw: unknown): HrFeedNewsPage {
     items: itemsRaw
       .map(mapHrFeedNewsItem)
       .filter((item): item is HrFeedNewsItem => item !== null),
+    prevPage: getString(data.prevPage) || null,
+    nextPage: getString(data.nextPage) || null,
+    totalCount: getNumber(data.totalCount),
+    emptyMessage: getString(data.emptyMessage) || null,
+  };
+}
+
+function mapHrFeedRecommendationsActions(
+  raw: unknown,
+): HrFeedRecommendationsActions {
+  const source = isRecord(raw) ? raw : {};
+  return {
+    canSubscribe: Boolean(source.canSubscribe),
+    canAddToFunnel: Boolean(source.canAddToFunnel),
+    canInvite: Boolean(source.canInvite),
+  };
+}
+
+function mapHrFeedRecommendationsValueDetails(
+  raw: unknown,
+): HrFeedRecommendationsValueDetails {
+  const source = isRecord(raw) ? raw : {};
+  return {
+    popularityCoefficient: getNumber(source.popularityCoefficient),
+    dynamicsCoefficient: getNumber(source.dynamicsCoefficient),
+    topAchievementCoefficient: getNumber(source.topAchievementCoefficient),
+    formula: getString(source.formula),
+  };
+}
+
+function mapHrFeedRecommendationsItem(
+  raw: unknown,
+): HrFeedRecommendationsItem | null {
+  if (!isRecord(raw)) return null;
+  const recommendationId = getString(raw.recommendationId);
+  if (!recommendationId) return null;
+  const student = mapHrFeedNewsStudent(raw.student);
+  if (!student) return null;
+
+  const canAddToFunnel =
+    isRecord(raw.actions) && "canAddToFunnel" in raw.actions
+      ? Boolean(raw.actions.canAddToFunnel)
+      : !Boolean(raw.isInFunnel);
+
+  return {
+    recommendationId,
+    student,
+    topAchievement: mapHrFeedNewsAchievement(raw.topAchievement),
+    subscriptionsCount: getNumber(raw.subscriptionsCount),
+    activityDynamics: mapHrFeedNewsActivityDynamics(raw.activityDynamics),
+    value: getNumber(raw.value),
+    valueDetails: mapHrFeedRecommendationsValueDetails(raw.valueDetails),
+    currentHrStatus: mapBackendHrStatus(getString(raw.currentHrStatus)),
+    isSubscribed: Boolean(raw.isSubscribed),
+    isInFunnel: Boolean(raw.isInFunnel),
+    actions: {
+      ...mapHrFeedRecommendationsActions(raw.actions),
+      canAddToFunnel,
+    },
+  };
+}
+
+function mapHrFeedRecommendationsPage(raw: unknown): HrFeedRecommendationsPage {
+  const data = isRecord(raw) ? raw : {};
+  const itemsRaw = Array.isArray(data.items) ? data.items : [];
+  return {
+    items: itemsRaw
+      .map(mapHrFeedRecommendationsItem)
+      .filter((item): item is HrFeedRecommendationsItem => item !== null),
     prevPage: getString(data.prevPage) || null,
     nextPage: getString(data.nextPage) || null,
     totalCount: getNumber(data.totalCount),
@@ -1794,6 +1908,22 @@ export async function fetchHrFeedNews(params?: {
   return mapHrFeedNewsPage(data);
 }
 
+export async function fetchHrFeedRecommendations(params?: {
+  filter?: HrRecommendationsFilter;
+  limit?: number;
+  pageToken?: string;
+}): Promise<HrFeedRecommendationsPage> {
+  const query = buildQuery({
+    filter: params?.filter ?? "all",
+    limit: params?.limit,
+    pageToken: params?.pageToken,
+  });
+  const data = await request<HrFeedRecommendationsPageDto>(
+    `/hr/feed/recommendations${query}`,
+  );
+  return mapHrFeedRecommendationsPage(data);
+}
+
 export async function markHrFeedNewsViewed(ids: string[]): Promise<void> {
   const normalizedIds = Array.from(
     new Set(ids.map((id) => id.trim()).filter(Boolean)),
@@ -1802,6 +1932,19 @@ export async function markHrFeedNewsViewed(ids: string[]): Promise<void> {
   await request<void>("/hr/feed/news/viewed", {
     method: "POST",
     body: JSON.stringify({ ids: normalizedIds }),
+  });
+}
+
+export async function markHrFeedRecommendationsViewed(
+  candidateIds: string[],
+): Promise<void> {
+  const normalizedCandidateIds = Array.from(
+    new Set(candidateIds.map((id) => id.trim()).filter(Boolean)),
+  );
+  if (normalizedCandidateIds.length === 0) return;
+  await request<void>("/hr/feed/recommendations/viewed", {
+    method: "POST",
+    body: JSON.stringify({ candidateIds: normalizedCandidateIds }),
   });
 }
 
