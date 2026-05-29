@@ -16,6 +16,7 @@ interface HrDashboardsKanbanPageProps {
   onChangeCandidateStatus?: (
     candidateId: string,
     toStatus: Exclude<HrFunnelStatus, "Не отслеживается">,
+    fromStatus?: Exclude<HrFunnelStatus, "Не отслеживается">,
   ) => string | null | Promise<string | null>;
   onInviteCandidate?: (
     candidateId: string,
@@ -25,6 +26,7 @@ interface HrDashboardsKanbanPageProps {
       sendNow: boolean;
       scheduledAt?: string;
     },
+    fromStatus?: Exclude<HrFunnelStatus, "Не отслеживается">,
   ) => string | null | Promise<string | null>;
   onArchiveCandidate?: (candidateId: string) => string | null | Promise<string | null>;
   activeTab?: HrDashboardTab;

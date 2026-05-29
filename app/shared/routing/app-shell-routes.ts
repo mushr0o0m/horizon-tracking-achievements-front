@@ -197,8 +197,20 @@ export function buildHrPath(view: HrView): string {
       return "/hr/event-details/view";
     case "home":
     default:
-      return "/hr/home/main";
+      return "/hr/home/summary";
   }
+}
+
+export type HrHomeTab = "news" | "recommendations" | "summary";
+
+export function buildHrHomePath(tab: HrHomeTab): string {
+  return `/hr/home/${tab}`;
+}
+
+export function resolveHrHomeTab(pathname: string): HrHomeTab {
+  if (pathname.includes("/hr/home/news")) return "news";
+  if (pathname.includes("/hr/home/recommendations")) return "recommendations";
+  return "summary";
 }
 
 export function buildHrCandidateProfilePath(candidateId: string): string {

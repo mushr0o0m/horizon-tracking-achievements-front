@@ -24,6 +24,17 @@ export function HrShellContent(props: HrShellRuntimeProps) {
           topBySubscribers={runtime.hrTopBySubscribers}
           notifications={runtime.hrHomeNotifications}
           talentFeedComparison={runtime.hrTalentFeedComparison}
+          activeTab={runtime.hrHomeTab}
+          onTabChange={runtime.openHrHomeTab}
+          newsFeedItems={runtime.hrNewsFeedItems}
+          newsFeedEmptyMessage={runtime.hrNewsFeedEmptyMessage}
+          newsFeedError={runtime.hrNewsFeedError}
+          newsFeedHasMore={runtime.hrNewsFeedHasMore}
+          isNewsFeedLoadingInitial={runtime.hrNewsFeedIsLoadingInitial}
+          isNewsFeedLoadingMore={runtime.hrNewsFeedIsLoadingMore}
+          onLoadMoreNewsFeed={runtime.loadMoreHrNewsFeed}
+          onMarkNewsViewed={runtime.markViewedHrNews}
+          onAddNewsCandidateToFunnel={runtime.addHrCandidateToFunnel}
           onOpenCandidate={runtime.openHrCandidateFromHome}
           onMarkNotificationRead={runtime.handleMarkNotificationRead}
           onMarkAllNotificationsRead={runtime.handleMarkAllNotificationsRead}
@@ -39,14 +50,17 @@ export function HrShellContent(props: HrShellRuntimeProps) {
           actionConfirmSettings={runtime.hrActionConfirmSettings}
           onSaveCandidateNote={runtime.saveHrCandidateNote}
           onOpenCandidate={runtime.openHrCandidateFromDashboards}
-          onChangeCandidateStatus={(candidateId, toStatus) =>
+          onChangeCandidateStatus={(candidateId, toStatus, fromStatus) =>
             runtime.moveHrCandidateStatus(
               candidateId,
               toStatus,
               "Статус изменен на дашборде",
+              fromStatus,
             )
           }
-          onInviteCandidate={runtime.inviteHrCandidate}
+          onInviteCandidate={(candidateId, payload, fromStatus) =>
+            runtime.inviteHrCandidate(candidateId, payload, fromStatus)
+          }
           onArchiveCandidate={runtime.archiveHrCandidate}
           onTabChange={runtime.openHrDashboardsTab}
         />

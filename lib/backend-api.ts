@@ -257,6 +257,14 @@ interface HrHomeResponseDto {
   unreadNotificationsCount?: number | null;
 }
 
+interface HrFeedNewsPageDto {
+  items?: unknown;
+  prevPage?: string | null;
+  nextPage?: string | null;
+  totalCount?: number | null;
+  emptyMessage?: string | null;
+}
+
 interface HrCandidateDetailsDto {
   student?: StudentProfileDto | null;
   profile?: StudentProfileDto | null;
@@ -313,6 +321,65 @@ export interface HrCandidateSummaryData {
   totalAchievementsCount: number;
   confirmedAchievementsCount: number;
   candidateStatus: HrFunnelStatus;
+}
+
+export interface HrFeedNewsStudent {
+  id: string;
+  fullName: string;
+  firstName: string;
+  lastName: string;
+  middleName: string | null;
+  email: string;
+  university: string;
+  faculty: string;
+  course: string;
+  city: string;
+  avatarUrl: string | null;
+}
+
+export interface HrFeedNewsAchievement {
+  id: string;
+  title: string;
+  level: string;
+  levelLabel: string;
+  result: string;
+  resultLabel: string;
+  date: string;
+  organizerName: string;
+  eventId: string | null;
+  eventTitle: string | null;
+  verificationStatus: string;
+}
+
+export interface HrFeedNewsActivityDynamics {
+  percent: number;
+  label: string;
+  color: string;
+  currentPeriodCount: number;
+  previousPeriodCount: number;
+}
+
+export interface HrFeedNewsActions {
+  canAddNote: boolean;
+  canAddToFunnel: boolean;
+  canInvite: boolean;
+}
+
+export interface HrFeedNewsItem {
+  newsId: string;
+  student: HrFeedNewsStudent;
+  achievement: HrFeedNewsAchievement;
+  activityDynamics: HrFeedNewsActivityDynamics;
+  actions: HrFeedNewsActions;
+  createdAt: string;
+}
+
+export interface HrFeedNewsPage {
+  items: HrFeedNewsItem[];
+  prevPage: string | null;
+  nextPage: string | null;
+  totalCount: number;
+  emptyMessage: string | null;
 }
 
 export interface HrCandidateProfileData {
@@ -658,6 +725,99 @@ function mapHrHomeSubscriberCandidate(
     subscriberCount: getNumber(record?.subscriberCount ?? record?.subscribers),
     totalAchievementsCount: summary.totalAchievementsCount,
     candidateStatus: summary.candidateStatus,
+  };
+}
+
+function mapHrFeedNewsStudent(raw: unknown): HrFeedNewsStudent | null {
+  if (!isRecord(raw)) return null;
+  const id =
+    getString(raw.id) || getString(raw.userId) || getString(raw.studentId);
+  if (!id) return null;
+  const fullName = buildUserName(raw);
+  return {
+    id,
+    fullName,
+    firstName: getString(raw.firstName),
+    lastName: getString(raw.lastName),
+    middleName: getString(raw.middleName) || null,
+    email: getString(raw.email),
+    university: getString(raw.university),
+    faculty: getString(raw.faculty),
+    course: getString(raw.course),
+    city: getString(raw.city),
+    avatarUrl: getString(raw.avatarUrl) || null,
+  };
+}
+
+function mapHrFeedNewsAchievement(raw: unknown): HrFeedNewsAchievement | null {
+  if (!isRecord(raw)) return null;
+  const id = getString(raw.id);
+  if (!id) return null;
+  return {
+    id,
+    title: getString(raw.title),
+    level: getString(raw.level),
+    levelLabel: getString(raw.levelLabel ?? raw.level),
+    result: getString(raw.result),
+    resultLabel: getString(raw.resultLabel ?? raw.result),
+    date: getString(raw.date),
+    organizerName: getString(raw.organizerName),
+    eventId: getString(raw.eventId) || null,
+    eventTitle: getString(raw.eventTitle) || null,
+    verificationStatus: getString(raw.verificationStatus),
+  };
+}
+
+function mapHrFeedNewsActivityDynamics(
+  raw: unknown,
+): HrFeedNewsActivityDynamics {
+  const source = isRecord(raw) ? raw : {};
+  return {
+    percent: getNumber(source.percent),
+    label: getString(source.label),
+    color: getString(source.color),
+    currentPeriodCount: getNumber(source.currentPeriodCount),
+    previousPeriodCount: getNumber(source.previousPeriodCount),
+  };
+}
+
+function mapHrFeedNewsActions(raw: unknown): HrFeedNewsActions {
+  const source = isRecord(raw) ? raw : {};
+  return {
+    canAddNote: Boolean(source.canAddNote),
+    canAddToFunnel: Boolean(source.canAddToFunnel),
+    canInvite: Boolean(source.canInvite),
+  };
+}
+
+function mapHrFeedNewsItem(raw: unknown): HrFeedNewsItem | null {
+  if (!isRecord(raw)) return null;
+  const newsId = getString(raw.newsId);
+  if (!newsId) return null;
+  const student = mapHrFeedNewsStudent(raw.student);
+  const achievement = mapHrFeedNewsAchievement(raw.achievement);
+  if (!student || !achievement) return null;
+  return {
+    newsId,
+    student,
+    achievement,
+    activityDynamics: mapHrFeedNewsActivityDynamics(raw.activityDynamics),
+    actions: mapHrFeedNewsActions(raw.actions),
+    createdAt: getString(raw.createdAt),
+  };
+}
+
+function mapHrFeedNewsPage(raw: unknown): HrFeedNewsPage {
+  const data = isRecord(raw) ? raw : {};
+  const itemsRaw = Array.isArray(data.items) ? data.items : [];
+  return {
+    items: itemsRaw
+      .map(mapHrFeedNewsItem)
+      .filter((item): item is HrFeedNewsItem => item !== null),
+    prevPage: getString(data.prevPage) || null,
+    nextPage: getString(data.nextPage) || null,
+    totalCount: getNumber(data.totalCount),
+    emptyMessage: getString(data.emptyMessage) || null,
   };
 }
 
@@ -1620,6 +1780,29 @@ export async function fetchHrCandidatesSearch(params?: {
   return list
     .map(mapHrCandidateSummary)
     .filter((item): item is HrCandidateSummaryData => item !== null);
+}
+
+export async function fetchHrFeedNews(params?: {
+  limit?: number;
+  pageToken?: string;
+}): Promise<HrFeedNewsPage> {
+  const query = buildQuery({
+    limit: params?.limit,
+    pageToken: params?.pageToken,
+  });
+  const data = await request<HrFeedNewsPageDto>(`/hr/feed/news${query}`);
+  return mapHrFeedNewsPage(data);
+}
+
+export async function markHrFeedNewsViewed(ids: string[]): Promise<void> {
+  const normalizedIds = Array.from(
+    new Set(ids.map((id) => id.trim()).filter(Boolean)),
+  );
+  if (normalizedIds.length === 0) return;
+  await request<void>("/hr/feed/news/viewed", {
+    method: "POST",
+    body: JSON.stringify({ ids: normalizedIds }),
+  });
 }
 
 export async function fetchHrCandidateDetails(

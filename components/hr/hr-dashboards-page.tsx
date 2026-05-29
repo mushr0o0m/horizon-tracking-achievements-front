@@ -46,6 +46,7 @@ interface HrDashboardsPageProps {
   onChangeCandidateStatus: (
     candidateId: string,
     toStatus: Exclude<HrFunnelStatus, "Не отслеживается">,
+    fromStatus?: Exclude<HrFunnelStatus, "Не отслеживается">,
   ) => string | null | Promise<string | null>;
   onInviteCandidate: (
     candidateId: string,
@@ -55,6 +56,7 @@ interface HrDashboardsPageProps {
       sendNow: boolean;
       scheduledAt?: string;
     },
+    fromStatus?: Exclude<HrFunnelStatus, "Не отслеживается">,
   ) => string | null | Promise<string | null>;
   onArchiveCandidate: (candidateId: string) => string | null | Promise<string | null>;
   actionConfirmSettings: HrActionConfirmSettings;
@@ -181,9 +183,10 @@ export function HrDashboardsPage({
   const handleMoveCandidate = async (
     candidateId: string,
     toStatus: KanbanStatus,
+    fromStatus?: KanbanStatus,
   ) => {
     const error = await Promise.resolve(
-      onChangeCandidateStatus(candidateId, toStatus),
+      onChangeCandidateStatus(candidateId, toStatus, fromStatus),
     );
     if (error) {
       setMessage(error);
@@ -252,7 +255,11 @@ export function HrDashboardsPage({
       return;
     }
 
-    void handleMoveCandidate(modalCandidate.candidate.id, nextStatus);
+    void handleMoveCandidate(
+      modalCandidate.candidate.id,
+      nextStatus,
+      modalCandidate.status,
+    );
   };
 
   const handleModalArchive = () => {
@@ -278,7 +285,11 @@ export function HrDashboardsPage({
       return;
     }
 
-    void handleMoveCandidate(pendingWarningAction.candidateId, "Отклонён");
+    void handleMoveCandidate(
+      pendingWarningAction.candidateId,
+      "Отклонён",
+      modalCandidate?.status,
+    );
     setPendingWarningAction(null);
   };
 
@@ -306,7 +317,7 @@ export function HrDashboardsPage({
         message: inviteComment.trim(),
         sendNow: inviteSendNow,
         scheduledAt: inviteSendNow ? undefined : inviteScheduledAt,
-      }),
+      }, modalCandidate.status),
     );
 
     if (error) {

@@ -36,11 +36,14 @@ import {
   createHrCandidateInvitation,
   fetchHrCandidateDetails,
   fetchHrCandidatesSearch,
+  fetchHrFeedNews,
   fetchHrHome,
   fetchHrSettings,
   fetchNotifications,
   fetchPublicEvents,
   fetchPublicHrProfile,
+  markHrFeedNewsViewed,
+  type HrFeedNewsItem,
   toggleHrCandidateSubscriptionApi,
   updateHrCandidateNote,
   updateHrCandidateStatus,
@@ -50,12 +53,15 @@ import { useEventsStore } from "@/stores/events-store";
 import { useNotificationsStore } from "@/stores/notifications-store";
 import {
   buildHrDashboardsPath,
+  buildHrHomePath,
   buildHrProfilePath,
   buildHrCandidateProfilePath,
   buildPathForCurrentView,
   resolveHrDashboardsTab,
+  resolveHrHomeTab,
   resolveHrProfileTab,
   type HrDashboardTab,
+  type HrHomeTab,
   type HrProfileTab,
 } from "@/app/shared/routing/app-shell-routes";
 
@@ -74,6 +80,7 @@ interface SelectedHrCandidateData {
 let cachedSelectedHrCandidateData: SelectedHrCandidateData | null = null;
 let cachedSelectedHrCandidateId: string | null = null;
 let cachedHrCandidateBackView: HrCandidateBackView = "candidates-search";
+const HR_NEWS_FEED_PAGE_LIMIT = 20;
 
 export interface HrShellRuntimeProps {
   currentUser: AuthUser;
@@ -112,6 +119,17 @@ export function useHrShellRuntime({
   }>({ topByAchievements: [], topBySubscribers: [] });
   const [hrTalentFeedComparison, setHrTalentFeedComparison] =
     useState<HrTalentFeedComparison | null>(null);
+  const [hrNewsFeedItems, setHrNewsFeedItems] = useState<HrFeedNewsItem[]>([]);
+  const [hrNewsFeedNextPage, setHrNewsFeedNextPage] = useState<string | null>(
+    null,
+  );
+  const [hrNewsFeedIsLoadingInitial, setHrNewsFeedIsLoadingInitial] =
+    useState(false);
+  const [hrNewsFeedIsLoadingMore, setHrNewsFeedIsLoadingMore] = useState(false);
+  const [hrNewsFeedError, setHrNewsFeedError] = useState<string | null>(null);
+  const [hrNewsFeedEmptyMessage, setHrNewsFeedEmptyMessage] = useState<
+    string | null
+  >(null);
   const [hrCandidates, setHrCandidates] = useState<HrCandidateSummary[]>([]);
   const [selectedHrCandidateData, setSelectedHrCandidateData] =
     useState<SelectedHrCandidateData | null>(() => cachedSelectedHrCandidateData);
@@ -138,11 +156,20 @@ export function useHrShellRuntime({
   const [hrProfileTab, setHrProfileTab] = useState<HrProfileTab>(() => {
     return resolveHrProfileTab(pathname);
   });
+  const [hrHomeTab, setHrHomeTab] = useState<HrHomeTab>(() => {
+    return resolveHrHomeTab(pathname);
+  });
   const [eventsLoaded, setEventsLoaded] = useState(false);
   const [isHrCandidatesSearchLoading, setIsHrCandidatesSearchLoading] =
     useState(true);
   const [isHrCandidateProfileLoading, setIsHrCandidateProfileLoading] =
     useState(false);
+  const hrHomeSummaryLoadedRef = useRef(false);
+  const hrCandidatesSearchLoadedRef = useRef(false);
+  const hrNewsFeedSeenIdsRef = useRef<Set<string>>(new Set());
+  const hrNewsFeedViewedQueuedIdsRef = useRef<Set<string>>(new Set());
+  const hrNewsFeedViewedInflightRef = useRef(false);
+  const hrNewsFeedHasRequestedInitialRef = useRef(false);
 
   useEffect(() => {
     const pathParts = pathname.split("/").filter(Boolean);
@@ -159,6 +186,9 @@ export function useHrShellRuntime({
     }
     if (pathParts[1] === "dashboards") {
       setHrDashboardTab(resolveHrDashboardsTab(pathname));
+    }
+    if (pathParts[1] === "home") {
+      setHrHomeTab(resolveHrHomeTab(pathname));
     }
     queueMicrotask(() => {
       isApplyingUrlStateRef.current = false;
@@ -180,6 +210,8 @@ export function useHrShellRuntime({
       resolvedPath = buildHrCandidateProfilePath(selectedHrCandidateId);
     } else if (hrView === "dashboards") {
       resolvedPath = buildHrDashboardsPath(hrDashboardTab);
+    } else if (hrView === "home") {
+      resolvedPath = buildHrHomePath(hrHomeTab);
     } else if (hrView === "profile") {
       resolvedPath = buildHrProfilePath(hrProfileTab);
     }
@@ -199,6 +231,7 @@ export function useHrShellRuntime({
     searchParams,
     selectedHrCandidateId,
     hrDashboardTab,
+    hrHomeTab,
     hrProfileTab,
   ]);
 
@@ -278,9 +311,13 @@ export function useHrShellRuntime({
   const getCandidateStatusById = useCallback(
     (candidateId: string): HrFunnelStatus => {
       const candidate = hrCandidates.find((item) => item.id === candidateId);
+      const selectedStatus =
+        selectedHrCandidateData?.candidate?.id === candidateId
+          ? selectedHrCandidateData.status
+          : undefined;
       return (
         candidate?.candidateStatus ??
-        selectedHrCandidateData?.status ??
+        selectedStatus ??
         "Не отслеживается"
       );
     },
@@ -308,8 +345,9 @@ export function useHrShellRuntime({
       candidateId: string,
       toStatus: HrFunnelStatus,
       note?: string,
+      fromStatus?: HrFunnelStatus,
     ): Promise<string | null> => {
-      const currentStatus = getCandidateStatusById(candidateId);
+      const currentStatus = fromStatus ?? getCandidateStatusById(candidateId);
       if (currentStatus === toStatus) return null;
       if (!canMoveHrCandidateStatus(currentStatus, toStatus)) {
         return `Переход из «${currentStatus}» в «${toStatus}» запрещен.`;
@@ -340,6 +378,16 @@ export function useHrShellRuntime({
         "Кандидат добавлен в воронку",
       );
       updateCandidateStatusState(candidateId, "На рассмотрении");
+      setHrNewsFeedItems((prev) =>
+        prev.map((item) =>
+          item.student.id === candidateId
+            ? {
+                ...item,
+                actions: { ...item.actions, canAddToFunnel: false },
+              }
+            : item,
+        ),
+      );
       return null;
     } catch (error) {
       console.warn("Failed to add candidate to funnel.", error);
@@ -370,11 +418,10 @@ export function useHrShellRuntime({
   const handleInviteHrCandidate = async (
     candidateId: string,
     payload: HrInvitationPayload,
+    fromStatus?: HrFunnelStatus,
   ): Promise<string | null> => {
-    const candidate = hrCandidates.find((item) => item.id === candidateId) ?? null;
-    if (!candidate) return "Кандидат не выбран.";
     if (!payload.message.trim()) return "Комментарий к приглашению обязателен.";
-    const currentStatus = getCandidateStatusById(candidate.id);
+    const currentStatus = fromStatus ?? getCandidateStatusById(candidateId);
     if (!canMoveHrCandidateStatus(currentStatus, "Приглашён")) {
       return `Переход из «${currentStatus}» в «Приглашён» запрещен.`;
     }
@@ -386,13 +433,14 @@ export function useHrShellRuntime({
         : "Плановая отправка";
     const inviteNote = `Приглашение на позицию «${payload.position}». ${scheduleText}${payload.message ? `. Сообщение: ${payload.message}` : ""}`;
     const moveError = await handleMoveHrCandidateStatus(
-      candidate.id,
+      candidateId,
       "Приглашён",
       inviteNote,
+      currentStatus,
     );
     if (moveError) return moveError;
     try {
-      await createHrCandidateInvitation(candidate.id, {
+      await createHrCandidateInvitation(candidateId, {
         position: payload.position,
         message: payload.message,
         sendNow: payload.sendNow,
@@ -593,20 +641,145 @@ export function useHrShellRuntime({
     [router, setHrView],
   );
 
+  const handleOpenHrHomeTab = useCallback(
+    (tab: HrHomeTab) => {
+      setHrHomeTab(tab);
+      setHrView("home");
+      router.push(buildHrHomePath(tab), { scroll: false });
+    },
+    [router, setHrView],
+  );
+
+  const loadInitialHrNewsFeed = useCallback(async () => {
+    if (hrNewsFeedIsLoadingInitial) return;
+    setHrNewsFeedIsLoadingInitial(true);
+    setHrNewsFeedError(null);
+    try {
+      const page = await fetchHrFeedNews({ limit: HR_NEWS_FEED_PAGE_LIMIT });
+      setHrNewsFeedItems(page.items);
+      setHrNewsFeedNextPage(page.nextPage);
+      setHrNewsFeedEmptyMessage(page.emptyMessage);
+      hrNewsFeedSeenIdsRef.current = new Set(page.items.map((item) => item.newsId));
+    } catch (error) {
+      console.warn("Failed to load HR news feed.", error);
+      setHrNewsFeedItems([]);
+      setHrNewsFeedNextPage(null);
+      setHrNewsFeedEmptyMessage(null);
+      setHrNewsFeedError("Не удалось загрузить ленту новостей.");
+    } finally {
+      setHrNewsFeedIsLoadingInitial(false);
+    }
+  }, [hrNewsFeedIsLoadingInitial]);
+
+  const loadMoreHrNewsFeed = useCallback(async () => {
+    if (!hrNewsFeedNextPage || hrNewsFeedIsLoadingInitial || hrNewsFeedIsLoadingMore) {
+      return;
+    }
+    setHrNewsFeedIsLoadingMore(true);
+    setHrNewsFeedError(null);
+    try {
+      const page = await fetchHrFeedNews({
+        limit: HR_NEWS_FEED_PAGE_LIMIT,
+        pageToken: hrNewsFeedNextPage,
+      });
+      setHrNewsFeedItems((prev) => {
+        const seen = hrNewsFeedSeenIdsRef.current;
+        const uniqueItems = page.items.filter((item) => !seen.has(item.newsId));
+        uniqueItems.forEach((item) => seen.add(item.newsId));
+        return uniqueItems.length > 0 ? [...prev, ...uniqueItems] : prev;
+      });
+      setHrNewsFeedNextPage(page.nextPage);
+      setHrNewsFeedEmptyMessage((prev) => prev ?? page.emptyMessage);
+    } catch (error) {
+      console.warn("Failed to load more HR news feed.", error);
+      setHrNewsFeedError("Не удалось подгрузить следующие новости.");
+    } finally {
+      setHrNewsFeedIsLoadingMore(false);
+    }
+  }, [hrNewsFeedIsLoadingInitial, hrNewsFeedIsLoadingMore, hrNewsFeedNextPage]);
+
+  const flushViewedHrNews = useCallback(async () => {
+    if (hrNewsFeedViewedInflightRef.current) return;
+    const ids = Array.from(hrNewsFeedViewedQueuedIdsRef.current);
+    if (ids.length === 0) return;
+    hrNewsFeedViewedInflightRef.current = true;
+    hrNewsFeedViewedQueuedIdsRef.current.clear();
+    let hasFailed = false;
+    try {
+      await markHrFeedNewsViewed(ids);
+    } catch (error) {
+      hasFailed = true;
+      console.warn("Failed to mark HR news as viewed.", error);
+      ids.forEach((id) => hrNewsFeedViewedQueuedIdsRef.current.add(id));
+    } finally {
+      hrNewsFeedViewedInflightRef.current = false;
+      if (!hasFailed && hrNewsFeedViewedQueuedIdsRef.current.size > 0) {
+        void flushViewedHrNews();
+      }
+    }
+  }, []);
+
+  const markViewedHrNews = useCallback(
+    (ids: string[]) => {
+      const normalized = ids.map((id) => id.trim()).filter(Boolean);
+      if (normalized.length === 0) return;
+      normalized.forEach((id) => hrNewsFeedViewedQueuedIdsRef.current.add(id));
+      void flushViewedHrNews();
+    },
+    [flushViewedHrNews],
+  );
+
   useEffect(() => {
+    if (
+      hrView !== "home" ||
+      hrHomeTab !== "news" ||
+      hrNewsFeedHasRequestedInitialRef.current
+    ) {
+      return;
+    }
+    hrNewsFeedHasRequestedInitialRef.current = true;
+    void loadInitialHrNewsFeed();
+  }, [hrHomeTab, hrView, loadInitialHrNewsFeed]);
+
+  useEffect(() => {
+    if (hrView !== "home" || hrHomeTab !== "summary" || hrHomeSummaryLoadedRef.current) {
+      return;
+    }
     let cancelled = false;
-    const loadHrData = async () => {
-      setIsHrCandidatesSearchLoading(true);
+    const loadHrHomeSummary = async () => {
       try {
-        const [hrHomeData, hrCandidatesData] = await Promise.all([
-          fetchHrHome(),
-          fetchHrCandidatesSearch(),
-        ]);
+        const hrHomeData = await fetchHrHome();
         if (cancelled) return;
         setHrHomeSummary({
           topByAchievements: hrHomeData.topByAchievements,
           topBySubscribers: hrHomeData.topBySubscribers,
         });
+      } catch (error) {
+        if (!cancelled) {
+          setHrHomeSummary({ topByAchievements: [], topBySubscribers: [] });
+        }
+      } finally {
+        if (!cancelled) {
+          hrHomeSummaryLoadedRef.current = true;
+        }
+      }
+    };
+    loadHrHomeSummary();
+    return () => {
+      cancelled = true;
+    };
+  }, [hrHomeTab, hrView]);
+
+  useEffect(() => {
+    if (hrView !== "candidates-search" || hrCandidatesSearchLoadedRef.current) {
+      return;
+    }
+    let cancelled = false;
+    const loadHrCandidatesSearch = async () => {
+      setIsHrCandidatesSearchLoading(true);
+      try {
+        const hrCandidatesData = await fetchHrCandidatesSearch();
+        if (cancelled) return;
         setHrCandidates(
           hrCandidatesData.map((candidate) => ({
             id: candidate.id,
@@ -620,95 +793,22 @@ export function useHrShellRuntime({
             candidateStatus: candidate.candidateStatus,
           })),
         );
-        setIsHrCandidatesSearchLoading(false);
-
-        const trackedCandidates = hrCandidatesData.filter(
-          (candidate) => candidate.candidateStatus !== "Не отслеживается",
-        );
-        if (trackedCandidates.length === 0) {
-          if (!cancelled) {
-            setHrTalentFeedComparison({
-              text: "Недостаточно данных для сравнения",
-              tone: "empty",
-            });
-          }
-          return;
-        }
-
-        const candidateDetails = await Promise.all(
-          trackedCandidates.map(async (candidate) => {
-            try {
-              const details = await fetchHrCandidateDetails(candidate.id);
-              return details.achievements;
-            } catch (error) {
-              return [];
-            }
-          }),
-        );
-
-        const achievements = candidateDetails.flat();
-        const now = new Date();
-        const currentWindowStart = new Date(now);
-        currentWindowStart.setDate(now.getDate() - 6);
-        currentWindowStart.setHours(0, 0, 0, 0);
-        const previousWindowStart = new Date(now);
-        previousWindowStart.setDate(now.getDate() - 13);
-        previousWindowStart.setHours(0, 0, 0, 0);
-        const previousWindowEnd = new Date(now);
-        previousWindowEnd.setDate(now.getDate() - 7);
-        previousWindowEnd.setHours(23, 59, 59, 999);
-
-        const currentCount = achievements.filter((achievement) => {
-          const date = new Date(achievement.date);
-          return date >= currentWindowStart && date <= now;
-        }).length;
-        const previousCount = achievements.filter((achievement) => {
-          const date = new Date(achievement.date);
-          return date >= previousWindowStart && date <= previousWindowEnd;
-        }).length;
-
-        let tone: HrTalentFeedComparison["tone"] = "stable";
-        let text = "Столько же достижений, сколько на прошлой неделе";
-
-        if (currentCount > previousCount) {
-          tone = "up";
-          const percentage =
-            previousCount === 0
-              ? 100
-              : Math.round(((currentCount - previousCount) / previousCount) * 100);
-          text = `На ${percentage}% больше достижений, чем на прошлой неделе`;
-        } else if (currentCount < previousCount) {
-          tone = "down";
-          const percentage =
-            previousCount === 0
-              ? 100
-              : Math.round(((previousCount - currentCount) / previousCount) * 100);
-          text = `На ${percentage}% меньше достижений, чем на прошлой неделе`;
-        }
-
-        if (!cancelled) {
-          setHrTalentFeedComparison({ text, tone });
-        }
       } catch (error) {
         if (!cancelled) {
-          setHrHomeSummary({ topByAchievements: [], topBySubscribers: [] });
           setHrCandidates([]);
-          setHrTalentFeedComparison({
-            text: "Недостаточно данных для сравнения",
-            tone: "empty",
-          });
         }
       } finally {
         if (!cancelled) {
           setIsHrCandidatesSearchLoading(false);
+          hrCandidatesSearchLoadedRef.current = true;
         }
       }
     };
-    loadHrData();
+    loadHrCandidatesSearch();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [hrView]);
 
   useEffect(() => {
     if (
@@ -855,6 +955,18 @@ export function useHrShellRuntime({
     hrTopBySubscribers,
     hrHomeNotifications,
     hrTalentFeedComparison,
+    hrNewsFeedItems,
+    hrNewsFeedNextPage,
+    hrNewsFeedEmptyMessage,
+    hrNewsFeedError,
+    hrNewsFeedHasMore: Boolean(hrNewsFeedNextPage),
+    hrNewsFeedIsLoadingInitial,
+    hrNewsFeedIsLoadingMore,
+    loadInitialHrNewsFeed,
+    loadMoreHrNewsFeed,
+    markViewedHrNews,
+    hrHomeTab,
+    openHrHomeTab: handleOpenHrHomeTab,
     hrPublishedEventsCount,
     hrDefaultInviteComment,
     hrActionConfirmSettings,
