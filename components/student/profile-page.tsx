@@ -30,6 +30,7 @@ import {
 } from "@/components/shared/subscribers-preview-card";
 import { updateStudentProfile } from "@/lib/backend-api";
 import { EMAIL_REGEX } from "@/app/shared/common/validation";
+import { showErrorToast, showSuccessToast } from "@/lib/app-toast";
 
 interface ProfilePageProps {
   user: AuthUser;
@@ -113,9 +114,11 @@ function useStudentProfileHandlers(
     try {
       const updated = await updateStudentProfile({ email: normalizedEmail });
       setCurrentUser(updated);
+      showSuccessToast("Email обновлен");
       return null;
     } catch (error) {
       console.warn("Failed to update student email.", error);
+      showErrorToast("Не удалось обновить email. Попробуйте позже.");
       return "Не удалось обновить email. Попробуйте позже.";
     }
   };
@@ -126,9 +129,11 @@ function useStudentProfileHandlers(
         phone: phone.trim() || null,
       });
       setCurrentUser(updated);
+      showSuccessToast("Телефон обновлен");
       return null;
     } catch (error) {
       console.warn("Failed to update student phone.", error);
+      showErrorToast("Не удалось обновить телефон. Попробуйте позже.");
       return "Не удалось обновить телефон. Попробуйте позже.";
     }
   };
@@ -171,9 +176,11 @@ function useStudentProfileHandlers(
         visibleBadgeIds: profile.visibleBadgeIds,
       });
       setCurrentUser(updated);
+      showSuccessToast("Публичная визитка сохранена");
       return null;
     } catch (error) {
       console.warn("Failed to update student public profile.", error);
+      showErrorToast("Не удалось сохранить публичную визитку.");
       return "Не удалось сохранить публичную визитку.";
     }
   };
@@ -328,6 +335,7 @@ export function ProfilePage({
   const handleNotificationsSave = () => {
     handleUpdateNotifications(notifications);
     setNotificationMessage("Настройки уведомлений сохранены.");
+    showSuccessToast("Настройки уведомлений сохранены");
   };
 
   const handleDelete = async () => {

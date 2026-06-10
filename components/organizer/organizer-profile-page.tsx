@@ -25,6 +25,7 @@ import { HrActionConfirmSettings } from "@/lib/hr-network";
 import { updateOrganizerProfile } from "@/lib/backend-api";
 import { EMAIL_REGEX } from "@/app/shared/common/validation";
 import { normalizeOrganizerNotifications } from "@/app/shared/auth/normalizers";
+import { showErrorToast, showSuccessToast } from "@/lib/app-toast";
 
 interface OrganizerProfilePageProps {
   user: AuthUser;
@@ -123,9 +124,11 @@ function useOrganizerProfileHandlers(
     try {
       const updated = await updateOrganizerProfile({ email: normalizedEmail });
       setCurrentUser(updated);
+      showSuccessToast("Email обновлен");
       return null;
     } catch (error) {
       console.warn("Failed to update organizer email.", error);
+      showErrorToast("Не удалось обновить email. Попробуйте позже.");
       return "Не удалось обновить email. Попробуйте позже.";
     }
   };
@@ -139,9 +142,11 @@ function useOrganizerProfileHandlers(
         phone: phone.trim() || null,
       });
       setCurrentUser(updated);
+      showSuccessToast("Телефон обновлен");
       return null;
     } catch (error) {
       console.warn("Failed to update organizer phone.", error);
+      showErrorToast("Не удалось обновить телефон. Попробуйте позже.");
       return "Не удалось обновить телефон. Попробуйте позже.";
     }
   };
@@ -182,9 +187,11 @@ function useOrganizerProfileHandlers(
         },
       });
       setCurrentUser(updated);
+      showSuccessToast("Профиль организации сохранен");
       return null;
     } catch (error) {
       console.warn("Failed to update organizer profile.", error);
+      showErrorToast("Не удалось сохранить профиль организации.");
       return "Не удалось сохранить профиль организации.";
     }
   };
@@ -392,6 +399,7 @@ export function OrganizerProfilePage({
 
     handleUpdateNotifications(notifications);
     setNotificationMessage("Настройки уведомлений сохранены.");
+    showSuccessToast("Настройки уведомлений сохранены");
   };
 
   const handleDelete = async () => {
@@ -507,6 +515,7 @@ export function OrganizerProfilePage({
       confirmArchive: confirmArchiveWarning,
     });
     setHrInviteCommentMessage("Настройки HR сохранены.");
+    showSuccessToast("Настройки HR сохранены");
   };
 
   return (

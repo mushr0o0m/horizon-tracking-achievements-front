@@ -241,8 +241,14 @@ interface SubscriberDto {
   id?: string | null;
   firstName?: string | null;
   lastName?: string | null;
+  fullName?: string | null;
+  name?: string | null;
   email?: string | null;
   companyName?: string | null;
+  organizationName?: string | null;
+  company?: string | null;
+  hr?: SubscriberDto | null;
+  profile?: SubscriberDto | null;
 }
 
 interface HrSettingsDto {
@@ -963,15 +969,38 @@ function mapHrStatusHistoryEntry(
 
 function mapHrSubscriber(raw: unknown): SubscriberDto | null {
   if (!isRecord(raw)) return null;
-  const hrId = getString(raw.hrId) || getString(raw.id);
+  const nested =
+    (isRecord(raw.hr) ? raw.hr : null) ??
+    (isRecord(raw.profile) ? raw.profile : null);
+  const source = nested ?? raw;
+  const hrId =
+    getString(raw.hrId) ||
+    getString(source.hrId) ||
+    getString(raw.id) ||
+    getString(source.id);
   if (!hrId) return null;
+  const fullName =
+    getString(source.fullName) || getString(source.name) || undefined;
+  const [lastNameFromFullName = "", firstNameFromFullName = ""] = fullName
+    ? fullName.trim().split(/\s+/, 2)
+    : [];
+
   return {
     hrId,
-    id: getString(raw.id) || hrId,
-    firstName: getString(raw.firstName) || undefined,
-    lastName: getString(raw.lastName) || undefined,
-    email: getString(raw.email) || undefined,
-    companyName: getString(raw.companyName) || undefined,
+    id: getString(raw.id) || getString(source.id) || hrId,
+    firstName:
+      getString(source.firstName) || firstNameFromFullName || undefined,
+    lastName: getString(source.lastName) || lastNameFromFullName || undefined,
+    fullName,
+    name: getString(source.name) || undefined,
+    email: getString(raw.email) || getString(source.email) || undefined,
+    companyName:
+      getString(source.companyName) ||
+      getString(source.organizationName) ||
+      getString(source.company) ||
+      undefined,
+    organizationName: getString(source.organizationName) || undefined,
+    company: getString(source.company) || undefined,
   };
 }
 
@@ -1801,8 +1830,12 @@ export async function respondToStudentInvitation(
 }
 
 export async function fetchStudentSubscribers(): Promise<SubscriberDto[]> {
-  const data = await request<SubscriberDto[]>("/students/me/subscribers");
-  return Array.isArray(data) ? data : [];
+  const data = await request<unknown>("/students/me/subscribers");
+  return Array.isArray(data)
+    ? data
+        .map(mapHrSubscriber)
+        .filter((item): item is SubscriberDto => item !== null)
+    : [];
 }
 
 export async function fetchHrSettings(): Promise<HrSettingsData> {

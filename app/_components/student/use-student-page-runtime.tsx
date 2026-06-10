@@ -24,6 +24,7 @@ import { useAchievementsStore } from "@/stores/achievements-store";
 import { useNotificationsStore } from "@/stores/notifications-store";
 import {
   createStudentAchievement,
+  fetchPublicEventById,
   fetchPublicHrProfile,
   fetchPublicOrganizerProfile,
   fetchStudentAchievements,
@@ -56,6 +57,7 @@ import { useStudentNotificationsBootstrap } from "@/hooks/use-student-notificati
 import { StudentCreateAchievementSection } from "@/app/student/create-achievement/form/section";
 import { StudentEventDetailsSection } from "@/app/student/event-details/view/section";
 import { useStudentRouteContext } from "@/app/_components/student/student-route-context";
+import { showErrorToast, showSuccessToast } from "@/lib/app-toast";
 
 interface StudentOrganizerOption {
   id: string;
@@ -97,9 +99,14 @@ export function useStudentPageRuntime(options: StudentPageRuntimeOptions = {}) {
   const [selectedEventSnapshot, setSelectedEventSnapshot] = useState<Event | null>(
     null,
   );
+  const [isSelectedEventLoading, setIsSelectedEventLoading] = useState(false);
   const [selectedAchievementId, setSelectedAchievementId] = useState<
     string | null
   >(null);
+  const [selectedAchievementEventSnapshot, setSelectedAchievementEventSnapshot] =
+    useState<Event | null>(null);
+  const [isSelectedAchievementEventLoading, setIsSelectedAchievementEventLoading] =
+    useState(false);
   const [selectedHrProfileUser, setSelectedHrProfileUser] =
     useState<AuthUser | null>(null);
   const [selectedEventOrganizerInfo, setSelectedEventOrganizerInfo] =
@@ -147,9 +154,43 @@ export function useStudentPageRuntime(options: StudentPageRuntimeOptions = {}) {
   const currentUrl = `${pathname}${searchParamsString ? `?${searchParamsString}` : ""}`;
 
   useEffect(() => {
-    setSelectedEventSnapshot(
-      events.find((event) => event.id === selectedEventId) ?? null,
-    );
+    if (!selectedEventId) {
+      setSelectedEventSnapshot(null);
+      setIsSelectedEventLoading(false);
+      return;
+    }
+
+    const eventFromStore = events.find((event) => event.id === selectedEventId);
+    if (eventFromStore) {
+      setSelectedEventSnapshot(eventFromStore);
+      setIsSelectedEventLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    const loadEvent = async () => {
+      setIsSelectedEventLoading(true);
+      try {
+        const event = await fetchPublicEventById(selectedEventId);
+        if (!cancelled) {
+          setSelectedEventSnapshot(event);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setSelectedEventSnapshot(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsSelectedEventLoading(false);
+        }
+      }
+    };
+
+    void loadEvent();
+
+    return () => {
+      cancelled = true;
+    };
   }, [events, selectedEventId]);
 
   const studentAchievements = useMemo(
@@ -231,7 +272,11 @@ export function useStudentPageRuntime(options: StudentPageRuntimeOptions = {}) {
   );
 
   const selectedAchievementEvent = selectedAchievement?.eventId
-    ? events.find((item) => item.id === selectedAchievement.eventId)
+    ? events.find((item) => item.id === selectedAchievement.eventId) ??
+      (selectedAchievementEventSnapshot?.id === selectedAchievement.eventId
+        ? selectedAchievementEventSnapshot
+        : null) ??
+      undefined
     : undefined;
 
   const eventOrganizerInfo: ComponentProps<
@@ -341,6 +386,47 @@ export function useStudentPageRuntime(options: StudentPageRuntimeOptions = {}) {
   }, [displayedEvent?.organizerId]);
 
   useEffect(() => {
+    const eventId = selectedAchievement?.eventId;
+    if (!eventId) {
+      setSelectedAchievementEventSnapshot(null);
+      setIsSelectedAchievementEventLoading(false);
+      return;
+    }
+
+    const eventFromStore = events.find((item) => item.id === eventId);
+    if (eventFromStore) {
+      setSelectedAchievementEventSnapshot(eventFromStore);
+      setIsSelectedAchievementEventLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    const loadEvent = async () => {
+      setIsSelectedAchievementEventLoading(true);
+      try {
+        const event = await fetchPublicEventById(eventId);
+        if (!cancelled) {
+          setSelectedAchievementEventSnapshot(event);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setSelectedAchievementEventSnapshot(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsSelectedAchievementEventLoading(false);
+        }
+      }
+    };
+
+    void loadEvent();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [events, selectedAchievement]);
+
+  useEffect(() => {
     if (visibilitySeededForUserId === currentUser.id) return;
     if (
       currentUser.publicProfile.visibleAchievementIds.length > 0 ||
@@ -391,12 +477,15 @@ export function useStudentPageRuntime(options: StudentPageRuntimeOptions = {}) {
 
   const handleOpenStudentEvent = useCallback(
     (id: string, nextReturnTo: string) => {
-      setSelectedEventSnapshot(events.find((event) => event.id === id) ?? null);
+      setSelectedEventSnapshot(
+        events.find((event) => event.id === id) ??
+          (selectedAchievementEvent?.id === id ? selectedAchievementEvent : null),
+      );
       router.push(buildStudentEventDetailsPath(id, nextReturnTo), {
         scroll: false,
       });
     },
-    [events, router],
+    [events, router, selectedAchievementEvent],
   );
 
   const handleOpenAchievement = useCallback((achievementId: string) => {
@@ -415,8 +504,14 @@ export function useStudentPageRuntime(options: StudentPageRuntimeOptions = {}) {
           setStudentInvitations((prev) =>
             prev.map((item) => (item.id === invitationId ? updatedInvitation : item)),
           );
+          showSuccessToast(
+            response === "accepted"
+              ? "Приглашение принято"
+              : "Приглашение отклонено",
+          );
         } catch (error) {
           console.warn("Failed to respond to invitation.", error);
+          showErrorToast("Не удалось отправить ответ на приглашение.");
         }
       };
 
@@ -447,8 +542,12 @@ export function useStudentPageRuntime(options: StudentPageRuntimeOptions = {}) {
       try {
         const updated = await updateStudentProfile({ visibleAchievementIds: nextIds });
         setCurrentUser(updated);
+        showSuccessToast(
+          nextVisible ? "Достижение добавлено в витрину" : "Достижение скрыто из витрины",
+        );
       } catch (error) {
         console.warn("Failed to update achievement visibility.", error);
+        showErrorToast("Не удалось обновить видимость достижения.");
       }
     },
     [addNotification, currentUser, setCurrentUser],
@@ -477,8 +576,14 @@ export function useStudentPageRuntime(options: StudentPageRuntimeOptions = {}) {
       try {
         const updated = await updateStudentProfile({ visibleBadgeIds: nextIds });
         setCurrentUser(updated);
+        showSuccessToast(
+          currentSet.has(badgeId)
+            ? "Значок добавлен в витрину"
+            : "Значок скрыт из витрины",
+        );
       } catch (error) {
         console.warn("Failed to update badge visibility.", error);
+        showErrorToast("Не удалось обновить видимость значка.");
       }
     },
     [addNotification, currentUser, setCurrentUser, unlockedBadgeIds],
@@ -491,12 +596,15 @@ export function useStudentPageRuntime(options: StudentPageRuntimeOptions = {}) {
         if (isApplied) {
           await unregisterStudentForEvent(eventId);
           setStudentAppliedEventIds((prev) => prev.filter((id) => id !== eventId));
+          showSuccessToast("Заявка отозвана");
         } else {
           await registerStudentForEvent(eventId);
           setStudentAppliedEventIds((prev) => [...prev, eventId]);
+          showSuccessToast("Заявка отправлена");
         }
       } catch (error) {
         console.warn("Failed to update event application.", error);
+        showErrorToast("Не удалось обновить заявку на мероприятие.");
       }
     },
     [studentAppliedEventIds],
@@ -567,11 +675,17 @@ export function useStudentPageRuntime(options: StudentPageRuntimeOptions = {}) {
             setCurrentUser(updated);
           }
 
+          showSuccessToast(
+            "Запрос отправлен",
+            "Достижение отправлено на подтверждение.",
+          );
+
           router.push(buildStudentAchievementsPath(studentAchievementsTab), {
             scroll: false,
           });
         } catch (error) {
           console.warn("Failed to create achievement.", error);
+          showErrorToast("Не удалось отправить запрос на достижение.");
           addNotification(
             currentUser.id,
             "Ошибка запроса",
@@ -695,6 +809,7 @@ export function useStudentPageRuntime(options: StudentPageRuntimeOptions = {}) {
     selectedHrProfileUser,
     organizerOptions,
     displayedEvent,
+    isSelectedEventLoading,
     eventOrganizerInfo,
     selectedEventApplications,
     isCurrentStudentApplied,
@@ -705,6 +820,7 @@ export function useStudentPageRuntime(options: StudentPageRuntimeOptions = {}) {
     createStudentAchievementSubmit,
     selectedAchievement,
     selectedAchievementEvent,
+    isSelectedAchievementEventLoading,
     openAchievement: handleOpenAchievement,
     closeAchievement: () => setSelectedAchievementId(null),
     openCreateAchievement: () =>
@@ -757,6 +873,7 @@ export function useStudentPageRuntime(options: StudentPageRuntimeOptions = {}) {
 export function StudentAchievementModal({
   achievement,
   event,
+  isEventLoading,
   isVisibleInPublic,
   onToggleVisible,
   onClose,
@@ -766,6 +883,7 @@ export function StudentAchievementModal({
     <AchievementDetailsModal
       achievement={achievement}
       event={event}
+      isEventLoading={isEventLoading}
       isVisibleInPublic={isVisibleInPublic}
       onToggleVisible={onToggleVisible}
       onClose={onClose}

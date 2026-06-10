@@ -5,6 +5,7 @@ import { Users, ArrowUpRight } from "lucide-react";
 export interface SubscriberPreviewItem {
   id: string;
   name: string;
+  companyName?: string;
   email?: string;
 }
 

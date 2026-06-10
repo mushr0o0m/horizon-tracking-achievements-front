@@ -39,7 +39,6 @@ import type { HrDashboardTab } from "@/app/shared/routing/app-shell-routes";
 
 interface HrDashboardsPageProps {
   hrId: string;
-  publishedEventsCount: number;
   defaultInviteComment: string;
   onSaveCandidateNote: (candidateId: string, note: string) => Promise<void>;
   onOpenCandidate: (candidateId: string) => void;
@@ -66,7 +65,6 @@ interface HrDashboardsPageProps {
 
 export function HrDashboardsPage({
   hrId,
-  publishedEventsCount,
   defaultInviteComment,
   onSaveCandidateNote,
   onOpenCandidate,
@@ -397,7 +395,6 @@ export function HrDashboardsPage({
         <TabsContent value="summary" className="min-h-0 flex-1">
           <HrSummaryTab
             metrics={metrics}
-            publishedEventsCount={publishedEventsCount}
             statusUpdateWindowDays={statusUpdateWindowDays}
             onStatusUpdateWindowDaysChange={setStatusUpdateWindowDays}
           />

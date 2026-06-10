@@ -3,6 +3,7 @@
 import AppShellCommon from "@/app/_components/app-shell-common";
 import { EventForm } from "@/components/organizer/event-form";
 import { createOrganizerEvent, fetchOrganizerEvents } from "@/lib/backend-api";
+import { showErrorToast, showSuccessToast } from "@/lib/app-toast";
 import type { Event, OrganizerView } from "@/lib/types";
 import type { EventFormPayload } from "@/stores/events-store";
 
@@ -36,8 +37,10 @@ export function OrganizerCreateEventPageContent({
       const refreshed = await fetchOrganizerEvents();
       setEvents(refreshed);
       setOrganizerView("events");
+      showSuccessToast("Мероприятие создано");
     } catch (error) {
       console.warn("Failed to create event.", error);
+      showErrorToast("Не удалось создать мероприятие.");
     }
   };
 

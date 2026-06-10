@@ -68,6 +68,7 @@ import {
   type HrHomeTab,
   type HrProfileTab,
 } from "@/app/shared/routing/app-shell-routes";
+import { showErrorToast, showSuccessToast } from "@/lib/app-toast";
 
 type HrCandidateBackView = "home" | "dashboards" | "candidates-search";
 
@@ -384,9 +385,11 @@ export function useHrShellRuntime({
       try {
         await updateHrCandidateStatus(candidateId, toStatus, note);
         updateCandidateStatusState(candidateId, toStatus);
+        showSuccessToast("Статус кандидата обновлен");
         return null;
       } catch (error) {
         console.warn("Failed to update HR candidate status.", error);
+        showErrorToast("Не удалось обновить статус кандидата.");
         return "Не удалось обновить статус кандидата.";
       }
     },
@@ -429,9 +432,11 @@ export function useHrShellRuntime({
             : item,
         ),
       );
+      showSuccessToast("Кандидат добавлен в воронку");
       return null;
     } catch (error) {
       console.warn("Failed to add candidate to funnel.", error);
+      showErrorToast("Не удалось добавить кандидата в воронку.");
       return "Не удалось добавить кандидата в воронку.";
     }
   };
@@ -462,6 +467,11 @@ export function useHrShellRuntime({
             : item,
         ),
       );
+      showSuccessToast(
+        result.isSubscribed
+          ? "Подписка на кандидата оформлена"
+          : "Подписка на кандидата отменена",
+      );
       return null;
     } catch (error) {
       console.warn("Failed to toggle recommendation subscription.", error);
@@ -472,6 +482,7 @@ export function useHrShellRuntime({
             : item,
         ),
       );
+      showErrorToast("Не удалось обновить подписку.");
       return "Не удалось обновить подписку.";
     }
   };
@@ -489,9 +500,11 @@ export function useHrShellRuntime({
         "Кандидат добавлен в архив вручную",
       );
       updateCandidateStatusState(candidateId, "Отклонён");
+      showSuccessToast("Кандидат перемещен в архив");
       return null;
     } catch (error) {
       console.warn("Failed to archive HR candidate.", error);
+      showErrorToast("Не удалось переместить кандидата в архив.");
       return "Не удалось переместить кандидата в архив.";
     }
   };
@@ -527,9 +540,11 @@ export function useHrShellRuntime({
         sendNow: payload.sendNow,
         scheduledAt: payload.scheduledAt,
       });
+      showSuccessToast("Приглашение отправлено");
       return null;
     } catch (error) {
       console.warn("Failed to create HR invitation.", error);
+      showErrorToast("Не удалось создать приглашение.");
       return "Не удалось создать приглашение.";
     }
   };
@@ -546,8 +561,10 @@ export function useHrShellRuntime({
             }
           : prev,
       );
+      showSuccessToast("Заметка сохранена");
     } catch (error) {
       console.warn("Failed to update HR note.", error);
+      showErrorToast("Не удалось сохранить заметку.");
     }
   };
 
@@ -563,11 +580,17 @@ export function useHrShellRuntime({
             ? {
                 ...prev,
                 isCurrentHrSubscribed: result.isSubscribed,
-              }
-            : prev,
+            }
+          : prev,
+        );
+        showSuccessToast(
+          result.isSubscribed
+            ? "Подписка на кандидата оформлена"
+            : "Подписка на кандидата отменена",
         );
       } catch (error) {
         console.warn("Failed to toggle HR subscription.", error);
+        showErrorToast("Не удалось обновить подписку.");
       }
     };
     run();
@@ -682,8 +705,10 @@ export function useHrShellRuntime({
     try {
       const updated = await updateHrSettings({ defaultInviteComment: comment });
       setHrDefaultInviteCommentState(updated.defaultInviteComment);
+      showSuccessToast("Настройки приглашения сохранены");
     } catch (error) {
       console.warn("Failed to update HR settings.", error);
+      showErrorToast("Не удалось сохранить настройки HR.");
     }
   };
 
@@ -699,8 +724,10 @@ export function useHrShellRuntime({
         confirmReject: updated.confirmRejectAction,
         confirmArchive: updated.confirmArchiveAction,
       });
+      showSuccessToast("Настройки действий сохранены");
     } catch (error) {
       console.warn("Failed to update HR settings.", error);
+      showErrorToast("Не удалось сохранить настройки HR.");
     }
   };
 

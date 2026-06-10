@@ -3,6 +3,7 @@
 import AppShellCommon from "@/app/_components/app-shell-common";
 import { EventForm } from "@/components/organizer/event-form";
 import { fetchOrganizerEvents, updateOrganizerEvent } from "@/lib/backend-api";
+import { showErrorToast, showSuccessToast } from "@/lib/app-toast";
 import { useParams } from "next/navigation";
 import type { Event, OrganizerView } from "@/lib/types";
 import type { EventFormPayload } from "@/stores/events-store";
@@ -52,8 +53,10 @@ export function OrganizerEditEventPageContent({
       setEvents(refreshed);
       setSelectedEventId(null);
       setOrganizerView("events");
+      showSuccessToast("Мероприятие обновлено");
     } catch (error) {
       console.warn("Failed to update event.", error);
+      showErrorToast("Не удалось обновить мероприятие.");
     }
   };
 

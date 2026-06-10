@@ -64,6 +64,7 @@ export default function Page() {
       <StudentAchievementModal
         achievement={runtime.selectedAchievement}
         event={runtime.selectedAchievementEvent}
+        isEventLoading={runtime.isSelectedAchievementEventLoading}
         isVisibleInPublic={
           runtime.selectedAchievement
             ? runtime.currentUser.publicProfile.visibleAchievementIds.includes(

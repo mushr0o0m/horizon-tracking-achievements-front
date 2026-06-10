@@ -1,8 +1,6 @@
 import {
   BriefcaseBusiness,
-  CalendarDays,
   GraduationCap,
-  Trophy,
 } from "lucide-react";
 import {
   Card,
@@ -20,14 +18,12 @@ import {
 
 interface HrSummaryTabProps {
   metrics: DashboardMetrics;
-  publishedEventsCount: number;
   statusUpdateWindowDays: StatusUpdateWindow;
   onStatusUpdateWindowDaysChange: (value: StatusUpdateWindow) => void;
 }
 
 export function HrSummaryTab({
   metrics,
-  publishedEventsCount,
   statusUpdateWindowDays,
   onStatusUpdateWindowDaysChange,
 }: HrSummaryTabProps) {
@@ -40,7 +36,7 @@ export function HrSummaryTab({
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Card>
           <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
             <CardDescription>Всего в воронке</CardDescription>
@@ -58,26 +54,6 @@ export function HrSummaryTab({
           </CardHeader>
           <CardContent>
             <CardTitle className="text-3xl">{metrics.activeCount}</CardTitle>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
-            <CardDescription>Подтвержденные достижения</CardDescription>
-            <Trophy className="w-4 h-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <CardTitle className="text-3xl">{metrics.confirmedAchievementsCount}</CardTitle>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
-            <CardDescription>Опубликованные мероприятия</CardDescription>
-            <CalendarDays className="w-4 h-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <CardTitle className="text-3xl">{publishedEventsCount}</CardTitle>
           </CardContent>
         </Card>
       </div>

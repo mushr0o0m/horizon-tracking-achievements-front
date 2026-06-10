@@ -23,10 +23,12 @@ import {
 } from "@/components/shared/register-form";
 import {
   EventsStoreProvider,
+  resetEventsStoreCache,
   useEventsStore,
 } from "@/stores/events-store";
 import {
   AchievementsStoreProvider,
+  resetAchievementsStoreCache,
   useAchievementsStore,
 } from "@/stores/achievements-store";
 import {
@@ -70,6 +72,7 @@ import { resetStudentAchievementsBootstrapCache } from "@/hooks/use-student-achi
 import { resetStudentSubscribersBootstrapCache } from "@/hooks/use-student-subscribers-bootstrap";
 import { resetStudentNotificationsBootstrapCache } from "@/hooks/use-student-notifications-bootstrap";
 import { Spinner } from "@/components/ui/spinner";
+import { showErrorToast, showSuccessToast } from "@/lib/app-toast";
 
 type NavigationState = {
   organizerView: OrganizerView;
@@ -277,13 +280,18 @@ function AppContent({ studentRouteOverride, children }: AppShellCommonProps) {
       runtimeCache.authUser = createdUser;
       runtimeCache.authResolved = true;
       navigateAfterAuth(createdUser);
+      showSuccessToast("Регистрация выполнена", "Аккаунт успешно создан.");
       return null;
     } catch (error) {
       const backendMessage = error instanceof Error ? error.message : "";
       if (backendMessage.toLowerCase().includes("already exists")) {
+        showErrorToast("Пользователь с таким email уже существует.");
         return "Пользователь с таким email уже существует.";
       }
       console.warn("Backend registration failed.", error);
+      showErrorToast(
+        "Не удалось зарегистрироваться. Проверьте данные и повторите попытку.",
+      );
       return "Не удалось зарегистрироваться. Проверьте данные и повторите попытку.";
     }
   };
@@ -295,9 +303,11 @@ function AppContent({ studentRouteOverride, children }: AppShellCommonProps) {
       runtimeCache.authUser = user;
       runtimeCache.authResolved = true;
       navigateAfterAuth(user);
+      showSuccessToast("Вход выполнен", "Вы успешно вошли в систему.");
       return null;
     } catch (error) {
       console.warn("Backend login failed.", error);
+      showErrorToast("Не удалось войти. Проверьте email и пароль.");
       return "Не удалось войти. Проверьте email и пароль.";
     }
   };
@@ -317,9 +327,11 @@ function AppContent({ studentRouteOverride, children }: AppShellCommonProps) {
         newPassword,
         confirmPassword: newPassword,
       });
+      showSuccessToast("Пароль обновлен");
       return null;
     } catch (error) {
       console.warn("Failed to update password.", error);
+      showErrorToast("Не удалось обновить пароль. Проверьте текущий пароль.");
       return "Не удалось обновить пароль. Проверьте текущий пароль.";
     }
   };
@@ -349,6 +361,8 @@ function AppContent({ studentRouteOverride, children }: AppShellCommonProps) {
     resetStudentSubscribersBootstrapCache();
     resetStudentNotificationsBootstrapCache();
     resetNotificationsStoreCache();
+    resetEventsStoreCache();
+    resetAchievementsStoreCache();
     setEvents([]);
     setAchievements([]);
     setNotifications([]);
@@ -370,6 +384,8 @@ function AppContent({ studentRouteOverride, children }: AppShellCommonProps) {
     resetStudentSubscribersBootstrapCache();
     resetStudentNotificationsBootstrapCache();
     resetNotificationsStoreCache();
+    resetEventsStoreCache();
+    resetAchievementsStoreCache();
     setEvents([]);
     setAchievements([]);
     setNotifications([]);

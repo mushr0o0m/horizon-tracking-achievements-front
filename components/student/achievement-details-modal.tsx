@@ -7,6 +7,7 @@ import type { ReactNode } from "react";
 interface AchievementDetailsModalProps {
   achievement: Achievement | null;
   event?: Event;
+  isEventLoading?: boolean;
   isVisibleInPublic?: boolean;
   onToggleVisible?: (nextValue: boolean) => void;
   onClose: () => void;
@@ -17,6 +18,7 @@ interface AchievementDetailsModalProps {
 export function AchievementDetailsModal({
   achievement,
   event,
+  isEventLoading = false,
   isVisibleInPublic,
   onToggleVisible,
   onClose,
@@ -95,6 +97,10 @@ export function AchievementDetailsModal({
                   Открыть мероприятие
                 </button>
               </div>
+            ) : isEventLoading ? (
+              <p className="mt-1 text-foreground">
+                Загружаем информацию о мероприятии...
+              </p>
             ) : (
               <p className="mt-1 text-foreground">Мероприятие не найдено</p>
             )}

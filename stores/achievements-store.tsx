@@ -5,6 +5,7 @@ import {
   ReactNode,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useReducer,
 } from "react";
@@ -26,6 +27,31 @@ type ReviewDecision = "Подтверждено" | "Отклонено";
 
 interface AchievementsState {
   achievements: Achievement[];
+}
+
+type AchievementsRuntimeCache = {
+  achievements: Achievement[];
+};
+
+const ACHIEVEMENTS_RUNTIME_CACHE_KEY =
+  "__horizon_achievements_runtime_cache__";
+
+function getAchievementsRuntimeCache(): AchievementsRuntimeCache {
+  const runtime = globalThis as typeof globalThis & {
+    [ACHIEVEMENTS_RUNTIME_CACHE_KEY]?: AchievementsRuntimeCache;
+  };
+
+  if (!runtime[ACHIEVEMENTS_RUNTIME_CACHE_KEY]) {
+    runtime[ACHIEVEMENTS_RUNTIME_CACHE_KEY] = {
+      achievements: [],
+    };
+  }
+
+  return runtime[ACHIEVEMENTS_RUNTIME_CACHE_KEY];
+}
+
+export function resetAchievementsStoreCache() {
+  getAchievementsRuntimeCache().achievements = [];
 }
 
 type AchievementsAction =
@@ -108,7 +134,7 @@ const AchievementsStoreContext =
   createContext<AchievementsStoreContextValue | null>(null);
 
 function getInitialAchievements(): Achievement[] {
-  return [];
+  return [...getAchievementsRuntimeCache().achievements];
 }
 
 export function AchievementsStoreProvider({
@@ -116,9 +142,14 @@ export function AchievementsStoreProvider({
 }: {
   children: ReactNode;
 }) {
+  const runtimeCache = getAchievementsRuntimeCache();
   const [state, dispatch] = useReducer(achievementsReducer, {
     achievements: getInitialAchievements(),
   });
+
+  useEffect(() => {
+    runtimeCache.achievements = state.achievements;
+  }, [runtimeCache, state.achievements]);
 
   const setAchievements = useCallback((items: Achievement[]) => {
     dispatch({ type: "SET_ALL", payload: items });

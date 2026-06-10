@@ -4,7 +4,9 @@ import AppShellCommon from "@/app/_components/app-shell-common";
 import { EventDetailsPage } from "@/components/shared/event-details-page";
 import { useOrganizerEventDetailsPage } from "@/hooks/use-organizer-event-details-page";
 import { useOrganizerEventApplications } from "@/hooks/use-organizer-event-applications";
+import { useOrganizerEventsPage } from "@/hooks/use-organizer-events-page";
 import { useRouter, useParams } from "next/navigation";
+import { useState } from "react";
 import type { Event, OrganizerView } from "@/lib/types";
 
 interface OrganizerEventDetailsPageProps {
@@ -24,6 +26,8 @@ export function OrganizerEventDetailsPageContent({
   const params = useParams<{ eventId: string }>();
   const resolvedEventId = eventId ?? params?.eventId ?? null;
   const resolvedEvent = event ?? null;
+  const [isDeletingEvent, setIsDeletingEvent] = useState(false);
+  const { handleDeleteEvent } = useOrganizerEventsPage();
 
   const { organizerInfo } = useOrganizerEventDetailsPage(resolvedEvent);
   const {
@@ -39,7 +43,7 @@ export function OrganizerEventDetailsPageContent({
 
   if (!resolvedEventId) {
     return (
-      <div className="max-w-5xl mx-auto text-muted-foreground">
+      <div className="w-full text-muted-foreground">
         Не найдено мероприятие.
       </div>
     );
@@ -49,6 +53,11 @@ export function OrganizerEventDetailsPageContent({
     return null;
   }
 
+  const hasApprovedApplications =
+    resolvedEvent.participantsCount > 0 ||
+    isApplicationsLoading ||
+    applications.some((application) => application.status === "APPROVED");
+
   return (
     <EventDetailsPage
       event={resolvedEvent}
@@ -56,6 +65,7 @@ export function OrganizerEventDetailsPageContent({
       role="organizer"
       applications={applications}
       applicationsLoading={isApplicationsLoading}
+      canOpenUploadResults={hasApprovedApplications}
       onApproveApplication={(applicationId) => {
         void approve(applicationId);
       }}
@@ -67,6 +77,30 @@ export function OrganizerEventDetailsPageContent({
         setOrganizerView("upload-results");
         router.replace(`/organizer/upload-results/${id}/form`, { scroll: false });
       }}
+      onEditEvent={(id) => {
+        setSelectedEventId(id);
+        setOrganizerView("edit-event");
+        router.replace(`/organizer/edit-event/${id}/form`, { scroll: false });
+      }}
+      onDeleteEvent={async (id) => {
+        if (
+          typeof window !== "undefined" &&
+          !window.confirm("Удалить мероприятие? Это действие необратимо.")
+        ) {
+          return;
+        }
+
+        try {
+          setIsDeletingEvent(true);
+          await handleDeleteEvent(id);
+          setSelectedEventId(null);
+          setOrganizerView("events");
+          router.replace("/organizer/events/main", { scroll: false });
+        } finally {
+          setIsDeletingEvent(false);
+        }
+      }}
+      isDeletingEvent={isDeletingEvent}
       onBack={() => {
         setSelectedEventId(null);
         setOrganizerView("events");

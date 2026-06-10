@@ -5,6 +5,7 @@ import {
   ReactNode,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useReducer,
 } from "react";
@@ -24,6 +25,34 @@ export type EventFormPayload = Omit<
 interface EventsState {
   events: Event[];
   applications: EventApplication[];
+}
+
+type EventsRuntimeCache = {
+  events: Event[];
+  applications: EventApplication[];
+};
+
+const EVENTS_RUNTIME_CACHE_KEY = "__horizon_events_runtime_cache__";
+
+function getEventsRuntimeCache(): EventsRuntimeCache {
+  const runtime = globalThis as typeof globalThis & {
+    [EVENTS_RUNTIME_CACHE_KEY]?: EventsRuntimeCache;
+  };
+
+  if (!runtime[EVENTS_RUNTIME_CACHE_KEY]) {
+    runtime[EVENTS_RUNTIME_CACHE_KEY] = {
+      events: [],
+      applications: [],
+    };
+  }
+
+  return runtime[EVENTS_RUNTIME_CACHE_KEY];
+}
+
+export function resetEventsStoreCache() {
+  const runtimeCache = getEventsRuntimeCache();
+  runtimeCache.events = [];
+  runtimeCache.applications = [];
 }
 
 type EventsAction =
@@ -191,15 +220,12 @@ function eventsReducer(state: EventsState, action: EventsAction): EventsState {
   }
 }
 
-function getDefaultEventsState(): EventsState {
-  return {
-    events: [],
-    applications: [],
-  };
-}
-
 function getInitialEventsState(): EventsState {
-  return getDefaultEventsState();
+  const runtimeCache = getEventsRuntimeCache();
+  return {
+    events: [...runtimeCache.events],
+    applications: [...runtimeCache.applications],
+  };
 }
 
 interface EventsStoreContextValue {
@@ -236,6 +262,12 @@ export function EventsStoreProvider({ children }: { children: ReactNode }) {
     undefined,
     getInitialEventsState,
   );
+  const runtimeCache = getEventsRuntimeCache();
+
+  useEffect(() => {
+    runtimeCache.events = state.events;
+    runtimeCache.applications = state.applications;
+  }, [runtimeCache, state.applications, state.events]);
 
   const setEvents = useCallback((items: Event[]) => {
     dispatch({ type: "SET_EVENTS", payload: items });

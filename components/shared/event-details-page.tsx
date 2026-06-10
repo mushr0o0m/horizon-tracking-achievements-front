@@ -16,8 +16,23 @@ import {
   resolveEventQrCodeUrl,
 } from "@/lib/event-meta";
 import { EventStatusBadge } from "@/components/events/event-status-badge";
-import { ArrowLeft, CalendarDays, Link2, Mail, MapPin, Users } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  ArrowLeft,
+  CalendarDays,
+  Link2,
+  Mail,
+  MapPin,
+  Pencil,
+  Trash2,
+  Users,
+} from "lucide-react";
 import { useState } from "react";
+import { showErrorToast, showSuccessToast } from "@/lib/app-toast";
 
 interface EventDetailsPageProps {
   event: Event;
@@ -37,6 +52,10 @@ interface EventDetailsPageProps {
   onApproveApplication?: (applicationId: string) => void;
   onRejectApplication?: (applicationId: string) => void;
   onOpenUploadResults?: (eventId: string) => void;
+  canOpenUploadResults?: boolean;
+  onEditEvent?: (eventId: string) => void;
+  onDeleteEvent?: (eventId: string) => void | Promise<void>;
+  isDeletingEvent?: boolean;
   applicationsLoading?: boolean;
   onBack: () => void;
 }
@@ -55,6 +74,10 @@ export function EventDetailsPage({
   onApproveApplication,
   onRejectApplication,
   onOpenUploadResults,
+  canOpenUploadResults = true,
+  onEditEvent,
+  onDeleteEvent,
+  isDeletingEvent = false,
   applicationsLoading = false,
   onBack,
 }: EventDetailsPageProps) {
@@ -76,8 +99,10 @@ export function EventDetailsPage({
       const link = buildPublicEventUrl(event.id, origin);
       await navigator.clipboard.writeText(link);
       setShareMessage("Ссылка на публичную страницу скопирована.");
+      showSuccessToast("Ссылка скопирована");
     } catch {
       setShareMessage("Не удалось скопировать ссылку.");
+      showErrorToast("Не удалось скопировать ссылку.");
     }
   };
 
@@ -85,19 +110,45 @@ export function EventDetailsPage({
 
   return (
     <div className="w-full flex flex-col gap-6">
-      <div className="flex items-center gap-3">
-        <button
-          onClick={onBack}
-          className="p-2 rounded-lg border border-border hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
-          aria-label="Назад">
-          <ArrowLeft className="w-4 h-4" />
-        </button>
-        <div>
-          <h2 className="text-2xl font-bold text-foreground">{event.title}</h2>
-          <p className="text-muted-foreground text-sm mt-0.5">
-            Полная информация о мероприятии
-          </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={onBack}
+            className="p-2 rounded-lg border border-border hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
+            aria-label="Назад">
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+          <div>
+            <h2 className="text-2xl font-bold text-foreground">{event.title}</h2>
+            <p className="text-muted-foreground text-sm mt-0.5">
+              Полная информация о мероприятии
+            </p>
+          </div>
         </div>
+
+        {role === "organizer" && (onEditEvent || onDeleteEvent) && (
+          <div className="flex w-full flex-wrap justify-end gap-2 sm:w-auto">
+            {onEditEvent && (
+              <button
+                type="button"
+                onClick={() => onEditEvent(event.id)}
+                className="inline-flex items-center justify-center gap-2 rounded-lg border border-border px-4 py-2 text-sm text-foreground hover:bg-secondary">
+                <Pencil className="w-4 h-4" />
+                Редактировать
+              </button>
+            )}
+            {onDeleteEvent && (
+              <button
+                type="button"
+                onClick={() => void onDeleteEvent(event.id)}
+                disabled={isDeletingEvent}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-destructive px-4 py-2 text-sm text-destructive-foreground hover:bg-destructive/90 disabled:cursor-not-allowed disabled:opacity-60">
+                <Trash2 className="w-4 h-4" />
+                {isDeletingEvent ? "Удаление..." : "Удалить"}
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="bg-card border border-border rounded-xl p-6 space-y-6">
@@ -241,6 +292,19 @@ export function EventDetailsPage({
           <p className="text-xs text-muted-foreground">{shareMessage}</p>
         )}
 
+        {role === "organizer" && resolvedQrCodeUrl && (
+          <div className="space-y-2">
+            <h3 className="text-sm font-semibold text-foreground">
+              QR-код мероприятия
+            </h3>
+            <img
+              src={resolvedQrCodeUrl}
+              alt="QR-код мероприятия"
+              className="h-40 w-40 rounded-lg border border-border bg-white p-2"
+            />
+          </div>
+        )}
+
         {role === "student" && (
           <div className="border border-border rounded-lg p-4 bg-secondary/30 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
@@ -272,12 +336,24 @@ export function EventDetailsPage({
               <h3 className="text-sm font-semibold text-foreground">
                 Заявки на участие
               </h3>
-              <button
-                type="button"
-                onClick={() => onOpenUploadResults?.(event.id)}
-                className="px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 text-sm">
-                Перейти к загрузке результатов
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span tabIndex={canOpenUploadResults ? -1 : 0}>
+                    <button
+                      type="button"
+                      onClick={() => onOpenUploadResults?.(event.id)}
+                      disabled={!canOpenUploadResults}
+                      className="px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 text-sm disabled:cursor-not-allowed disabled:opacity-60">
+                      Перейти к загрузке результатов
+                    </button>
+                  </span>
+                </TooltipTrigger>
+                {!canOpenUploadResults && (
+                  <TooltipContent side="bottom" sideOffset={8}>
+                    Нет подтверждённых учащихся для загрузки результатов.
+                  </TooltipContent>
+                )}
+              </Tooltip>
             </div>
 
             {applicationsLoading && applications.length === 0 ? (
@@ -301,6 +377,9 @@ export function EventDetailsPage({
                       <th className="px-4 py-3 text-left text-xs font-semibold text-foreground">
                         Дата заявки
                       </th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-foreground">
+                        Статус
+                      </th>
                       {(onApproveApplication || onRejectApplication) && (
                         <th className="px-4 py-3 text-right text-xs font-semibold text-foreground">
                           Действие
@@ -321,15 +400,46 @@ export function EventDetailsPage({
                             "ru-RU",
                           )}
                         </td>
+                        <td className="px-4 py-3 text-sm text-muted-foreground">
+                          {application.status === "APPROVED"
+                            ? "Подтверждено"
+                            : application.status === "REJECTED"
+                              ? "Отклонено"
+                              : application.status === "WITHDRAWN"
+                                ? "Отозвана"
+                                : "На рассмотрении"}
+                        </td>
                         {(onApproveApplication || onRejectApplication) && (
                           <td className="px-4 py-3 text-right">
                             {application.status === "APPROVED" ? (
-                              <span className="text-xs text-muted-foreground">
-                                Подтверждено
-                              </span>
+                              <div className="inline-flex items-center gap-2">
+                                {onRejectApplication && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      onRejectApplication(application.id)
+                                    }
+                                    className="px-3 py-1.5 rounded-lg border border-border text-xs hover:bg-secondary">
+                                    Отклонить
+                                  </button>
+                                )}
+                              </div>
                             ) : application.status === "REJECTED" ? (
+                              <div className="inline-flex items-center gap-2">
+                                {onApproveApplication && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      onApproveApplication(application.id)
+                                    }
+                                    className="px-3 py-1.5 rounded-lg border border-border text-xs hover:bg-secondary">
+                                    Вернуть
+                                  </button>
+                                )}
+                              </div>
+                            ) : application.status === "WITHDRAWN" ? (
                               <span className="text-xs text-muted-foreground">
-                                Отклонено
+                                -
                               </span>
                             ) : (
                               <div className="inline-flex items-center gap-2">

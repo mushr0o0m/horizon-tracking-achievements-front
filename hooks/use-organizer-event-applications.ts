@@ -7,6 +7,7 @@ import {
   rejectOrganizerEventApplication,
 } from "@/lib/backend-api";
 import type { EventApplication } from "@/lib/types";
+import { showErrorToast, showSuccessToast } from "@/lib/app-toast";
 
 type OrganizerEventApplicationsCache = {
   itemsByEventId: Map<string, EventApplication[]>;
@@ -100,17 +101,23 @@ export function useOrganizerEventApplications(eventId?: string | null) {
   const approve = useCallback(
     async (applicationId: string, comment?: string) => {
       if (!eventId) return null;
-      const updated = await approveOrganizerEventApplication(
-        eventId,
-        applicationId,
-        comment,
-      );
-      const next = applications.map((item) =>
-        item.id === applicationId ? updated : item,
-      );
-      cache.itemsByEventId.set(eventId, next);
-      setApplications(next);
-      return updated;
+      try {
+        const updated = await approveOrganizerEventApplication(
+          eventId,
+          applicationId,
+          comment,
+        );
+        const next = applications.map((item) =>
+          item.id === applicationId ? updated : item,
+        );
+        cache.itemsByEventId.set(eventId, next);
+        setApplications(next);
+        showSuccessToast("Заявка подтверждена");
+        return updated;
+      } catch (error) {
+        showErrorToast("Не удалось подтвердить заявку.");
+        throw error;
+      }
     },
     [applications, cache, eventId],
   );
@@ -118,17 +125,23 @@ export function useOrganizerEventApplications(eventId?: string | null) {
   const reject = useCallback(
     async (applicationId: string, comment?: string) => {
       if (!eventId) return null;
-      const updated = await rejectOrganizerEventApplication(
-        eventId,
-        applicationId,
-        comment,
-      );
-      const next = applications.map((item) =>
-        item.id === applicationId ? updated : item,
-      );
-      cache.itemsByEventId.set(eventId, next);
-      setApplications(next);
-      return updated;
+      try {
+        const updated = await rejectOrganizerEventApplication(
+          eventId,
+          applicationId,
+          comment,
+        );
+        const next = applications.map((item) =>
+          item.id === applicationId ? updated : item,
+        );
+        cache.itemsByEventId.set(eventId, next);
+        setApplications(next);
+        showSuccessToast("Заявка отклонена");
+        return updated;
+      } catch (error) {
+        showErrorToast("Не удалось отклонить заявку.");
+        throw error;
+      }
     },
     [applications, cache, eventId],
   );

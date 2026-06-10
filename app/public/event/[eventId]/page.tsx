@@ -209,13 +209,30 @@ export default function PublicEventPage() {
               </span>
             </div>
 
-            <div className="space-y-2">
-              <h1 className="text-3xl font-bold text-foreground sm:text-4xl">
-                {event.title}
-              </h1>
-              <p className="max-w-3xl text-sm text-muted-foreground sm:text-base">
-                {event.description || "Описание мероприятия появится позже."}
-              </p>
+            <div className="flex items-start gap-4 sm:gap-5">
+              <div className="flex-shrink-0">
+                {event.logoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={event.logoUrl}
+                    alt={`Логотип ${event.title}`}
+                    className="h-20 w-20 rounded-full border border-border bg-background object-cover shadow-sm sm:h-24 sm:w-24"
+                  />
+                ) : (
+                  <div className="flex h-20 w-20 items-center justify-center rounded-full border border-border bg-secondary text-xl font-semibold text-foreground shadow-sm sm:h-24 sm:w-24 sm:text-2xl">
+                    {event.title.trim().charAt(0).toUpperCase() || "M"}
+                  </div>
+                )}
+              </div>
+
+              <div className="min-w-0 space-y-2">
+                <h1 className="text-3xl font-bold text-foreground sm:text-4xl">
+                  {event.title}
+                </h1>
+                <p className="max-w-3xl text-sm text-muted-foreground sm:text-base">
+                  {event.description || "Описание мероприятия появится позже."}
+                </p>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
@@ -274,8 +291,8 @@ export default function PublicEventPage() {
           </div>
         </section>
 
-        <section className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-          <div className="space-y-6">
+        <section className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="grid h-full grid-rows-[auto_1fr] gap-6">
             <section className="rounded-2xl border border-border bg-card p-5 sm:p-6">
               <h2 className="text-2xl font-bold text-foreground">
                 Об организаторе
@@ -318,7 +335,7 @@ export default function PublicEventPage() {
               </div>
             </section>
 
-            <section className="rounded-2xl border border-border bg-card p-5 sm:p-6">
+            <section className="flex h-full flex-col rounded-2xl border border-border bg-card p-5 sm:p-6">
               <h3 className="text-xl font-bold text-foreground">
                 Регистрация на мероприятие
               </h3>
@@ -329,7 +346,7 @@ export default function PublicEventPage() {
               <button
                 type="button"
                 onClick={handleRegisterClick}
-                className="mt-5 inline-flex w-full items-center justify-center rounded-lg bg-gradient-to-r from-indigo-500 to-teal-500 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:opacity-95">
+                className="mt-auto inline-flex w-full items-center justify-center rounded-lg bg-gradient-to-r from-indigo-500 to-teal-500 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:opacity-95">
                 Зарегистрироваться
               </button>
 
@@ -341,13 +358,13 @@ export default function PublicEventPage() {
             </section>
           </div>
 
-          <section className="rounded-2xl border border-border bg-card p-5 sm:p-6">
+          <section className="flex h-full flex-col rounded-2xl border border-border bg-card p-5 sm:p-6">
             <h3 className="text-xl font-bold text-foreground">QR-код</h3>
             <p className="mt-2 text-sm text-muted-foreground">
               Сканируйте код или скопируйте ссылку на публичную страницу.
             </p>
 
-            <div className="mt-5 flex flex-col items-center gap-5">
+            <div className="mt-5 flex flex-1 flex-col items-center justify-between gap-5">
               <div className="rounded-2xl border border-border bg-background p-4">
                 {resolvedQrCodeUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element

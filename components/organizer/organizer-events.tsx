@@ -20,6 +20,11 @@ import {
 } from "@/lib/event-meta";
 import { cn } from "@/lib/utils";
 import { EventStatusBadge } from "@/components/events/event-status-badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface OrganizerEventsProps {
   events: Event[];
@@ -201,73 +206,93 @@ export function OrganizerEvents({
                 </tr>
               </thead>
               <tbody>
-                {filteredEvents.map((event) => (
-                  <tr
-                    key={event.id}
-                    onClick={() => onOpenEvent(event.id)}
-                    className="border-b border-border hover:bg-secondary/40 transition-colors cursor-pointer">
-                    <td className="px-5 py-4 text-sm font-medium text-foreground max-w-xs">
-                      <div className="truncate">{event.title}</div>
-                      {event.description.trim() && (
-                        <div className="text-xs text-muted-foreground truncate mt-0.5">
-                          {event.description}
+                {filteredEvents.map((event) => {
+                  const canUploadResults = event.participantsCount > 0;
+                  return (
+                    <tr
+                      key={event.id}
+                      onClick={() => onOpenEvent(event.id)}
+                      className="border-b border-border hover:bg-secondary/40 transition-colors cursor-pointer">
+                      <td className="px-5 py-4 text-sm font-medium text-foreground max-w-xs">
+                        <div className="truncate">{event.title}</div>
+                        {event.description.trim() && (
+                          <div className="text-xs text-muted-foreground truncate mt-0.5">
+                            {event.description}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-5 py-4 text-sm text-muted-foreground">
+                        {EVENT_TYPE_LABELS[event.type]}
+                      </td>
+                      <td className="px-5 py-4 text-sm">
+                        <span
+                          className={cn(
+                            "px-2.5 py-0.5 rounded-full text-xs font-medium",
+                            EVENT_LEVEL_COLORS[event.level],
+                          )}>
+                          {EVENT_LEVEL_LABELS[event.level]}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4 text-sm text-muted-foreground">
+                        {formatEventPeriod(event)}
+                      </td>
+                      <td className="px-5 py-4 text-sm">
+                        <EventStatusBadge status={event.status} />
+                      </td>
+                      <td className="px-5 py-4 text-sm text-muted-foreground">
+                        {event.participantsCount}
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-1.5 justify-end">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span tabIndex={canUploadResults ? -1 : 0}>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onUploadResults(event.id);
+                                  }}
+                                  disabled={!canUploadResults}
+                                  title={
+                                    canUploadResults
+                                      ? "Загрузить результаты"
+                                      : undefined
+                                  }
+                                  className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:cursor-not-allowed disabled:opacity-40">
+                                  <Upload className="w-4 h-4" />
+                                </button>
+                              </span>
+                            </TooltipTrigger>
+                            {!canUploadResults && (
+                              <TooltipContent side="top" sideOffset={8}>
+                                Нет подтверждённых учащихся для загрузки
+                                результатов.
+                              </TooltipContent>
+                            )}
+                          </Tooltip>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onEditEvent(event.id);
+                            }}
+                            title="Редактировать"
+                            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteConfirmId(event.id);
+                            }}
+                            title="Удалить"
+                            className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
-                      )}
-                    </td>
-                    <td className="px-5 py-4 text-sm text-muted-foreground">
-                      {EVENT_TYPE_LABELS[event.type]}
-                    </td>
-                    <td className="px-5 py-4 text-sm">
-                      <span
-                        className={cn(
-                          "px-2.5 py-0.5 rounded-full text-xs font-medium",
-                          EVENT_LEVEL_COLORS[event.level],
-                        )}>
-                        {EVENT_LEVEL_LABELS[event.level]}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4 text-sm text-muted-foreground">
-                      {formatEventPeriod(event)}
-                    </td>
-                    <td className="px-5 py-4 text-sm">
-                      <EventStatusBadge status={event.status} />
-                    </td>
-                    <td className="px-5 py-4 text-sm text-muted-foreground">
-                      {event.participantsCount}
-                    </td>
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-1.5 justify-end">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onUploadResults(event.id);
-                          }}
-                          title="Загрузить результаты"
-                          className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
-                          <Upload className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onEditEvent(event.id);
-                          }}
-                          title="Редактировать"
-                          className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeleteConfirmId(event.id);
-                          }}
-                          title="Удалить"
-                          className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { showErrorToast, showSuccessToast } from "@/lib/app-toast";
 
 interface PublicEventAuthDialogProps {
   open: boolean;
@@ -96,16 +97,26 @@ export function PublicEventAuthDialog({
 
       void eventId;
       onOpenChange(false);
+      showSuccessToast(
+        mode === "login" ? "Вход выполнен" : "Регистрация выполнена",
+      );
       onStudentAuthSuccess(user);
     } catch (submitError) {
       const backendMessage =
         submitError instanceof Error ? submitError.message.toLowerCase() : "";
       if (backendMessage.includes("already exists")) {
         setError("Пользователь с таким email уже существует.");
+        showErrorToast("Пользователь с таким email уже существует.");
       } else if (backendMessage.includes("401")) {
         setError("Не удалось войти. Проверьте email и пароль.");
+        showErrorToast("Не удалось войти. Проверьте email и пароль.");
       } else {
         setError(
+          mode === "login"
+            ? "Не удалось войти. Проверьте email и пароль."
+            : "Не удалось зарегистрироваться. Проверьте данные и повторите попытку.",
+        );
+        showErrorToast(
           mode === "login"
             ? "Не удалось войти. Проверьте email и пароль."
             : "Не удалось зарегистрироваться. Проверьте данные и повторите попытку.",

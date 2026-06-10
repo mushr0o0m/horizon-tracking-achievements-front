@@ -1,18 +1,33 @@
 "use client";
 
-import { Achievement, AppNotification, Event, EventType } from "@/lib/types";
+import {
+  Achievement,
+  AchievementStatus,
+  AppNotification,
+  Event,
+  EventType,
+} from "@/lib/types";
 import { useMemo, useState } from "react";
 import Image from "next/image";
 import {
   Search,
   ChevronUp,
   ChevronDown,
+  ChevronDown as ChevronDownIcon,
   Lock,
   Eye,
   EyeOff,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { buildBadgeViewModels } from "@/lib/badges";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface AchievementsPageProps {
   achievements: Achievement[];
@@ -40,6 +55,12 @@ const EVENT_TYPES: EventType[] = [
   "Другое",
 ];
 
+const ACHIEVEMENT_STATUSES: AchievementStatus[] = [
+  "Подтверждено",
+  "На проверке",
+  "Отклонено",
+];
+
 export function AchievementsPage({
   achievements,
   events,
@@ -57,6 +78,9 @@ export function AchievementsPage({
   const [selectedEventType, setSelectedEventType] = useState<EventType | "">(
     "",
   );
+  const [selectedStatuses, setSelectedStatuses] = useState<AchievementStatus[]>(
+    [],
+  );
   const [sortField, setSortField] = useState<SortField>("date");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
 
@@ -69,7 +93,9 @@ export function AchievementsPage({
       const matchesYear = !selectedYear || year === selectedYear;
       const matchesEventType =
         !selectedEventType || a.eventType === selectedEventType;
-      return matchesSearch && matchesYear && matchesEventType;
+      const matchesStatus =
+        selectedStatuses.length === 0 || selectedStatuses.includes(a.status);
+      return matchesSearch && matchesYear && matchesEventType && matchesStatus;
     });
 
     data.sort((a, b) => {
@@ -94,6 +120,7 @@ export function AchievementsPage({
     searchQuery,
     selectedYear,
     selectedEventType,
+    selectedStatuses,
     sortField,
     sortOrder,
     achievements,
@@ -124,6 +151,13 @@ export function AchievementsPage({
 
   const badges = buildBadgeViewModels(achievements);
   const unlockedBadgesCount = badges.filter((badge) => badge.unlocked).length;
+
+  const selectedStatusesLabel =
+    selectedStatuses.length === 0
+      ? "Все статусы"
+      : selectedStatuses.length === 1
+        ? selectedStatuses[0]
+        : `Выбрано: ${selectedStatuses.length}`;
 
   const availableEventIds = useMemo(
     () => new Set(events.map((event) => event.id)),
@@ -196,7 +230,7 @@ export function AchievementsPage({
         <>
           {/* Filters */}
           <div className="bg-card border border-border rounded-lg p-5">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
               <div className="relative">
                 <Search className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />
                 <input
@@ -231,6 +265,46 @@ export function AchievementsPage({
                   </option>
                 ))}
               </select>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="inline-flex w-full items-center justify-between rounded-lg border border-border bg-background px-4 py-2 text-sm text-foreground transition-colors hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-primary">
+                    <span className="truncate">{selectedStatusesLabel}</span>
+                    <ChevronDownIcon className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-64">
+                  <DropdownMenuLabel>Фильтр по статусу</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {ACHIEVEMENT_STATUSES.map((status) => {
+                    const checked = selectedStatuses.includes(status);
+
+                    return (
+                      <DropdownMenuCheckboxItem
+                        key={status}
+                        checked={checked}
+                        onSelect={(event) => event.preventDefault()}
+                        onCheckedChange={() => {
+                          setSelectedStatuses((prev) =>
+                            prev.includes(status)
+                              ? prev.filter((item) => item !== status)
+                              : [...prev, status],
+                          );
+                        }}>
+                        {status}
+                      </DropdownMenuCheckboxItem>
+                    );
+                  })}
+                  <DropdownMenuSeparator />
+                  <button
+                    type="button"
+                    onClick={() => setSelectedStatuses([])}
+                    className="w-full rounded-sm px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-secondary">
+                    Сбросить статусы
+                  </button>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
 

@@ -192,7 +192,7 @@ export function AchievementRequestForm({
   };
 
   return (
-    <div className="max-w-3xl mx-auto flex flex-col gap-6">
+    <div className="w-full flex flex-col gap-6">
       <div className="flex items-center gap-3">
         <button
           onClick={onBack}

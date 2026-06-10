@@ -8,7 +8,6 @@ import type { HrDashboardTab } from "@/app/shared/routing/app-shell-routes";
 
 interface HrDashboardsTabPageProps {
   hrId?: string;
-  publishedEventsCount?: number;
   defaultInviteComment?: string;
   actionConfirmSettings?: HrActionConfirmSettings;
   onSaveCandidateNote?: (candidateId: string, note: string) => Promise<void>;
@@ -35,7 +34,6 @@ interface HrDashboardsTabPageProps {
 
 export function HrDashboardsTabPageContent({
   hrId,
-  publishedEventsCount,
   defaultInviteComment,
   actionConfirmSettings,
   onSaveCandidateNote,
@@ -48,7 +46,6 @@ export function HrDashboardsTabPageContent({
 }: HrDashboardsTabPageProps) {
   if (
     !hrId ||
-    publishedEventsCount === undefined ||
     defaultInviteComment === undefined ||
     !actionConfirmSettings ||
     !onSaveCandidateNote ||
@@ -63,7 +60,6 @@ export function HrDashboardsTabPageContent({
   return (
     <HrDashboardsKanbanPageContent
       hrId={hrId}
-      publishedEventsCount={publishedEventsCount}
       defaultInviteComment={defaultInviteComment}
       actionConfirmSettings={actionConfirmSettings}
       onSaveCandidateNote={onSaveCandidateNote}

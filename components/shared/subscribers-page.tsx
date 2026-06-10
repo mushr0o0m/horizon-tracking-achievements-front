@@ -49,7 +49,15 @@ export function SubscribersPage({
                 </span>
                 <Building2 className="w-4 h-4 text-primary" />
               </div>
-              <p className="font-semibold text-foreground">{subscriber.name}</p>
+              <div className="space-y-1">
+                <p className="font-semibold text-foreground">
+                  {subscriber.name}
+                </p>
+                <p className="text-sm text-muted-foreground inline-flex items-center gap-2">
+                  <Building2 className="w-4 h-4 flex-shrink-0" />
+                  {subscriber.companyName || "Компания не указана"}
+                </p>
+              </div>
               <p className="text-sm text-muted-foreground inline-flex items-center gap-2 break-all">
                 <Mail className="w-4 h-4 flex-shrink-0" />
                 {subscriber.email || "Email не указан"}

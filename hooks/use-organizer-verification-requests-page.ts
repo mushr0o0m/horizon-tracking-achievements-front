@@ -7,6 +7,7 @@ import {
   verifyAchievementRequest,
 } from "@/lib/backend-api";
 import { useAchievementsStore } from "@/stores/achievements-store";
+import { showErrorToast, showSuccessToast } from "@/lib/app-toast";
 
 const loadedUsers = new Set<string>();
 
@@ -79,12 +80,25 @@ export function useOrganizerVerificationRequestsPage(userId: string, enabled = t
       decision: "Подтверждено" | "Отклонено",
       comment?: string,
     ) => {
-      if (decision === "Подтверждено") {
-        await verifyAchievementRequest(achievementId, comment);
-      } else {
-        await rejectAchievementRequest(achievementId, comment);
+      try {
+        if (decision === "Подтверждено") {
+          await verifyAchievementRequest(achievementId, comment);
+        } else {
+          await rejectAchievementRequest(achievementId, comment);
+        }
+        await refresh();
+        showSuccessToast(
+          decision === "Подтверждено"
+            ? "Достижение подтверждено"
+            : "Запрос отклонен",
+        );
+      } catch (error) {
+        showErrorToast(
+          decision === "Подтверждено"
+            ? "Не удалось подтвердить достижение."
+            : "Не удалось отклонить запрос.",
+        );
       }
-      await refresh();
     },
     [refresh],
   );

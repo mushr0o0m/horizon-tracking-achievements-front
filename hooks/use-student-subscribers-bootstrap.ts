@@ -43,13 +43,20 @@ function normalizeSubscribers(): Promise<SubscriberPreviewItem[]> {
       const firstName = item.firstName ?? "";
       const lastName = item.lastName ?? "";
       const name =
+        item.fullName?.trim() ||
+        item.name?.trim() ||
         [lastName, firstName].filter(Boolean).join(" ").trim() ||
         item.companyName ||
         item.email ||
         "HR";
       const id = item.hrId ?? item.id ?? item.email ?? "";
       if (!id) return acc;
-      acc.push({ id, name, email: item.email ?? "" });
+      acc.push({
+        id,
+        name,
+        companyName: item.companyName ?? "",
+        email: item.email ?? "",
+      });
       return acc;
     }, []),
   );

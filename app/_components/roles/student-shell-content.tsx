@@ -26,6 +26,7 @@ import { useAchievementsStore } from "@/stores/achievements-store";
 import { useNotificationsStore } from "@/stores/notifications-store";
 import {
   createStudentAchievement,
+  fetchPublicEventById,
   fetchPublicHrProfile,
   fetchPublicOrganizerProfile,
   fetchStudentAchievements,
@@ -67,6 +68,7 @@ import { StudentEventDetailsPageContent } from "@/app/student/event-details/view
 import { StudentProfilePageContent } from "@/app/student/profile/main/page";
 import { StudentSubscribersPageContent } from "@/app/student/subscribers/list/page";
 import { StudentHrProfilePageContent } from "@/app/student/hr-profile/view/page";
+import { Spinner } from "@/components/ui/spinner";
 
 interface StudentShellContentProps {
   currentUser: AuthUser;
@@ -98,7 +100,10 @@ export function StudentShellContent({
   const [studentInvitations, setStudentInvitations] = useState<HrCandidateInvitation[]>([]);
   const [studentAppliedEventIds, setStudentAppliedEventIds] = useState<string[]>([]);
   const [selectedEventSnapshot, setSelectedEventSnapshot] = useState<Event | null>(null);
+  const [isSelectedEventLoading, setIsSelectedEventLoading] = useState(false);
   const [selectedAchievementId, setSelectedAchievementId] = useState<string | null>(null);
+  const [selectedAchievementEventSnapshot, setSelectedAchievementEventSnapshot] = useState<Event | null>(null);
+  const [isSelectedAchievementEventLoading, setIsSelectedAchievementEventLoading] = useState(false);
   const [selectedHrProfileUser, setSelectedHrProfileUser] = useState<AuthUser | null>(null);
   const [selectedEventOrganizerInfo, setSelectedEventOrganizerInfo] = useState<OrganizerOrganizationProfile | null>(null);
   const [visibilitySeededForUserId, setVisibilitySeededForUserId] = useState<string | null>(null);
@@ -142,7 +147,43 @@ export function StudentShellContent({
 
   useEffect(() => {
     if (routeState.section !== "event-details") return;
-    setSelectedEventSnapshot(events.find((event) => event.id === selectedEventId) ?? null);
+    if (!selectedEventId) {
+      setSelectedEventSnapshot(null);
+      setIsSelectedEventLoading(false);
+      return;
+    }
+
+    const eventFromStore = events.find((event) => event.id === selectedEventId);
+    if (eventFromStore) {
+      setSelectedEventSnapshot(eventFromStore);
+      setIsSelectedEventLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    const loadEvent = async () => {
+      setIsSelectedEventLoading(true);
+      try {
+        const event = await fetchPublicEventById(selectedEventId);
+        if (!cancelled) {
+          setSelectedEventSnapshot(event);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setSelectedEventSnapshot(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsSelectedEventLoading(false);
+        }
+      }
+    };
+
+    void loadEvent();
+
+    return () => {
+      cancelled = true;
+    };
   }, [events, routeState.section, selectedEventId]);
 
   const studentAchievements = useMemo(
@@ -187,7 +228,13 @@ export function StudentShellContent({
   const displayedEvent = selectedEvent ?? selectedEventSnapshot;
   const selectedEventApplications = useMemo(() => selectedEventId ? applications.filter((item) => item.eventId === selectedEventId) : [], [applications, selectedEventId]);
   const isCurrentStudentApplied = Boolean(selectedEventId && studentAppliedEventIds.includes(selectedEventId));
-  const selectedAchievementEvent = selectedAchievement?.eventId ? events.find((item) => item.id === selectedAchievement.eventId) : undefined;
+  const selectedAchievementEvent = selectedAchievement?.eventId
+    ? events.find((item) => item.id === selectedAchievement.eventId) ??
+      (selectedAchievementEventSnapshot?.id === selectedAchievement.eventId
+        ? selectedAchievementEventSnapshot
+        : null) ??
+      undefined
+    : undefined;
 
   const eventOrganizerInfo: ComponentProps<typeof StudentEventDetailsPageContent>["organizerInfo"] = displayedEvent
     ? selectedEventOrganizerInfo
@@ -277,6 +324,47 @@ export function StudentShellContent({
   }, [displayedEvent?.organizerId]);
 
   useEffect(() => {
+    const eventId = selectedAchievement?.eventId;
+    if (!eventId) {
+      setSelectedAchievementEventSnapshot(null);
+      setIsSelectedAchievementEventLoading(false);
+      return;
+    }
+
+    const eventFromStore = events.find((item) => item.id === eventId);
+    if (eventFromStore) {
+      setSelectedAchievementEventSnapshot(eventFromStore);
+      setIsSelectedAchievementEventLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    const loadEvent = async () => {
+      setIsSelectedAchievementEventLoading(true);
+      try {
+        const event = await fetchPublicEventById(eventId);
+        if (!cancelled) {
+          setSelectedAchievementEventSnapshot(event);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setSelectedAchievementEventSnapshot(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsSelectedAchievementEventLoading(false);
+        }
+      }
+    };
+
+    void loadEvent();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [events, selectedAchievement]);
+
+  useEffect(() => {
     if (visibilitySeededForUserId === currentUser.id) return;
     if (currentUser.publicProfile.visibleAchievementIds.length > 0 || studentAchievements.length === 0) {
       setVisibilitySeededForUserId(currentUser.id);
@@ -315,12 +403,15 @@ export function StudentShellContent({
 
   const handleOpenStudentEvent = useCallback(
     (id: string, nextReturnTo: string) => {
-      setSelectedEventSnapshot(events.find((event) => event.id === id) ?? null);
+      setSelectedEventSnapshot(
+        events.find((event) => event.id === id) ??
+          (selectedAchievementEvent?.id === id ? selectedAchievementEvent : null),
+      );
       router.push(buildStudentEventDetailsPath(id, nextReturnTo), {
         scroll: false,
       });
     },
-    [events, router],
+    [events, router, selectedAchievementEvent],
   );
 
   const handleOpenAchievement = useCallback((achievementId: string) => {
@@ -627,16 +718,27 @@ export function StudentShellContent({
           onSubmit={createStudentAchievementSubmit}
         />
       )}
-      {routeState.section === "event-details" && displayedEvent && (
-        <StudentEventDetailsPageContent
-          event={displayedEvent}
-          organizerInfo={eventOrganizerInfo}
-          applications={selectedEventApplications}
-          isApplied={isCurrentStudentApplied}
-          onToggleApplication={() => handleToggleApplication(displayedEvent.id)}
-          onBack={handleBackFromEvent}
-        />
-      )}
+      {routeState.section === "event-details" &&
+        (isSelectedEventLoading ? (
+          <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center">
+            <Spinner className="size-8" />
+          </div>
+        ) : displayedEvent ? (
+          <StudentEventDetailsPageContent
+            event={displayedEvent}
+            organizerInfo={eventOrganizerInfo}
+            applications={selectedEventApplications}
+            isApplied={isCurrentStudentApplied}
+            onToggleApplication={() => handleToggleApplication(displayedEvent.id)}
+            onBack={handleBackFromEvent}
+          />
+        ) : (
+          <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center px-4">
+            <p className="text-sm text-muted-foreground">
+              Не удалось загрузить мероприятие.
+            </p>
+          </div>
+        ))}
       {routeState.section === "profile" && (
         <StudentProfilePageContent
           user={currentUser}
@@ -681,6 +783,7 @@ export function StudentShellContent({
       <AchievementDetailsModal
         achievement={selectedAchievement}
         event={selectedAchievementEvent}
+        isEventLoading={isSelectedAchievementEventLoading}
         isVisibleInPublic={selectedAchievement ? currentUser.publicProfile.visibleAchievementIds.includes(selectedAchievement.id) : false}
         onToggleVisible={(nextValue) => {
           if (!selectedAchievement) return;
@@ -688,6 +791,9 @@ export function StudentShellContent({
         }}
         onClose={() => setSelectedAchievementId(null)}
         onOpenEvent={(eventId) => {
+          if (selectedAchievementEvent?.id === eventId) {
+            setSelectedEventSnapshot(selectedAchievementEvent);
+          }
           handleOpenStudentEvent(
             eventId,
             buildStudentAchievementsPath(studentAchievementsTab),

@@ -1,7 +1,7 @@
 "use client";
 
 import { Event, EventApplication, Participant } from "@/lib/types";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Send } from "lucide-react";
 import {
   EVENT_LEVEL_LABELS,
@@ -34,12 +34,18 @@ export function UploadResults({
   onBack,
   onPublish,
 }: UploadResultsProps) {
-  const participantsSource: Omit<Participant, "result">[] = applications.map(
-    (item) => ({
-      id: item.id,
-      studentId: item.studentId,
-      studentName: item.studentName,
-    }),
+  const approvedApplications = useMemo(
+    () => applications.filter((item) => item.status === "APPROVED"),
+    [applications],
+  );
+  const participantsSource: Omit<Participant, "result">[] = useMemo(
+    () =>
+      approvedApplications.map((item) => ({
+        id: item.id,
+        studentId: item.studentId,
+        studentName: item.studentName,
+      })),
+    [approvedApplications],
   );
 
   const [results, setResults] = useState<Record<string, string>>(
@@ -49,8 +55,29 @@ export function UploadResults({
     Object.fromEntries(participantsSource.map((p) => [p.id, ""])),
   );
 
+  useEffect(() => {
+    setResults((prev) =>
+      Object.fromEntries(
+        participantsSource.map((participant) => [
+          participant.id,
+          prev[participant.id] || "Участник",
+        ]),
+      ),
+    );
+    setComments((prev) =>
+      Object.fromEntries(
+        participantsSource.map((participant) => [
+          participant.id,
+          prev[participant.id] || "",
+        ]),
+      ),
+    );
+  }, [participantsSource]);
+
+  const hasParticipants = participantsSource.length > 0;
+
   const handlePublish = () => {
-    if (participantsSource.length === 0) return;
+    if (!hasParticipants) return;
 
     const participants: Participant[] = participantsSource.map((p) => ({
       ...p,
@@ -62,7 +89,7 @@ export function UploadResults({
   };
 
   return (
-    <div className="flex flex-col gap-6 max-w-2xl">
+    <div className="w-full flex flex-col gap-6">
       <div className="flex items-center gap-3">
         <button
           onClick={onBack}
@@ -112,10 +139,10 @@ export function UploadResults({
             <div className="h-4 w-full rounded bg-muted animate-pulse" />
             <div className="h-4 w-3/4 rounded bg-muted animate-pulse" />
           </div>
-        ) : participantsSource.length === 0 ? (
+        ) : !hasParticipants ? (
           <div className="px-5 py-6 text-sm text-muted-foreground">
-            Нет заявок на участие. Отображаются только пользователи, подавшие
-            заявку.
+            Нет подтверждённых участников. В таблицу попадают только студенты с
+            одобренной заявкой.
           </div>
         ) : (
           <table className="w-full">
@@ -181,8 +208,8 @@ export function UploadResults({
       <div className="flex gap-3">
         <button
           onClick={handlePublish}
-          disabled={participantsSource.length === 0}
-          className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium text-sm">
+          disabled={!hasParticipants}
+          className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium text-sm disabled:cursor-not-allowed disabled:opacity-60">
           <Send className="w-4 h-4" />
           Опубликовать результаты
         </button>

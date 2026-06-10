@@ -61,7 +61,6 @@ export function HrShellContent(props: HrShellRuntimeProps) {
         <HrDashboardsKanbanPageContent
           hrId={runtime.currentUser.id}
           activeTab={runtime.hrDashboardTab}
-          publishedEventsCount={runtime.hrPublishedEventsCount}
           defaultInviteComment={runtime.hrDefaultInviteComment}
           actionConfirmSettings={runtime.hrActionConfirmSettings}
           onSaveCandidateNote={runtime.saveHrCandidateNote}
