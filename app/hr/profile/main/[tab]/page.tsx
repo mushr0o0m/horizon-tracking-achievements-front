@@ -22,7 +22,7 @@ interface HrProfileMainTabPageProps {
   hrActionConfirmSettings?: HrActionConfirmSettings;
   onUpdateHrDefaultInviteComment?: (comment: string) => void;
   onUpdateHrActionConfirmSettings?: (settings: HrActionConfirmSettings) => void;
-  onDeleteAccount?: (confirmationText: string) => string | null;
+  onLogout?: () => void;
   activeTab?: HrProfileTab;
   onTabChange?: (tab: HrProfileTab) => void;
 }
@@ -36,7 +36,7 @@ export function HrProfileMainTabPageContent({
   hrActionConfirmSettings,
   onUpdateHrDefaultInviteComment,
   onUpdateHrActionConfirmSettings,
-  onDeleteAccount,
+  onLogout,
   activeTab,
   onTabChange,
 }: HrProfileMainTabPageProps) {
@@ -49,7 +49,7 @@ export function HrProfileMainTabPageContent({
     !hrActionConfirmSettings ||
     !onUpdateHrDefaultInviteComment ||
     !onUpdateHrActionConfirmSettings ||
-    !onDeleteAccount
+    !onLogout
   ) {
     return <AppShellCommon />;
   }
@@ -64,7 +64,7 @@ export function HrProfileMainTabPageContent({
       hrActionConfirmSettings={hrActionConfirmSettings}
       onUpdateHrDefaultInviteComment={onUpdateHrDefaultInviteComment}
       onUpdateHrActionConfirmSettings={onUpdateHrActionConfirmSettings}
-      onDeleteAccount={onDeleteAccount}
+      onLogout={onLogout}
       activeTab={activeTab}
       onTabChange={onTabChange}
     />

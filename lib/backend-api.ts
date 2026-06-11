@@ -178,17 +178,24 @@ interface EventDto {
 
 interface AchievementDto {
   id?: string | null;
+  studentId?: string | null;
+  eventId?: string | null;
   title?: string | null;
   type?: string | null;
   level?: string | null;
   date?: string | null;
   result?: string | null;
+  resultLabel?: string | null;
+  verificationStatus?: string | null;
+  rejectionReason?: string | null;
   status?: string | null;
-  eventId?: string | null;
   organizerId?: string | null;
   organizerName?: string | null;
+  description?: string | null;
+  createdByStudent?: boolean | null;
+  files?: Array<Record<string, unknown>> | null;
+  createdAt?: string | null;
   requestedOrganizerId?: string | null;
-  studentId?: string | null;
   studentName?: string | null;
   verificationComment?: string | null;
   comment?: string | null;
@@ -1398,8 +1405,8 @@ function mapBackendAchievement(
     title: dto.title ?? "",
     level: mapBackendAchievementLevel(dto.level),
     date: dto.date ?? new Date().toISOString().split("T")[0],
-    result: mapBackendAchievementResult(dto.result),
-    status: mapBackendAchievementStatus(dto.status),
+    result: dto.resultLabel?.trim() || mapBackendAchievementResult(dto.result),
+    status: mapBackendAchievementStatus(dto.verificationStatus ?? dto.status),
     eventId,
     achievementTypeCode,
     eventType: mapBackendAchievementTypeLabel(achievementTypeCode),
@@ -1409,7 +1416,11 @@ function mapBackendAchievement(
       dto.requestedOrganizerId ?? dto.organizerId ?? undefined,
     eventNotInList: Boolean(dto.eventNotInList),
     requestComment: dto.requestComment ?? undefined,
-    verificationComment: dto.verificationComment ?? dto.comment ?? undefined,
+    verificationComment:
+      dto.verificationComment ??
+      dto.rejectionReason ??
+      dto.comment ??
+      undefined,
     source: eventId ? "organizer" : "manual",
   };
 }

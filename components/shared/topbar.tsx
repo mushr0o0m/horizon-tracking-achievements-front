@@ -2,7 +2,7 @@
 
 import { AppNotification, AuthUser, UserRole } from "@/lib/types";
 import { Building2, LogOut, User, Bell, UsersRound } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 
 interface TopBarProps {
@@ -23,13 +23,36 @@ export function TopBar({
   onLogout,
 }: TopBarProps) {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [readAllClickedAt, setReadAllClickedAt] = useState<number | null>(null);
   const isStudent = role === "student";
 
+  const visibleNotifications = useMemo(() => {
+    if (readAllClickedAt === null) {
+      return notifications;
+    }
+    return notifications.map((item) =>
+      new Date(item.createdAt).getTime() <= readAllClickedAt
+        ? { ...item, isRead: true }
+        : item,
+    );
+  }, [notifications, readAllClickedAt]);
+
   const latestNotifications = useMemo(
-    () => notifications.slice(0, 10),
-    [notifications],
+    () => visibleNotifications.slice(0, 10),
+    [visibleNotifications],
   );
-  const unreadCount = notifications.filter((item) => !item.isRead).length;
+  const unreadCount = visibleNotifications.filter((item) => !item.isRead).length;
+
+  const handleMarkAll = () => {
+    setReadAllClickedAt(Date.now());
+    onMarkAllNotificationsRead();
+  };
+
+  useEffect(() => {
+    if (readAllClickedAt === null) return;
+    if (!notifications.every((item) => item.isRead)) return;
+    setReadAllClickedAt(null);
+  }, [notifications, readAllClickedAt]);
 
   return (
     <div
@@ -100,7 +123,7 @@ export function TopBar({
                 </p>
                 <button
                   type="button"
-                  onClick={onMarkAllNotificationsRead}
+                  onClick={handleMarkAll}
                   className="text-xs text-primary hover:underline">
                   Прочитать все
                 </button>

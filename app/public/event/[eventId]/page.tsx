@@ -13,17 +13,24 @@ import {
 import { EventStatusBadge } from "@/components/events/event-status-badge";
 import { PublicEventAuthDialog } from "@/components/public/public-event-auth-dialog";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   backendGetProfile,
   fetchPublicEventById,
   fetchPublicOrganizerProfile,
 } from "@/lib/backend-api";
 import {
-  buildPublicEventUrl,
   EVENT_FORMAT_OPTIONS,
   EVENT_LEVEL_LABELS,
   EVENT_TYPE_LABELS,
+  resolvePublicEventShareUrl,
   resolveEventQrCodeUrl,
 } from "@/lib/event-meta";
+import { showErrorToast, showSuccessToast } from "@/lib/app-toast";
+import { isShareAbort, shareLinkOrCopy } from "@/lib/share";
 import type { Event, OrganizerOrganizationProfile, UserRole } from "@/lib/types";
 
 const EVENT_FORMAT_LABELS = Object.fromEntries(
@@ -48,13 +55,17 @@ export default function PublicEventPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [authUserRole, setAuthUserRole] = useState<UserRole | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
+  const [shareMessage, setShareMessage] = useState<string | null>(null);
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
 
   const publicUrl = useMemo(() => {
-    const origin = typeof window !== "undefined" ? window.location.origin : undefined;
-    return eventId ? buildPublicEventUrl(eventId, origin) : "";
+    return eventId ? resolvePublicEventShareUrl(eventId) : "";
   }, [eventId]);
+
+  const registrationBlockedMessage =
+    authUserRole && authUserRole !== "student"
+      ? "Регистрация доступна только студентам."
+      : null;
 
   const loadPage = useCallback(async () => {
     if (!eventId) {
@@ -105,7 +116,6 @@ export default function PublicEventPage() {
   }, []);
 
   const handleRegisterClick = () => {
-    setMessage(null);
     if (!eventId) return;
 
     if (!authUserRole) {
@@ -113,8 +123,7 @@ export default function PublicEventPage() {
       return;
     }
 
-    if (authUserRole !== "student") {
-      setMessage("Регистрация доступна только студентам.");
+    if (registrationBlockedMessage) {
       return;
     }
 
@@ -136,16 +145,35 @@ export default function PublicEventPage() {
     );
   };
 
-  const handleCopyLink = async () => {
+  const handleShareLink = async () => {
     try {
-      if (!publicUrl) {
-        setMessage("Не удалось скопировать ссылку.");
+      if (!event || !publicUrl) {
+        setShareMessage("Не удалось поделиться ссылкой.");
+        showErrorToast("Не удалось поделиться ссылкой.");
         return;
       }
-      await navigator.clipboard.writeText(publicUrl);
-      setMessage("Ссылка скопирована.");
-    } catch {
-      setMessage("Не удалось скопировать ссылку.");
+
+      const result = await shareLinkOrCopy({
+        title: event.title,
+        text: `Приглашение на мероприятие «${event.title}»`,
+        url: publicUrl,
+      });
+
+      if (result === "shared") {
+        setShareMessage("Окно для отправки ссылки открыто.");
+        showSuccessToast("Окно «Поделиться» открыто");
+        return;
+      }
+
+      setShareMessage("Ссылка скопирована.");
+      showSuccessToast("Ссылка скопирована");
+    } catch (error) {
+      if (isShareAbort(error)) {
+        return;
+      }
+
+      setShareMessage("Не удалось поделиться ссылкой.");
+      showErrorToast("Не удалось поделиться ссылкой.");
     }
   };
 
@@ -343,18 +371,26 @@ export default function PublicEventPage() {
                 Нажмите кнопку ниже, чтобы перейти к записи.
               </p>
 
-              <button
-                type="button"
-                onClick={handleRegisterClick}
-                className="mt-auto inline-flex w-full items-center justify-center rounded-lg bg-gradient-to-r from-indigo-500 to-teal-500 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:opacity-95">
-                Зарегистрироваться
-              </button>
-
-              {message && (
-                <p className="mt-3 rounded-lg border border-border bg-secondary px-3 py-2 text-sm text-foreground">
-                  {message}
-                </p>
-              )}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span
+                    className="mt-auto inline-flex w-full"
+                    tabIndex={registrationBlockedMessage ? 0 : -1}>
+                    <button
+                      type="button"
+                      onClick={handleRegisterClick}
+                      disabled={Boolean(registrationBlockedMessage)}
+                      className="inline-flex w-full items-center justify-center rounded-lg bg-gradient-to-r from-indigo-500 to-teal-500 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60">
+                      Зарегистрироваться
+                    </button>
+                  </span>
+                </TooltipTrigger>
+                {registrationBlockedMessage && (
+                  <TooltipContent side="top" sideOffset={8}>
+                    {registrationBlockedMessage}
+                  </TooltipContent>
+                )}
+              </Tooltip>
             </section>
           </div>
 
@@ -382,11 +418,17 @@ export default function PublicEventPage() {
 
               <button
                 type="button"
-                onClick={handleCopyLink}
+                onClick={handleShareLink}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-background px-4 py-2.5 text-sm font-medium text-foreground hover:bg-secondary">
                 <Link2 className="h-4 w-4" />
-                Скопировать ссылку
+                Поделиться ссылкой
               </button>
+
+              {shareMessage && (
+                <p className="w-full rounded-lg border border-border bg-secondary px-3 py-2 text-sm text-foreground">
+                  {shareMessage}
+                </p>
+              )}
             </div>
           </section>
         </section>

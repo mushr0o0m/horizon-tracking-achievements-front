@@ -75,7 +75,7 @@ interface StudentShellContentProps {
   routeOverride?: StudentRouteOverride;
   setCurrentUser: Dispatch<SetStateAction<AuthUser | null>>;
   handleChangePassword: (currentPassword: string, newPassword: string) => Promise<string | null>;
-  handleDeleteAccount: (confirmationText: string) => string | null;
+  onLogout: () => void;
 }
 
 interface StudentOrganizerOption {
@@ -89,7 +89,7 @@ export function StudentShellContent({
   routeOverride,
   setCurrentUser,
   handleChangePassword,
-  handleDeleteAccount,
+  onLogout,
 }: StudentShellContentProps) {
   const { events, applications } = useEventsStore();
   const { achievements, setAchievements } = useAchievementsStore();
@@ -582,7 +582,7 @@ export function StudentShellContent({
   );
 
   const handleStudentProfileTabChange = useCallback(
-    (tab: "personal" | "public" | "settings") => {
+    (tab: "personal" | "public") => {
       const basePath = buildStudentProfilePath(tab);
       router.push(
         `${basePath}${searchParamsString ? `?${searchParamsString}` : ""}`,
@@ -754,7 +754,7 @@ export function StudentShellContent({
           setCurrentUser={setCurrentUser}
           publicStats={publicStats}
           onChangePassword={handleChangePassword}
-          onDeleteAccount={handleDeleteAccount}
+          onLogout={onLogout}
           activeTab={studentProfileTab}
           onTabChange={handleStudentProfileTabChange}
         />

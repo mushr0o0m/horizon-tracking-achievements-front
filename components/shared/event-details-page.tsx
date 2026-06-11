@@ -8,11 +8,11 @@ import {
 } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  buildPublicEventUrl,
   EVENT_FORMAT_OPTIONS,
   EVENT_LEVEL_LABELS,
   EVENT_TYPE_LABELS,
   formatEventPeriod,
+  resolvePublicEventShareUrl,
   resolveEventQrCodeUrl,
 } from "@/lib/event-meta";
 import { EventStatusBadge } from "@/components/events/event-status-badge";
@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { showErrorToast, showSuccessToast } from "@/lib/app-toast";
+import { copyTextToClipboard } from "@/lib/share";
 
 interface EventDetailsPageProps {
   event: Event;
@@ -95,9 +96,8 @@ export function EventDetailsPage({
 
   const handleCopyPublicLink = async () => {
     try {
-      const origin = typeof window !== "undefined" ? window.location.origin : undefined;
-      const link = buildPublicEventUrl(event.id, origin);
-      await navigator.clipboard.writeText(link);
+      const link = resolvePublicEventShareUrl(event.id);
+      await copyTextToClipboard(link);
       setShareMessage("Ссылка на публичную страницу скопирована.");
       showSuccessToast("Ссылка скопирована");
     } catch {

@@ -99,6 +99,7 @@ export interface HrShellRuntimeProps {
   setHrCandidatesSearchFilters: (next: HrCandidatesSearchFiltersState) => void;
   handleChangePassword: (currentPassword: string, newPassword: string) => Promise<string | null>;
   handleDeleteAccount: (confirmationText: string) => string | null;
+  onLogout: () => void;
 }
 
 export function useHrShellRuntime({
@@ -112,6 +113,7 @@ export function useHrShellRuntime({
   setHrCandidatesSearchFilters,
   handleChangePassword,
   handleDeleteAccount,
+  onLogout,
 }: HrShellRuntimeProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -1280,5 +1282,6 @@ export function useHrShellRuntime({
     openHrDashboardsTab: handleOpenHrDashboardsTab,
     hrProfileTab,
     openHrProfileTab: handleOpenHrProfileTab,
+    handleLogout: onLogout,
   };
 }

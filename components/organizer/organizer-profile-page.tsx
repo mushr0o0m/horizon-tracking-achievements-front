@@ -4,27 +4,23 @@ import { useEffect, useMemo, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import {
   AuthUser,
-  OrganizerNotificationChannel,
-  OrganizerNotificationSettings,
   OrganizerOrganizationProfile,
   OrganizationType,
 } from "@/lib/types";
 import {
-  Bell,
   Building2,
   CalendarDays,
   KeyRound,
   Link2,
+  LogOut,
   Mail,
   Phone,
   ShieldAlert,
-  Trash2,
   Users,
 } from "lucide-react";
 import { HrActionConfirmSettings } from "@/lib/hr-network";
 import { updateOrganizerProfile } from "@/lib/backend-api";
 import { EMAIL_REGEX } from "@/app/shared/common/validation";
-import { normalizeOrganizerNotifications } from "@/app/shared/auth/normalizers";
 import { showErrorToast, showSuccessToast } from "@/lib/app-toast";
 
 interface OrganizerProfilePageProps {
@@ -38,9 +34,7 @@ interface OrganizerProfilePageProps {
     currentPassword: string,
     newPassword: string,
   ) => string | null | Promise<string | null>;
-  onDeleteAccount: (
-    confirmationText: string,
-  ) => string | null | Promise<string | null>;
+  onLogout: () => void;
   hrDefaultInviteComment?: string;
   onUpdateHrDefaultInviteComment?: (comment: string) => void;
   hrActionConfirmSettings?: HrActionConfirmSettings;
@@ -63,23 +57,6 @@ const ORG_TYPE_OPTIONS: Array<{ value: OrganizationType; label: string }> = [
   { value: "educational", label: "Образовательная платформа" },
   { value: "other", label: "Другое" },
 ];
-
-const DELIVERY_CHANNEL_OPTIONS: Array<{
-  value: OrganizerNotificationChannel;
-  label: string;
-}> = [
-  { value: "interface", label: "В интерфейсе" },
-  { value: "email", label: "Email" },
-  { value: "push", label: "Push" },
-  { value: "telegram", label: "Telegram" },
-];
-
-const DEFAULT_ORGANIZER_NOTIFICATIONS: OrganizerNotificationSettings = {
-  verificationRequests: true,
-  newRegistrations: true,
-  reports: true,
-  deliveryChannels: ["interface", "email"],
-};
 
 function buildFallbackOrganizationProfile(
   email: string,
@@ -151,18 +128,6 @@ function useOrganizerProfileHandlers(
     }
   };
 
-  const handleUpdateNotifications = (
-    settings: OrganizerNotificationSettings,
-  ) => {
-    setCurrentUser((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        organizerNotifications: normalizeOrganizerNotifications(settings),
-      };
-    });
-  };
-
   const handleUpdateOrganizationProfile = async (
     profile: OrganizerOrganizationProfile,
   ): Promise<string | null> => {
@@ -199,7 +164,6 @@ function useOrganizerProfileHandlers(
   return {
     handleUpdateEmail,
     handleUpdatePhone,
-    handleUpdateNotifications,
     handleUpdateOrganizationProfile,
   };
 }
@@ -209,7 +173,7 @@ export function OrganizerProfilePage({
   organizationStats,
   setCurrentUser,
   onChangePassword,
-  onDeleteAccount,
+  onLogout,
   hrDefaultInviteComment,
   onUpdateHrDefaultInviteComment,
   hrActionConfirmSettings,
@@ -220,7 +184,6 @@ export function OrganizerProfilePage({
   const {
     handleUpdateEmail,
     handleUpdatePhone,
-    handleUpdateNotifications,
     handleUpdateOrganizationProfile,
   } = useOrganizerProfileHandlers(user.role, setCurrentUser);
   const showHrSettingsTab =
@@ -236,8 +199,6 @@ export function OrganizerProfilePage({
     onTabChange?.(tab);
   };
 
-  const safeNotifications =
-    user.organizerNotifications ?? DEFAULT_ORGANIZER_NOTIFICATIONS;
   const safeOrgProfile =
     user.organizerProfile ??
     buildFallbackOrganizationProfile(user.email, organizationStats);
@@ -248,9 +209,6 @@ export function OrganizerProfilePage({
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [deleteConfirmText, setDeleteConfirmText] = useState("");
-  const [notifications, setNotifications] =
-    useState<OrganizerNotificationSettings>(safeNotifications);
   const [organizationProfile, setOrganizationProfile] =
     useState<OrganizerOrganizationProfile>({
       ...safeOrgProfile,
@@ -261,10 +219,6 @@ export function OrganizerProfilePage({
   const [emailMessage, setEmailMessage] = useState<string | null>(null);
   const [phoneMessage, setPhoneMessage] = useState<string | null>(null);
   const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
-  const [deleteMessage, setDeleteMessage] = useState<string | null>(null);
-  const [notificationMessage, setNotificationMessage] = useState<string | null>(
-    null,
-  );
   const [organizationMessage, setOrganizationMessage] = useState<string | null>(
     null,
   );
@@ -283,9 +237,6 @@ export function OrganizerProfilePage({
   useEffect(() => {
     setNextEmail(user.email);
     setPhone(user.phone ?? "");
-    setNotifications(
-      user.organizerNotifications ?? DEFAULT_ORGANIZER_NOTIFICATIONS,
-    );
     setOrganizationProfile({
       ...(user.organizerProfile ??
         buildFallbackOrganizationProfile(user.email, organizationStats)),
@@ -369,44 +320,6 @@ export function OrganizerProfilePage({
       setNewPassword("");
       setConfirmPassword("");
     }
-  };
-
-  const handleNotificationToggle = (channel: OrganizerNotificationChannel) => {
-    setNotifications((prev) => {
-      const exists = prev.deliveryChannels.includes(channel);
-      if (exists) {
-        return {
-          ...prev,
-          deliveryChannels: prev.deliveryChannels.filter(
-            (item) => item !== channel,
-          ),
-        };
-      }
-      return {
-        ...prev,
-        deliveryChannels: [...prev.deliveryChannels, channel],
-      };
-    });
-  };
-
-  const handleNotificationsSave = () => {
-    if (notifications.deliveryChannels.length === 0) {
-      setNotificationMessage(
-        "Выберите хотя бы один канал доставки уведомлений.",
-      );
-      return;
-    }
-
-    handleUpdateNotifications(notifications);
-    setNotificationMessage("Настройки уведомлений сохранены.");
-    showSuccessToast("Настройки уведомлений сохранены");
-  };
-
-  const handleDelete = async () => {
-    const result = await Promise.resolve(
-      onDeleteAccount(deleteConfirmText.trim()),
-    );
-    setDeleteMessage(result ?? "Аккаунт удален.");
   };
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -548,15 +461,17 @@ export function OrganizerProfilePage({
           }`}>
           Информация об организации
         </button>
-        <button
-          onClick={() => handleTabChange("settings")}
-          className={`min-h-10 flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
-            activeTab === "settings"
-              ? "bg-card text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          }`}>
-          Настройки
-        </button>
+        {showHrSettingsTab && (
+          <button
+            onClick={() => handleTabChange("settings")}
+            className={`min-h-10 flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
+              activeTab === "settings"
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}>
+            Настройки
+          </button>
+        )}
       </div>
 
       {activeTab === "personal" && (
@@ -604,21 +519,23 @@ export function OrganizerProfilePage({
               <Phone className="w-4 h-4" />
               Телефон
             </div>
-            <p className="text-sm text-muted-foreground">
-              Текущий номер: {user.phone ? user.phone : "не указан"}
-            </p>
-            <input
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              type="tel"
-              placeholder="+79991234567"
-              className="w-full max-w-sm px-3 py-2.5 border border-border rounded-lg bg-background"
-            />
-            <button
-              onClick={handlePhoneSave}
-              className="px-4 py-2 rounded-lg border border-border hover:bg-secondary transition-colors text-sm font-medium">
-              Сохранить телефон
-            </button>
+            <div className="flex max-w-sm flex-col gap-3">
+              <p className="text-sm text-muted-foreground">
+                Текущий номер: {user.phone ? user.phone : "не указан"}
+              </p>
+              <input
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                type="tel"
+                placeholder="+79991234567"
+                className="w-full px-3 py-2.5 border border-border rounded-lg bg-background"
+              />
+              <button
+                onClick={handlePhoneSave}
+                className="w-fit px-4 py-2 rounded-lg border border-border hover:bg-secondary transition-colors text-sm font-medium">
+                Сохранить телефон
+              </button>
+            </div>
             {phoneMessage && (
               <p className="text-sm text-muted-foreground">{phoneMessage}</p>
             )}
@@ -665,28 +582,17 @@ export function OrganizerProfilePage({
           <section className="bg-red-50 border border-red-200 rounded-xl p-5 space-y-3">
             <div className="flex items-center gap-2 text-red-700 font-semibold">
               <ShieldAlert className="w-4 h-4" />
-              Опасная зона
+              Выход из аккаунта
             </div>
             <p className="text-sm text-red-700">
-              Для удаления аккаунта введите слово УДАЛИТЬ и нажмите кнопку ниже.
+              Завершить текущую сессию и выйти в окно авторизации.
             </p>
-            <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
-              <input
-                value={deleteConfirmText}
-                onChange={(e) => setDeleteConfirmText(e.target.value)}
-                placeholder="УДАЛИТЬ"
-                className="px-3 py-2.5 border border-red-300 rounded-lg bg-white"
-              />
-              <button
-                onClick={handleDelete}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors text-sm font-medium">
-                <Trash2 className="w-4 h-4" />
-                Удалить аккаунт
-              </button>
-            </div>
-            {deleteMessage && (
-              <p className="text-sm text-red-700">{deleteMessage}</p>
-            )}
+            <button
+              onClick={onLogout}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors text-sm font-medium">
+              <LogOut className="w-4 h-4" />
+              Выйти
+            </button>
           </section>
         </>
       )}
@@ -994,87 +900,6 @@ export function OrganizerProfilePage({
 
       {activeTab === "settings" && (
         <div className="space-y-4">
-          <section className="bg-card border border-border rounded-xl p-5 space-y-4">
-            <div className="flex items-center gap-2 text-foreground font-semibold">
-              <Bell className="w-4 h-4" />
-              Уведомления
-            </div>
-            <div className="space-y-2 text-sm">
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={notifications.verificationRequests}
-                  onChange={(e) =>
-                    setNotifications((prev) => ({
-                      ...prev,
-                      verificationRequests: e.target.checked,
-                    }))
-                  }
-                />
-                Запросы на подтверждение достижений
-              </label>
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={notifications.newRegistrations}
-                  onChange={(e) =>
-                    setNotifications((prev) => ({
-                      ...prev,
-                      newRegistrations: e.target.checked,
-                    }))
-                  }
-                />
-                Новые регистрации на мероприятия
-              </label>
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={notifications.reports}
-                  onChange={(e) =>
-                    setNotifications((prev) => ({
-                      ...prev,
-                      reports: e.target.checked,
-                    }))
-                  }
-                />
-                Отчеты и аналитика
-              </label>
-            </div>
-
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-foreground">
-                Каналы доставки
-              </p>
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                {DELIVERY_CHANNEL_OPTIONS.map((channel) => (
-                  <label
-                    key={channel.value}
-                    className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={notifications.deliveryChannels.includes(
-                        channel.value,
-                      )}
-                      onChange={() => handleNotificationToggle(channel.value)}
-                    />
-                    {channel.label}
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <button
-              onClick={handleNotificationsSave}
-              className="px-4 py-2 rounded-lg border border-border hover:bg-secondary transition-colors text-sm font-medium">
-              Сохранить настройки уведомлений
-            </button>
-            {notificationMessage && (
-              <p className="text-sm text-muted-foreground">
-                {notificationMessage}
-              </p>
-            )}
-          </section>
-
           {showHrSettingsTab && (
             <section className="bg-card border border-border rounded-xl p-5 space-y-4">
               <h3 className="text-lg font-semibold text-foreground">
@@ -1105,7 +930,8 @@ export function OrganizerProfilePage({
                 <p className="text-sm font-medium text-foreground">
                   Предупреждения в карточке кандидата
                 </p>
-                <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-foreground">
+                <div className="flex flex-col gap-3">
+                  <label className="inline-flex cursor-pointer items-start gap-2 text-sm text-foreground">
                   <input
                     type="checkbox"
                     checked={confirmRejectWarning}
@@ -1114,9 +940,11 @@ export function OrganizerProfilePage({
                       setHrInviteCommentMessage(null);
                     }}
                   />
-                  Показывать подтверждение перед отклонением кандидата
-                </label>
-                <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-foreground">
+                    <span>
+                      Показывать подтверждение перед отклонением кандидата
+                    </span>
+                  </label>
+                  <label className="inline-flex cursor-pointer items-start gap-2 text-sm text-foreground">
                   <input
                     type="checkbox"
                     checked={confirmArchiveWarning}
@@ -1125,8 +953,11 @@ export function OrganizerProfilePage({
                       setHrInviteCommentMessage(null);
                     }}
                   />
-                  Показывать подтверждение перед добавлением кандидата в архив
-                </label>
+                    <span>
+                      Показывать подтверждение перед добавлением кандидата в архив
+                    </span>
+                  </label>
+                </div>
               </div>
 
               <button

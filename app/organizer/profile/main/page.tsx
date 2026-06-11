@@ -16,7 +16,7 @@ interface OrganizerProfileMainPageProps {
     currentPassword: string,
     newPassword: string,
   ) => Promise<string | null>;
-  onDeleteAccount?: (confirmationText: string) => string | null;
+  onLogout?: () => void;
 }
 
 export function OrganizerProfileMainPageContent({
@@ -24,9 +24,9 @@ export function OrganizerProfileMainPageContent({
   organizationStats,
   setCurrentUser,
   onChangePassword,
-  onDeleteAccount,
+  onLogout,
 }: OrganizerProfileMainPageProps) {
-  if (!user || !organizationStats || !setCurrentUser || !onChangePassword || !onDeleteAccount) {
+  if (!user || !organizationStats || !setCurrentUser || !onChangePassword || !onLogout) {
     return <AppShellCommon />;
   }
 
@@ -36,7 +36,7 @@ export function OrganizerProfileMainPageContent({
       organizationStats={organizationStats}
       setCurrentUser={setCurrentUser}
       onChangePassword={onChangePassword}
-      onDeleteAccount={onDeleteAccount}
+      onLogout={onLogout}
     />
   );
 }

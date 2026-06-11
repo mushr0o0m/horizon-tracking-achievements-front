@@ -737,7 +737,7 @@ export function useStudentPageRuntime(options: StudentPageRuntimeOptions = {}) {
   );
 
   const handleStudentProfileTabChange = useCallback(
-    (tab: "personal" | "public" | "settings") => {
+    (tab: "personal" | "public") => {
       const basePath = buildStudentProfilePath(tab);
       router.push(
         `${basePath}${searchParamsString ? `?${searchParamsString}` : ""}`,

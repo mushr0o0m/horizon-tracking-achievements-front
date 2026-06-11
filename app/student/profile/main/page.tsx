@@ -23,7 +23,7 @@ interface StudentProfilePageContentProps {
     currentPassword: string,
     newPassword: string,
   ) => Promise<string | null>;
-  onDeleteAccount: (confirmationText: string) => string | null;
+  onLogout: () => void;
   activeTab: StudentProfileTab;
   onTabChange: (tab: StudentProfileTab) => void;
 }
@@ -37,7 +37,7 @@ export function StudentProfilePageContent({
   onOpenSubscribers,
   setCurrentUser,
   onChangePassword,
-  onDeleteAccount,
+  onLogout,
   activeTab,
   onTabChange,
 }: StudentProfilePageContentProps) {
@@ -51,7 +51,7 @@ export function StudentProfilePageContent({
       onOpenSubscribers={onOpenSubscribers}
       setCurrentUser={setCurrentUser}
       onChangePassword={onChangePassword}
-      onDeleteAccount={onDeleteAccount}
+      onLogout={onLogout}
       activeTab={activeTab}
       onTabChange={onTabChange}
     />
@@ -70,7 +70,11 @@ export default function Page() {
       onOpenSubscribers={runtime.openSubscribersFromProfile}
       setCurrentUser={runtime.setCurrentUser}
       onChangePassword={runtime.handleChangePassword}
-      onDeleteAccount={runtime.handleDeleteAccount}
+      onLogout={() => {
+        if (typeof window !== "undefined") {
+          window.location.assign("/");
+        }
+      }}
       activeTab={runtime.studentProfileTab}
       onTabChange={runtime.onProfileTabChange}
     />

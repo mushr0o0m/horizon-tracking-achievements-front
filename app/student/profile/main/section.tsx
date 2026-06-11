@@ -19,7 +19,7 @@ interface StudentProfileSectionProps {
   onOpenSubscribers: () => void;
   setCurrentUser: Dispatch<SetStateAction<AuthUser | null>>;
   onChangePassword: (currentPassword: string, newPassword: string) => Promise<string | null>;
-  onDeleteAccount: (confirmationText: string) => string | null;
+  onLogout: () => void;
   activeTab: StudentProfileTab;
   onTabChange: (tab: StudentProfileTab) => void;
 }
@@ -33,7 +33,7 @@ export function StudentProfileSection({
   onOpenSubscribers,
   setCurrentUser,
   onChangePassword,
-  onDeleteAccount,
+  onLogout,
   activeTab,
   onTabChange,
 }: StudentProfileSectionProps) {
@@ -47,7 +47,7 @@ export function StudentProfileSection({
       setCurrentUser={setCurrentUser}
       publicStats={publicStats}
       onChangePassword={onChangePassword}
-      onDeleteAccount={onDeleteAccount}
+      onLogout={onLogout}
       activeTab={activeTab}
       onTabChange={onTabChange}
     />

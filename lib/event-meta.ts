@@ -124,6 +124,32 @@ export function buildPublicEventUrl(eventId: string, origin?: string): string {
   return `${origin.replace(/\/$/, "")}${path}`;
 }
 
+export function resolvePublicEventShareUrl(eventId: string): string {
+  const configuredAppUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  if (configuredAppUrl) {
+    return buildPublicEventUrl(eventId, configuredAppUrl);
+  }
+
+  if (typeof window === "undefined") {
+    return buildPublicEventPath(eventId);
+  }
+
+  const currentHref = window.location.href;
+  const expectedPath = buildPublicEventPath(eventId);
+
+  try {
+    const currentUrl = new URL(currentHref);
+    if (currentUrl.pathname.endsWith(expectedPath)) {
+      currentUrl.hash = "";
+      return currentUrl.toString();
+    }
+  } catch {
+    return buildPublicEventUrl(eventId, window.location.origin);
+  }
+
+  return buildPublicEventUrl(eventId, window.location.origin);
+}
+
 export function buildEventQrCode(eventId: string): string {
   const appOrigin = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
   const publicEventUrl = buildPublicEventUrl(eventId, appOrigin);

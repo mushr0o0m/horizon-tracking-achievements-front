@@ -2,22 +2,21 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
+import { createPortal } from "react-dom";
 import {
   Achievement,
   AuthUser,
   CourseOption,
-  NotificationSettings,
   PublicProfile,
 } from "@/lib/types";
 import { BadgeViewModel } from "@/lib/badges";
 import {
-  Bell,
   EyeOff,
   Mail,
   Phone,
   KeyRound,
   ShieldAlert,
-  Trash2,
+  LogOut,
   UserCircle2,
   Link2,
   Eye,
@@ -47,20 +46,12 @@ interface ProfilePageProps {
     currentPassword: string,
     newPassword: string,
   ) => string | null | Promise<string | null>;
-  onDeleteAccount: (
-    confirmationText: string,
-  ) => string | null | Promise<string | null>;
+  onLogout: () => void;
   activeTab: StudentProfileTab;
   onTabChange: (tab: StudentProfileTab) => void;
 }
 
 const PHONE_REGEX = /^\+?[0-9]{10,15}$/;
-const DEFAULT_NOTIFICATIONS: NotificationSettings = {
-  invitations: true,
-  verification: true,
-  recommendations: true,
-};
-
 const COURSE_OPTIONS: Array<{ value: CourseOption; label: string }> = [
   { value: "1", label: "1 курс" },
   { value: "2", label: "2 курс" },
@@ -73,7 +64,7 @@ const COURSE_OPTIONS: Array<{ value: CourseOption; label: string }> = [
   { value: "postgraduate", label: "Аспирант" },
 ];
 
-export type StudentProfileTab = "personal" | "public" | "settings";
+export type StudentProfileTab = "personal" | "public";
 
 function buildFallbackPublicProfile(fullName: string): PublicProfile {
   const parts = fullName.trim().split(/\s+/).filter(Boolean);
@@ -138,20 +129,6 @@ function useStudentProfileHandlers(
     }
   };
 
-  const handleUpdateNotifications = (settings: NotificationSettings) => {
-    setCurrentUser((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        notifications: {
-          invitations: Boolean(settings.invitations),
-          verification: Boolean(settings.verification),
-          recommendations: Boolean(settings.recommendations),
-        },
-      };
-    });
-  };
-
   const handleUpdatePublicProfile = async (
     profile: PublicProfile,
   ): Promise<string | null> => {
@@ -188,7 +165,6 @@ function useStudentProfileHandlers(
   return {
     handleUpdateEmail,
     handleUpdatePhone,
-    handleUpdateNotifications,
     handleUpdatePublicProfile,
   };
 }
@@ -202,12 +178,11 @@ export function ProfilePage({
   publicStats,
   setCurrentUser,
   onChangePassword,
-  onDeleteAccount,
+  onLogout,
   activeTab,
   onTabChange,
 }: ProfilePageProps) {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-  const safeNotifications = user.notifications ?? DEFAULT_NOTIFICATIONS;
   const safePublicProfile =
     user.publicProfile ?? buildFallbackPublicProfile(user.name);
   const [publicProfile, setPublicProfile] =
@@ -218,31 +193,22 @@ export function ProfilePage({
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [deleteConfirmText, setDeleteConfirmText] = useState("");
-  const [notifications, setNotifications] =
-    useState<NotificationSettings>(safeNotifications);
 
   const [emailMessage, setEmailMessage] = useState<string | null>(null);
   const [phoneMessage, setPhoneMessage] = useState<string | null>(null);
   const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
-  const [deleteMessage, setDeleteMessage] = useState<string | null>(null);
-  const [notificationMessage, setNotificationMessage] = useState<string | null>(
-    null,
-  );
   const [publicMessage, setPublicMessage] = useState<string | null>(null);
   const [visibleAchievementsQuery, setVisibleAchievementsQuery] = useState("");
   const [visibleBadgesQuery, setVisibleBadgesQuery] = useState("");
   const {
     handleUpdateEmail,
     handleUpdatePhone,
-    handleUpdateNotifications,
     handleUpdatePublicProfile,
   } = useStudentProfileHandlers(setCurrentUser);
 
   useEffect(() => {
     setNextEmail(user.email);
     setPhone(user.phone ?? "");
-    setNotifications(user.notifications ?? DEFAULT_NOTIFICATIONS);
     setPublicProfile(
       user.publicProfile ?? buildFallbackPublicProfile(user.name),
     );
@@ -330,19 +296,6 @@ export function ProfilePage({
       setNewPassword("");
       setConfirmPassword("");
     }
-  };
-
-  const handleNotificationsSave = () => {
-    handleUpdateNotifications(notifications);
-    setNotificationMessage("Настройки уведомлений сохранены.");
-    showSuccessToast("Настройки уведомлений сохранены");
-  };
-
-  const handleDelete = async () => {
-    const result = await Promise.resolve(
-      onDeleteAccount(deleteConfirmText.trim()),
-    );
-    setDeleteMessage(result ?? "Аккаунт удален.");
   };
 
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -458,15 +411,6 @@ export function ProfilePage({
           }`}>
           Публичная визитка
         </button>
-        <button
-          onClick={() => onTabChange("settings")}
-          className={`min-h-10 flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
-            activeTab === "settings"
-              ? "bg-card text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          }`}>
-          Настройки
-        </button>
       </div>
 
       {activeTab === "personal" && (
@@ -514,21 +458,23 @@ export function ProfilePage({
               <Phone className="w-4 h-4" />
               Телефон
             </div>
-            <p className="text-sm text-muted-foreground">
-              Текущий номер: {user.phone ? user.phone : "не указан"}
-            </p>
-            <input
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              type="tel"
-              placeholder="+79991234567"
-              className="w-full max-w-sm px-3 py-2.5 border border-border rounded-lg bg-background"
-            />
-            <button
-              onClick={handlePhoneSave}
-              className="px-4 py-2 rounded-lg border border-border hover:bg-secondary transition-colors text-sm font-medium">
-              Сохранить телефон
-            </button>
+            <div className="flex max-w-sm flex-col gap-3">
+              <p className="text-sm text-muted-foreground">
+                Текущий номер: {user.phone ? user.phone : "не указан"}
+              </p>
+              <input
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                type="tel"
+                placeholder="+79991234567"
+                className="w-full px-3 py-2.5 border border-border rounded-lg bg-background"
+              />
+              <button
+                onClick={handlePhoneSave}
+                className="w-fit px-4 py-2 rounded-lg border border-border hover:bg-secondary transition-colors text-sm font-medium">
+                Сохранить телефон
+              </button>
+            </div>
             {phoneMessage && (
               <p className="text-sm text-muted-foreground">{phoneMessage}</p>
             )}
@@ -575,28 +521,17 @@ export function ProfilePage({
           <section className="bg-red-50 border border-red-200 rounded-xl p-5 space-y-3">
             <div className="flex items-center gap-2 text-red-700 font-semibold">
               <ShieldAlert className="w-4 h-4" />
-              Опасная зона
+              Выход из аккаунта
             </div>
             <p className="text-sm text-red-700">
-              Для удаления аккаунта введите слово УДАЛИТЬ и нажмите кнопку ниже.
+              Завершить текущую сессию и выйти в окно авторизации.
             </p>
-            <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
-              <input
-                value={deleteConfirmText}
-                onChange={(e) => setDeleteConfirmText(e.target.value)}
-                placeholder="УДАЛИТЬ"
-                className="px-3 py-2.5 border border-red-300 rounded-lg bg-white"
-              />
-              <button
-                onClick={handleDelete}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors text-sm font-medium">
-                <Trash2 className="w-4 h-4" />
-                Удалить аккаунт
-              </button>
-            </div>
-            {deleteMessage && (
-              <p className="text-sm text-red-700">{deleteMessage}</p>
-            )}
+            <button
+              onClick={onLogout}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors text-sm font-medium">
+              <LogOut className="w-4 h-4" />
+              Выйти
+            </button>
           </section>
         </>
       )}
@@ -1046,68 +981,10 @@ export function ProfilePage({
         </section>
       )}
 
-      {activeTab === "settings" && (
-        <section className="bg-card border border-border rounded-xl p-5 space-y-4">
-          <div className="flex items-center gap-2 text-foreground font-semibold">
-            <Bell className="w-4 h-4" />
-            Уведомления
-          </div>
-          <div className="space-y-2 text-sm">
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={notifications.invitations}
-                onChange={(e) =>
-                  setNotifications((prev) => ({
-                    ...prev,
-                    invitations: e.target.checked,
-                  }))
-                }
-              />
-              Новые приглашения от HR
-            </label>
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={notifications.verification}
-                onChange={(e) =>
-                  setNotifications((prev) => ({
-                    ...prev,
-                    verification: e.target.checked,
-                  }))
-                }
-              />
-              Изменение статуса верификации достижений
-            </label>
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={notifications.recommendations}
-                onChange={(e) =>
-                  setNotifications((prev) => ({
-                    ...prev,
-                    recommendations: e.target.checked,
-                  }))
-                }
-              />
-              Рекомендации по мероприятиям
-            </label>
-          </div>
-          <button
-            onClick={handleNotificationsSave}
-            className="px-4 py-2 rounded-lg border border-border hover:bg-secondary transition-colors text-sm font-medium">
-            Сохранить настройки уведомлений
-          </button>
-          {notificationMessage && (
-            <p className="text-sm text-muted-foreground">
-              {notificationMessage}
-            </p>
-          )}
-        </section>
-      )}
-
-      {isPreviewOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 p-4 flex items-center justify-center">
+      {isPreviewOpen &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div className="fixed inset-0 z-50 bg-black/50 p-4 flex items-center justify-center">
           <div className="w-full max-w-3xl max-h-[90vh] overflow-auto bg-background border border-border rounded-2xl shadow-xl">
             <div className="sticky top-0 z-10 bg-background border-b border-border px-5 py-3 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-foreground">
@@ -1294,8 +1171,9 @@ export function ProfilePage({
               </section>
             </div>
           </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

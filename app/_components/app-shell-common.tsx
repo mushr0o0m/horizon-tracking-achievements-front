@@ -420,15 +420,18 @@ function AppContent({ studentRouteOverride, children }: AppShellCommonProps) {
     const run = async () => {
       try {
         await markAllNotificationsRead();
-        const refreshed = await fetchNotifications(currentUser.id);
-        setNotifications(refreshed);
+        setNotifications(
+          notifications.map((item) =>
+            item.userId === currentUser.id ? { ...item, isRead: true } : item,
+          ),
+        );
       } catch (error) {
         console.warn("Failed to mark notifications as read.", error);
       }
     };
 
     run();
-  }, [currentUser, setNotifications]);
+  }, [currentUser, notifications, setNotifications]);
 
   if (!isAuthResolved) {
     return (
@@ -471,7 +474,7 @@ function AppContent({ studentRouteOverride, children }: AppShellCommonProps) {
             routeOverride={studentRouteOverride}
             setCurrentUser={setCurrentUser}
             handleChangePassword={handleChangePassword}
-            handleDeleteAccount={handleDeleteAccount}
+            onLogout={handleLogout}
           />
         )
       )}
@@ -482,7 +485,7 @@ function AppContent({ studentRouteOverride, children }: AppShellCommonProps) {
           setOrganizerView={setOrganizerView}
           setCurrentUser={setCurrentUser}
           handleChangePassword={handleChangePassword}
-          handleDeleteAccount={handleDeleteAccount}
+          onLogout={handleLogout}
         />
       )}
       {role === "hr" && (
@@ -497,6 +500,7 @@ function AppContent({ studentRouteOverride, children }: AppShellCommonProps) {
           setHrCandidatesSearchFilters={setHrCandidatesSearchFilters}
           handleChangePassword={handleChangePassword}
           handleDeleteAccount={handleDeleteAccount}
+          onLogout={handleLogout}
         />
       )}
     </AppShellWrapper>

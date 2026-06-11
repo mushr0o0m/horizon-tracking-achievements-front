@@ -120,7 +120,6 @@ export function resolveStudentAchievementsTab(
 
 export function resolveStudentProfileTab(pathname: string): StudentProfileTab {
   if (pathname.includes("/student/profile/main/public")) return "public";
-  if (pathname.includes("/student/profile/main/settings")) return "settings";
   return "personal";
 }
 

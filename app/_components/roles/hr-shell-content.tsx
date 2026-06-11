@@ -157,7 +157,7 @@ export function HrShellContent(props: HrShellRuntimeProps) {
           hrActionConfirmSettings={runtime.hrActionConfirmSettings}
           onUpdateHrDefaultInviteComment={runtime.updateHrDefaultInviteComment}
           onUpdateHrActionConfirmSettings={runtime.updateHrActionConfirmSettings}
-          onDeleteAccount={runtime.handleDeleteAccount}
+          onLogout={runtime.handleLogout}
           activeTab={runtime.hrProfileTab}
           onTabChange={runtime.openHrProfileTab}
         />

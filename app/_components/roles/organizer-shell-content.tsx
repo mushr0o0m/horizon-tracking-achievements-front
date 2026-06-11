@@ -33,7 +33,7 @@ interface OrganizerShellContentProps {
     currentPassword: string,
     newPassword: string,
   ) => Promise<string | null>;
-  handleDeleteAccount: (confirmationText: string) => string | null;
+  onLogout: () => void;
 }
 
 export function OrganizerShellContent({
@@ -42,7 +42,7 @@ export function OrganizerShellContent({
   setOrganizerView,
   setCurrentUser,
   handleChangePassword,
-  handleDeleteAccount,
+  onLogout,
 }: OrganizerShellContentProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -146,7 +146,7 @@ export function OrganizerShellContent({
           organizationStats={organizerComputedStats}
           setCurrentUser={setCurrentUser}
           onChangePassword={handleChangePassword}
-          onDeleteAccount={handleDeleteAccount}
+          onLogout={onLogout}
         />
       )}
       {organizerView === "create-event" && (

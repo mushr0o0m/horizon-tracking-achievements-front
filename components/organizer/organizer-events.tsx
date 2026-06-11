@@ -2,6 +2,7 @@
 
 import { Event } from "@/lib/types";
 import { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   Plus,
   Pencil,
@@ -138,8 +139,10 @@ export function OrganizerEvents({
       </div>
 
       {/* Delete confirm dialog */}
-      {deleteConfirmId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+      {deleteConfirmId &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
           <div className="bg-card border border-border rounded-xl p-6 shadow-xl w-full max-w-sm space-y-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center flex-shrink-0">
@@ -167,8 +170,9 @@ export function OrganizerEvents({
               </button>
             </div>
           </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
 
       {filteredEvents.length === 0 ? (
         <div className="bg-card border border-border rounded-lg py-16 text-center">
